@@ -1,21 +1,40 @@
-import dns from 'dns';
-// Fixes ECONNREFUSED on querySrv lookups caused by some ISPs/routers 
-// not resolving MongoDB Atlas SRV records properly
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+import { v2 as cloudinary } from 'cloudinary';
+import logger from '../utils/logger.js';
 
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-dotenv.config();
-
-const connectDB = async () => {
+export const uploadToCloudinary = async (filePath, folder = 'tobedone') => {
   try {
-    const conn = await mongoose.connect(process.env.MONGO_URI);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    const result = await cloudinary.uploader.upload(filePath, {
+      folder,
+      resource_type: 'auto',
+    });
+    logger.info(`File uploaded to Cloudinary: ${result.public_id}`);
+    return {
+      url: result.secure_url,
+      publicId: result.public_id,
+      size: result.bytes,
+      type: result.resource_type,
+    };
   } catch (error) {
-    console.error(`Error: ${error.message}`);
-    process.exit(1);
+    logger.error(`Cloudinary upload error: ${error.message}`);
+    throw error;
   }
 };
 
-export default connectDB;
+export const deleteFromCloudinary = async (publicId) => {
+  try {
+    const result = await cloudinary.uploader.destroy(publicId);
+    logger.info(`File deleted from Cloudinary: ${publicId}`);
+    return result;
+  } catch (error) {
+    logger.error(`Cloudinary delete error: ${error.message}`);
+    throw error;
+  }
+};
+
+export default cloudinary;
