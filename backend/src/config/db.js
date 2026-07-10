@@ -1,10 +1,10 @@
-import dns from 'dns';
-// Fixes ECONNREFUSED on querySrv lookups caused by some ISPs/routers 
+import dns from "dns";
+// Fixes ECONNREFUSED on querySrv lookups caused by some ISPs/routers
 // not resolving MongoDB Atlas SRV records properly
-dns.setServers(['8.8.8.8', '8.8.4.4']);
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
 
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
+import mongoose from "mongoose";
+import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -12,10 +12,15 @@ const connectDB = async () => {
   try {
     const conn = await mongoose.connect(process.env.MONGO_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
+
+    // Log if the connection drops later (e.g. network blip, Atlas restart)
+    mongoose.connection.on("disconnected", () => {
+      console.warn("MongoDB disconnected");
+    });
   } catch (error) {
     console.error(`Error: ${error.message}`);
     process.exit(1);
   }
 };
 
-export default connectDB;
+export default connectDB; 
