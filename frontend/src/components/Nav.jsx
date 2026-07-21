@@ -1,16 +1,21 @@
 import { useState } from 'react';
-
-export default function Nav({ currentPage = 'dashboard', onPageChange }) {
+import { useNavigate, useLocation } from 'react-router-dom';
+export default function Nav() {
     const [isOpen, setIsOpen] = useState(false);
+const navigate = useNavigate();
+const location = useLocation();
 
-    const links = [
-        { label: 'Dashboard', path: 'dashboard', icon: '📊' },
-        { label: 'Tasks', path: 'tasks', icon: ' ✓' },
-        { label: 'Chats', path: 'chats', icon: '💬' },
-        { label: 'Notes', path: 'notes', icon: '📝' },
-        { label: 'Calendar', path: 'calendar', icon: '📅' },
-        { label: 'Settings', path: 'settings', icon: '⚙️' },
-    ];
+  const links = [
+  { label: "Dashboard", path: "/dashboard", icon: "📊" },
+  { label: "Analytics", path: "/dashboard/analytics", icon: "📈" },
+  { label: "Chat", path: "/dashboard/chat", icon: "💬" },
+  { label: "Files", path: "/dashboard/files", icon: "📁" },
+  { label: "Workflows", path: "/dashboard/workflows", icon: "⚡" },
+  { label: "Slack", path: "/dashboard/slack", icon: "💜" },
+  { label: "Digest", path: "/dashboard/digest", icon: "📄" },
+  { label: "Activity", path: "/dashboard/activity", icon: "📋" },
+  { label: "Team", path: "/dashboard/team", icon: "👥" },
+];
 
     return (
         <>
@@ -60,14 +65,14 @@ export default function Nav({ currentPage = 'dashboard', onPageChange }) {
                     </h3>
                     <nav>
                         {links.map((item) => {
-                            const isActive = currentPage === item.path;
+                           const isActive = location.pathname === item.path;
                             return (
                                 <button
                                     key={item.path}
-                                    onClick={() => {
-                                        onPageChange?.(item.path);
-                                        setIsOpen(false);
-                                    }}
+                                   onClick={() => {
+    navigate(item.path);
+    setIsOpen(false);
+}}
                                     style={{
                                         width: '100%',
                                         padding: '12px 16px',
