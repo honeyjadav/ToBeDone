@@ -4,13 +4,25 @@ const workspaceSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, "Workspace name is required"],
+      required: true,
       trim: true,
     },
-    createdBy: {
+    description: {
+      type: String,
+      default: "",
+    },
+    owner: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+    },
+    slackWebhookUrl: {
+      type: String, // for Slack integration
+      default: "",
+    },
+    logo: {
+      type: String, // Cloudinary URL
+      default: "",
     },
   },
   { timestamps: true }

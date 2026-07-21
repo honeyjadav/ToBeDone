@@ -44,6 +44,17 @@ const userSchema = new mongoose.Schema(
       type: Date,
       select: false,
     },
+    avatar: {
+      type: String, // Cloudinary URL
+      default: "",
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+    lastLogin: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
