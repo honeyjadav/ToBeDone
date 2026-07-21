@@ -60,6 +60,24 @@ export const otpEmailTemplate = ({ name, otp, expiryMinutes }) =>
     `,
   });
 
+// Login success email
+export const loginSuccessEmailTemplate = ({ name, loginTime }) =>
+  baseTemplate({
+    title: "Successfully signed in to ToBeDone",
+    bodyHtml: `
+      <p style="margin:0 0 16px; font-size:15px; color:#111827;">Hi ${name},</p>
+      <p style="margin:0 0 24px; font-size:15px; color:#374151;">
+        Your account was successfully verified and you are now signed in.
+      </p>
+      <p style="margin:0 0 16px; font-size:14px; color:#6b7280;">
+        Login time: <strong>${loginTime}</strong>
+      </p>
+      <p style="margin:0; font-size:14px; color:#6b7280;">
+        If this wasn't you, please contact support immediately or revoke active sessions from your account.
+      </p>
+    `,
+  });
+
 // Workspace invite email (bonus — same pattern, reused for your invite feature)
 export const inviteEmailTemplate = ({ workspaceName, inviterName, inviteLink, role }) =>
   baseTemplate({
