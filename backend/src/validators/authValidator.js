@@ -37,3 +37,13 @@ export const resendOtpSchema = Joi.object({
     "string.email": "A valid email is required",
   }),
 });
+
+export const loginSchema = Joi.object({
+  email: Joi.string().email().trim().lowercase().required().messages({
+    "string.email": "A valid email is required",
+    "string.empty": "Email is required",
+  }),
+  password: Joi.string().required().messages({
+    "string.empty": "Password is required",
+  }),
+});
