@@ -4,13 +4,13 @@ import WorkspaceMember from "../models/WorkspaceMember.js";
 import Session from "../models/Session.js";
 import generateOtp from "../utils/generateOtp.js";
 import sendEmail from "../utils/sendEmail.js";
-import { otpEmailTemplate, loginSuccessEmailTemplate, inviteEmailTemplate } from "../utils/emailTemplates.js";
+import { otpEmailTemplate, loginSuccessEmailTemplate, inviteEmailTemplate,resetPasswordEmailTemplate } from "../utils/emailTemplates.js";
 import {
   createSession,
   rotateAccessToken,
   setRefreshTokenCookie,
 } from "../utils/tokenUtils.js";
-
+import crypto from "crypto";
 const OTP_EXPIRY_MINUTES = 5;
 
 const createAndSendOtp = async (user) => {
@@ -448,6 +448,105 @@ export const revokeSession = async (req, res, next) => {
     await Session.deleteOne({ _id: sessionId });
 
     res.status(200).json({ success: true, message: "Session revoked" });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Validate email and send reset password link
+// @route   POST /api/auth/forgot-password
+// @access  Public
+// @desc    Validate email and send reset password link
+// @route   POST /api/auth/forgot-password
+// @access  Public
+export const forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+
+    // ✅ Only perform async operations if user exists AND verified
+    if (user && user.isEmailVerified) {
+      // Generate reset token
+      const resetToken = crypto.randomUUID();
+      user.resetPasswordToken = resetToken;
+      user.resetPasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+      await user.save();
+
+      const resetLink = `${process.env.APP_URL}/reset-password?token=${resetToken}`;
+
+      await sendEmail({
+        to: user.email,
+        subject: "Reset your password — ToBeDone",
+        html: resetPasswordEmailTemplate({
+          name: user.name,
+          resetLink,
+          expiryMinutes: 15,
+        }),
+      });
+    }
+
+    // ✅ Send response ONCE, at the end, regardless of user validity
+    // This ensures if an error occurs above, the catch block can send an error response
+    res.status(200).json({
+      success: true,
+      message: "If this email is registered and verified, a reset link has been sent.",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Verify reset token and update password
+// @route   POST /api/auth/reset-password
+// @access  Public
+export const resetPassword = async (req, res, next) => {
+  try {
+    const { token, newPassword } = req.body;
+
+    // Validate request
+    if (!token) {
+      res.status(400);
+      throw new Error("Reset token is required.");
+    }
+
+    if (!newPassword) {
+      res.status(400);
+      throw new Error("New password is required.");
+    }
+
+    // Find user by reset token
+    const user = await User.findOne({
+      resetPasswordToken: token,
+    }).select("+resetPasswordToken +resetPasswordExpires +password");
+
+    if (!user) {
+      res.status(400);
+      throw new Error("Invalid reset link.");
+    }
+
+    // Check token expiry
+    if (!user.resetPasswordExpires || user.resetPasswordExpires < Date.now()) {
+      res.status(400);
+      throw new Error("Reset link has expired. Please request a new one.");
+    }
+
+    // Update password
+    user.password = newPassword;
+
+    // Remove reset token
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpires = undefined;
+
+    await user.save();
+
+    // Logout from all devices
+    await Session.deleteMany({ userId: user._id });
+
+    return res.status(200).json({
+      success: true,
+      message: "Password reset successful. Please login with your new password.",
+    });
   } catch (error) {
     next(error);
   }

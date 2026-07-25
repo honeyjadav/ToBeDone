@@ -11,6 +11,8 @@ import {
   logoutAll,
   getMySessions,
   revokeSession,
+  forgotPassword,
+  resetPassword
 } from "../controllers/authController.js";
 import validate from "../middleware/validate.js";
 import {
@@ -34,5 +36,7 @@ router.post("/logout", logout);
 router.post("/logout-all", protect, logoutAll);
 router.get("/sessions", protect, getMySessions);
 router.delete("/sessions/:sessionId", protect, revokeSession);
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password",  resetPassword);
 
 export default router;

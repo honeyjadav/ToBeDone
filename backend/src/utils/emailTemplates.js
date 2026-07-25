@@ -98,3 +98,28 @@ export const inviteEmailTemplate = ({ workspaceName, inviterName, inviteLink, ro
       </p>
     `,
   });
+
+  export const resetPasswordEmailTemplate = ({ name, resetLink, expiryMinutes }) =>
+  baseTemplate({
+    title: "Reset your password",
+    bodyHtml: `
+      <p style="margin:0 0 16px; font-size:15px; color:#111827;">Hi ${name},</p>
+      <p style="margin:0 0 24px; font-size:15px; color:#374151;">
+        We received a request to reset your password. Click the button below to set a new password.
+      </p>
+      <div style="text-align:center; margin:32px 0;">
+        <a href="${resetLink}" 
+           style="display:inline-block; padding:14px 32px; font-size:15px; 
+                  font-weight:600; color:#ffffff; background-color:#4f46e5; 
+                  border-radius:6px; text-decoration:none;">
+          Reset Password
+        </a>
+      </div>
+      <p style="margin:0 0 8px; font-size:14px; color:#6b7280;">
+        This link expires in <strong>${expiryMinutes} minutes</strong>.
+      </p>
+      <p style="margin:0; font-size:13px; color:#9ca3af; word-break:break-all;">
+        Or copy this link: ${resetLink}
+      </p>
+    `,
+  });
