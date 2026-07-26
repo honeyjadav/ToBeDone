@@ -1,146 +1,200 @@
-import { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-export default function Nav() {
-    const [isOpen, setIsOpen] = useState(false);
-const navigate = useNavigate();
-const location = useLocation();
+import {
+    Drawer,
+    Box,
+    List,
+    ListItemButton,
+    ListItemIcon,
+    ListItemText,
+    Typography,
+    Divider,
+    IconButton,
+    Tooltip,
+} from '@mui/material';
+import { useLocation, useNavigate } from 'react-router-dom';
+import {
+    DashboardOutlined as DashboardOutlinedIcon,
+    ViewKanbanOutlined as ViewKanbanOutlinedIcon,
+    ChatBubbleOutline as ChatBubbleOutlineIcon,
+    StickyNote2Outlined as StickyNote2OutlinedIcon,
+    AutoAwesomeOutlined as AutoAwesomeOutlinedIcon,
+    SettingsOutlined as SettingsOutlinedIcon,
+    LogoutOutlined as LogoutOutlinedIcon,
+    ChevronLeft as ChevronLeftIcon,
+    ChevronRight as ChevronRightIcon,
+} from '@mui/icons-material';
 
-  const links = [
-  { label: "Dashboard", path: "/dashboard", icon: "📊" },
-  { label: "Analytics", path: "/dashboard/analytics", icon: "📈" },
-  { label: "Chat", path: "/dashboard/chat", icon: "💬" },
-  { label: "Files", path: "/dashboard/files", icon: "📁" },
-  { label: "Workflows", path: "/dashboard/workflows", icon: "⚡" },
-  { label: "Slack", path: "/dashboard/slack", icon: "💜" },
-  { label: "Digest", path: "/dashboard/digest", icon: "📄" },
-  { label: "Activity", path: "/dashboard/activity", icon: "📋" },
-  { label: "Team", path: "/dashboard/team", icon: "👥" },
+export const EXPANDED_WIDTH = 224;
+export const COLLAPSED_WIDTH = 68;
+export const HEADER_HEIGHT = 60;
+
+const links = [
+    { label: 'Dashboard', path: '/dashboard', icon: <DashboardOutlinedIcon fontSize="small" /> },
+    { label: 'Tasks', path: '/dashboard/tasks', icon: <ViewKanbanOutlinedIcon fontSize="small" /> },
+    { label: 'Chats', path: '/dashboard/chat', icon: <ChatBubbleOutlineIcon fontSize="small" /> },
+    { label: 'Sticky Notes', path: '/dashboard/notes', icon: <StickyNote2OutlinedIcon fontSize="small" /> },
+    { label: 'AI Digest', path: '/dashboard/digest', icon: <AutoAwesomeOutlinedIcon fontSize="small" /> },
 ];
 
+export default function Nav({ isOpen, setIsOpen }) {
+    const location = useLocation();
+    const navigate = useNavigate();
+    const width = isOpen ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
+
+    const navItemSx = (isActive) => ({
+        borderRadius: '7px',
+        mx: 1,
+        mb: '2px',
+        py: '7px',
+        px: isOpen ? '10px' : '0px',
+        minHeight: 'auto',
+        justifyContent: isOpen ? 'flex-start' : 'center',
+        color: isActive ? '#7c3aed' : '#475569',
+        backgroundColor: isActive ? '#f3f0fe' : 'transparent',
+        '&:hover': {
+            backgroundColor: isActive ? '#f3f0fe' : '#f8fafc',
+        },
+    });
+
+    const renderItem = (item, isActive, onClick, key) => {
+        const button = (
+            <ListItemButton onClick={onClick} sx={navItemSx(isActive)}>
+                <ListItemIcon
+                    sx={{
+                        minWidth: 0,
+                        mr: isOpen ? 1.25 : 0,
+                        color: isActive ? '#7c3aed' : item.danger ? '#dc2626' : '#94a3b8',
+                        justifyContent: 'center',
+                    }}
+                >
+                    {item.icon}
+                </ListItemIcon>
+                {isOpen && (
+                    <ListItemText
+                        primary={item.label}
+                        primaryTypographyProps={{
+                            fontSize: '13.5px',
+                            fontWeight: isActive ? 600 : 500,
+                        }}
+                    />
+                )}
+            </ListItemButton>
+        );
+        return isOpen ? (
+            <Box key={key}>{button}</Box>
+        ) : (
+            <Tooltip title={item.label} placement="right" key={key}>
+                {button}
+            </Tooltip>
+        );
+    };
+
     return (
-        <>
-            {/* Mobile Menu Button */}
-            <button
-                onClick={() => setIsOpen(!isOpen)}
-                style={{
-                    display: 'none',
+        <Drawer
+            variant="permanent"
+            open
+            sx={{
+                width,
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
+                transition: 'width 0.2s ease',
+                '& .MuiDrawer-paper': {
+                    width,
+                    boxSizing: 'border-box',
+                    borderRight: '1px solid #e5e7eb',
                     position: 'fixed',
-                    top: '72px',
-                    left: '16px',
-                    zIndex: 200,
-                    background: '#7c3aed',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    fontSize: '18px'
-                }}
-                className="mobile-menu-btn"
-            >
-                ☰
-            </button>
-
-            {/* Sidebar */}
-            <aside style={{
-                width: '240px',
-                backgroundColor: '#ffffff',
-                borderRight: '1px solid #e2e8f0',
-                overflowY: 'auto',
-                padding: '24px 0',
-                position: 'relative',
-                display: isOpen ? 'block' : 'block'
+                    top: `${HEADER_HEIGHT}px`,
+                    left: 0,
+                    height: `calc(100vh - ${HEADER_HEIGHT}px)`,
+                    overflowX: 'hidden',
+                    transition: 'width 0.2s ease',
+                    zIndex: 90,
+                },
             }}
-                className="nav-sidebar">
-                <div style={{ padding: '0 16px', marginBottom: '24px' }}>
-                    <h3 style={{
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        color: '#64748b',
-                        margin: '0 0 16px 0',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
-                    }}>
-                        Main Menu
-                    </h3>
-                    <nav>
-                        {links.map((item) => {
-                           const isActive = location.pathname === item.path;
-                            return (
-                                <button
-                                    key={item.path}
-                                   onClick={() => {
-    navigate(item.path);
-    setIsOpen(false);
-}}
-                                    style={{
-                                        width: '100%',
-                                        padding: '12px 16px',
-                                        marginBottom: '8px',
-                                        fontSize: '14px',
-                                        fontWeight: 600,
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                        backgroundColor: isActive ? 'rgba(124, 58, 237, 0.1)' : 'transparent',
-                                        color: isActive ? '#7c3aed' : '#334155',
-                                        transition: 'all 0.2s ease',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        textAlign: 'left'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                        if (!isActive) {
-                                            e.target.style.backgroundColor = 'rgba(124, 58, 237, 0.05)';
-                                        }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                        if (!isActive) {
-                                            e.target.style.backgroundColor = 'transparent';
-                                        }
-                                    }}
-                                >
-                                    <span style={{ fontSize: '18px' }}>{item.icon}</span>
-                                    <span>{item.label}</span>
-                                    {isActive && (
-                                        <span style={{
-                                            marginLeft: 'auto',
-                                            width: '4px',
-                                            height: '4px',
-                                            borderRadius: '50%',
-                                            backgroundColor: '#7c3aed'
-                                        }}></span>
-                                    )}
-                                </button>
-                            );
-                        })}
-                    </nav>
-                </div>
-            </aside>
+        >
+            <Box
+                sx={{
+                    height: '100%',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    py: 2,
+                }}
+            >
+                <Box>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            justifyContent: isOpen ? 'flex-end' : 'center',
+                            px: isOpen ? 1.5 : 0,
+                            mb: 1.5,
+                        }}
+                    >
+                        <IconButton
+                            onClick={() => setIsOpen(!isOpen)}
+                            size="small"
+                            sx={{
+                                border: '1px solid #e5e7eb',
+                                borderRadius: '7px',
+                                width: 28,
+                                height: 28,
+                                color: '#64748b',
+                            }}
+                        >
+                            {isOpen ? <ChevronLeftIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
+                        </IconButton>
+                    </Box>
 
-            <style>{`
-                @media (max-width: 768px) {
-                    .mobile-menu-btn {
-                        display: block !important;
-                    }
-                    
-                    .nav-sidebar {
-                        position: fixed !important;
-                        left: 0 !important;
-                        top: 64px !important;
-                        height: calc(100vh - 64px) !important;
-                        width: 240px !important;
-                        z-index: 150 !important;
-                        transform: translateX(-100%);
-                        transition: transform 0.3s ease;
-                    }
-                    
-                    .nav-sidebar.open {
-                        transform: translateX(0);
-                    }
-                }
-            `}</style>
-        </>
+                    {isOpen && (
+                        <Typography
+                            sx={{
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                color: '#94a3b8',
+                                px: 2,
+                                mb: 1,
+                                textTransform: 'uppercase',
+                                letterSpacing: '0.4px',
+                            }}
+                        >
+                            Overview
+                        </Typography>
+                    )}
+
+                    <List sx={{ py: 0 }}>
+                        {links.map((item) =>
+                            renderItem(
+                                item,
+                                item.path === '/dashboard'
+                                    ? location.pathname === '/dashboard'
+                                    : location.pathname.startsWith(item.path),
+                                () => navigate(item.path),
+                                item.path
+                            )
+                        )}
+                    </List>
+                </Box>
+
+                <Box>
+                    <Divider sx={{ mx: isOpen ? 2 : 1, mb: 1.5 }} />
+                    <List sx={{ py: 0 }}>
+                        {renderItem(
+                            { label: 'Settings', icon: <SettingsOutlinedIcon fontSize="small" /> },
+                            location.pathname.startsWith('/dashboard/settings'),
+                            () => navigate('/dashboard/settings'),
+                            'settings'
+                        )}
+                        {renderItem(
+                            { label: 'Logout', icon: <LogoutOutlinedIcon fontSize="small" />, danger: true },
+                            false,
+                            () => {
+                                localStorage.removeItem('user');
+                                window.location.href = '/login';
+                            },
+                            'logout'
+                        )}
+                    </List>
+                </Box>
+            </Box>
+        </Drawer>
     );
 }

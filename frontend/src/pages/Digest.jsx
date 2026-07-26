@@ -1,190 +1,129 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Stack,
-  Chip,
-  Grid,
-  Switch,
-  FormControlLabel,
-  TextField,
-  Select,
-  MenuItem,
-} from '@mui/material';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
+import { useState } from 'react';
+import { Box, Typography, IconButton, CircularProgress } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
+import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
 
-const summaries = [
-  {
-    title: 'Q3 Launch Status',
-    content: 'The Q3 launch is on track. All critical components are 85% complete. The team is ahead of schedule by 2 days.',
-    timestamp: 'Today at 9:00 AM',
-    insights: ['85% progress', 'On schedule', 'Team collaboration: 92%'],
-  },
-  {
-    title: 'Weekly Task Summary',
-    content: 'This week, the team completed 142 tasks with 89% efficiency. Top contributors: Alice (28 tasks), Bob (25 tasks). Key blockers: API integration (2 issues).',
-    timestamp: 'Yesterday',
-    insights: ['142 tasks completed', '89% efficiency', '0 critical issues'],
-  },
-  {
-    title: 'Team Performance Insights',
-    content: 'Team productivity increased by 12% this week. Department collaboration improved significantly. Recommended focus: Mobile app testing.',
-    timestamp: '2 days ago',
-    insights: ['+12% productivity', '+8% collaboration', '3 recommendations'],
-  },
+const stats = [
+  { label: 'Tasks Completed', value: 12, icon: <TaskAltIcon sx={{ fontSize: 20 }} />, color: '#22c55e' },
+  { label: 'Unread Messages', value: 7, icon: <ChatBubbleOutlineIcon sx={{ fontSize: 20 }} />, color: '#3b82f6' },
+  { label: 'Upcoming Deadlines', value: 3, icon: <EventOutlinedIcon sx={{ fontSize: 20 }} />, color: '#f59e0b' },
+  { label: 'New Notes', value: 4, icon: <StickyNote2OutlinedIcon sx={{ fontSize: 20 }} />, color: '#7c3aed' },
+];
+
+const highlights = [
+  'You completed 12 tasks this week, 20% more than last week.',
+  'The "Fix sidebar overlap" task in review has been pending for 2 days \u2014 consider following up.',
+  'Aisha Khan sent 2 new messages that are still unread.',
+  'You have a deadline for "Integrate AI digest summary" in 3 days.',
 ];
 
 export default function Digest() {
+  const [loading, setLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState('Just now');
+
+  const handleRefresh = () => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      setLastUpdated('Just now');
+    }, 1200);
+  };
+
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-          🤖 AI Smart Digest
-        </Typography>
-        <Typography sx={{ color: '#64748b' }}>
-          AI-powered insights and summaries powered by Gemini & Claude
-        </Typography>
+    <Box sx={{ p: 3, maxWidth: '100%' }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 3 }}>
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <AutoAwesomeIcon sx={{ fontSize: 22, color: '#7c3aed' }} />
+            <Typography sx={{ fontSize: '22px', fontWeight: 700, color: '#1e293b' }}>AI Digest</Typography>
+          </Box>
+          <Typography sx={{ fontSize: '13px', color: '#64748b', mt: 0.5 }}>
+            Your day at a glance \u00b7 Updated {lastUpdated}
+          </Typography>
+        </Box>
+        <IconButton
+          onClick={handleRefresh}
+          disabled={loading}
+          sx={{
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            width: 36,
+            height: 36,
+          }}
+        >
+          {loading ? <CircularProgress size={16} sx={{ color: '#7c3aed' }} /> : <RefreshIcon sx={{ fontSize: 18, color: '#64748b' }} />}
+        </IconButton>
       </Box>
 
-      <Grid container spacing={3}>
-        {/* Settings */}
-        <Grid item xs={12} md={4}>
-          <Card>
-            <CardContent>
-              <Typography sx={{ fontWeight: 700, mb: 3 }}>
-                Digest Settings
-              </Typography>
-              <Stack spacing={2}>
-                <Box>
-                  <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, mb: 1 }}>
-                    Frequency
-                  </Typography>
-                  <Select fullWidth defaultValue="daily" size="small">
-                    <MenuItem value="daily">Daily</MenuItem>
-                    <MenuItem value="weekly">Weekly</MenuItem>
-                    <MenuItem value="monthly">Monthly</MenuItem>
-                  </Select>
-                </Box>
+      {/* Stat cards */}
+      <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 2, mb: 3 }}>
+        {stats.map((stat) => (
+          <Box
+            key={stat.label}
+            sx={{
+              border: '1px solid #e5e7eb',
+              borderRadius: '10px',
+              p: 2,
+              backgroundColor: '#ffffff',
+            }}
+          >
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: '8px',
+                backgroundColor: `${stat.color}18`,
+                color: stat.color,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                mb: 1.5,
+              }}
+            >
+              {stat.icon}
+            </Box>
+            <Typography sx={{ fontSize: '24px', fontWeight: 700, color: '#1e293b' }}>{stat.value}</Typography>
+            <Typography sx={{ fontSize: '12.5px', color: '#64748b' }}>{stat.label}</Typography>
+          </Box>
+        ))}
+      </Box>
 
-                <Box>
-                  <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, mb: 1 }}>
-                    Delivery Time
-                  </Typography>
-                  <TextField type="time" fullWidth size="small" defaultValue="09:00" />
-                </Box>
+      {/* Highlights */}
+      <Box sx={{ border: '1px solid #e5e7eb', borderRadius: '10px', p: 2.5, backgroundColor: '#ffffff', mb: 2.5 }}>
+        <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', mb: 1.5 }}>
+          Today's Highlights
+        </Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+          {highlights.map((line, i) => (
+            <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
+              <AutoAwesomeIcon sx={{ fontSize: 14, color: '#7c3aed', mt: '3px', flexShrink: 0 }} />
+              <Typography sx={{ fontSize: '13.5px', color: '#334155', lineHeight: 1.5 }}>{line}</Typography>
+            </Box>
+          ))}
+        </Box>
+      </Box>
 
-                <Box>
-                  <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, mb: 1 }}>
-                    AI Model
-                  </Typography>
-                  <Select fullWidth defaultValue="gemini" size="small">
-                    <MenuItem value="gemini">Google Gemini</MenuItem>
-                    <MenuItem value="claude">Anthropic Claude</MenuItem>
-                    <MenuItem value="hybrid">Hybrid (Both)</MenuItem>
-                  </Select>
-                </Box>
-
-                <Box>
-                  <FormControlLabel
-                    control={<Switch defaultChecked />}
-                    label="Email Delivery"
-                  />
-                </Box>
-
-                <Box>
-                  <FormControlLabel
-                    control={<Switch defaultChecked />}
-                    label="Slack Notification"
-                  />
-                </Box>
-
-                <Button
-                  variant="contained"
-                  fullWidth
-                  sx={{
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%)',
-                  }}
-                >
-                  Save Settings
-                </Button>
-              </Stack>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Digests */}
-        <Grid item xs={12} md={8}>
-          <Stack spacing={3}>
-            {summaries.map((summary, index) => (
-              <Card key={index}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', alignItems: 'start', gap: 2, mb: 2 }}>
-                    <AutoAwesomeIcon sx={{ color: '#7c3aed', fontSize: '1.5rem', mt: 0.5 }} />
-                    <Box sx={{ flex: 1 }}>
-                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
-                        <Typography sx={{ fontWeight: 700, fontSize: '1.1rem', color: '#1e293b' }}>
-                          {summary.title}
-                        </Typography>
-                        <Chip label={summary.timestamp} size="small" variant="outlined" />
-                      </Box>
-                      <Typography sx={{ color: '#64748b', mb: 2, lineHeight: 1.6 }}>
-                        {summary.content}
-                      </Typography>
-                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 2 }}>
-                        {summary.insights.map((insight, idx) => (
-                          <Chip
-                            key={idx}
-                            label={insight}
-                            size="small"
-                            sx={{
-                              backgroundColor: 'rgba(124, 58, 237, 0.1)',
-                              color: '#7c3aed',
-                            }}
-                          />
-                        ))}
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button size="small" variant="outlined">
-                          Read Full
-                        </Button>
-                        <Button size="small" sx={{ color: '#7c3aed' }}>
-                          💾 Save
-                        </Button>
-                      </Box>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            ))}
-          </Stack>
-        </Grid>
-
-        {/* Generate New */}
-        <Grid item xs={12}>
-          <Card sx={{ backgroundColor: 'rgba(124, 58, 237, 0.05)', border: '2px dashed #7c3aed' }}>
-            <CardContent sx={{ textAlign: 'center', py: 4 }}>
-              <SmartToyIcon sx={{ fontSize: '3rem', color: '#7c3aed', mb: 1 }} />
-              <Typography sx={{ fontWeight: 700, mb: 1 }}>
-                Generate Custom Digest
-              </Typography>
-              <Typography sx={{ color: '#64748b', mb: 3 }}>
-                Get AI-powered insights on any topic or time range
-              </Typography>
-              <Button
-                variant="contained"
-                sx={{
-                  background: 'linear-gradient(135deg, #7c3aed 0%, #06b6d4 100%)',
-                }}
-              >
-                Generate Now
-              </Button>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
+      {/* Suggested focus */}
+      <Box
+        sx={{
+          borderRadius: '10px',
+          p: 2.5,
+          background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+          color: '#ffffff',
+        }}
+      >
+        <Typography sx={{ fontSize: '13px', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px', opacity: 0.85, mb: 1 }}>
+          Suggested Focus
+        </Typography>
+        <Typography sx={{ fontSize: '14.5px', lineHeight: 1.6 }}>
+          Prioritize wrapping up the "Fix sidebar overlap" review \u2014 it's been sitting the longest and is
+          blocking two other tasks. Clearing it first will unblock your team's momentum for the rest of the week.
+        </Typography>
+      </Box>
     </Box>
   );
 }

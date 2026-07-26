@@ -7,14 +7,11 @@ import DashboardLayout from "../layouts/DashboardLayout";
 import Landing from "../pages/Landing";
 import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
-import Analytics from "../pages/Analytics";
+import Tasks from "../pages/Tasks";
 import Chat from "../pages/Chat";
-import FileManager from "../pages/FileManager";
-import Workflows from "../pages/Workflows";
-import Slack from "../pages/Slack";
+import StickyNotes from "../pages/StickyNotes";
 import Digest from "../pages/Digest";
-import Activity from "../pages/Activity";
-import Team from "../pages/Team";
+import Settings from "../pages/Settings";
 
 export default function AppRouter() {
   const { isAuthenticated } = useAuth();
@@ -45,11 +42,9 @@ export default function AppRouter() {
         }
       >
         <Route index element={<Dashboard />} />
-        <Route path="analytics" element={<Analytics />} />
+        <Route path="tasks" element={<Tasks />} />
         <Route path="chat" element={<Chat />} />
-        <Route path="files" element={<FileManager />} />
-        <Route path="workflows" element={<Workflows />} />
-        <Route path="slack" element={<Slack />} />
+        <Route path="notes" element={<StickyNotes />} />
         <Route path="digest" element={<Digest />} />
         <Route path="activity" element={<Activity />} />
         <Route path="team" element={<Team />} />
@@ -66,7 +61,11 @@ export default function AppRouter() {
       <Route path="/team" element={<Navigate to="/dashboard/team" replace />} />
 
       {/* Catch All */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+      <Route path="settings" element={<Settings />} />
+    </Route>
+
+      {/* Catch all */ }
+  <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes >
   );
 }

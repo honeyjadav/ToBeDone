@@ -1,193 +1,276 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  TextField,
-  Button,
-  Avatar,
-  Stack,
-  Divider,
-  InputAdornment,
-  Typography,
-  Chip,
-  Grid,
-} from '@mui/material';
+import { useState, useRef, useEffect } from 'react';
+import { Box, Typography, Avatar, IconButton, Badge } from '@mui/material';
+import SearchIcon from '@mui/icons-material/Search';
 import SendIcon from '@mui/icons-material/Send';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
-import EmojiEmotionsIcon from '@mui/icons-material/EmojiEmotions';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
+import VideocamOutlinedIcon from '@mui/icons-material/VideocamOutlined';
 
-const channels = [
-  { id: 1, name: 'General', members: 12, unread: 0 },
-  { id: 2, name: 'Design', members: 5, unread: 3 },
-  { id: 3, name: 'Engineering', members: 8, unread: 1 },
-  { id: 4, name: 'Marketing', members: 6, unread: 0 },
+const conversations = [
+  { id: 1, name: 'Aisha Khan', initials: 'AK', lastMessage: 'Sounds good, I\u2019ll review it today', time: '9:41 AM', unread: 2, online: true },
+  { id: 2, name: 'Raj Sharma', initials: 'RS', lastMessage: 'Pushed the fix to staging', time: 'Yesterday', unread: 0, online: false },
+  { id: 3, name: 'Design Team', initials: 'DT', lastMessage: 'New mockups are ready for review', time: 'Yesterday', unread: 5, online: true },
+  { id: 4, name: 'John Doe', initials: 'JD', lastMessage: 'Thanks for the update!', time: 'Mon', unread: 0, online: false },
+  { id: 5, name: 'Priya Patel', initials: 'PP', lastMessage: 'Can we sync tomorrow?', time: 'Mon', unread: 0, online: true },
 ];
 
-const messages = [
-  { id: 1, user: 'Alice Chen', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=alice', message: 'Hey everyone! How is the Q3 launch going?', timestamp: '10:30 AM', isOwn: false },
-  { id: 2, user: 'You', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=you', message: 'Going great! We are on track for the deadline.', timestamp: '10:32 AM', isOwn: true },
-  { id: 3, user: 'Bob Smith', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=bob', message: 'The API integration is almost complete. Should be done by EOD.', timestamp: '10:35 AM', isOwn: false },
-  { id: 4, user: 'You', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=you', message: 'Perfect! Let me know when you need QA.', timestamp: '10:36 AM', isOwn: true },
-  { id: 5, user: 'Carol Davis', avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=carol', message: 'UI components are ready for testing 🎉', timestamp: '10:40 AM', isOwn: false },
-];
+const initialMessages = {
+  1: [
+    { id: 1, from: 'them', text: 'Hey! Did you get a chance to look at the new task board?', time: '9:32 AM' },
+    { id: 2, from: 'me', text: 'Yes, just finished going through it. Looks really clean.', time: '9:35 AM' },
+    { id: 3, from: 'them', text: 'Great, I added the priority tags too', time: '9:36 AM' },
+    { id: 4, from: 'them', text: 'Sounds good, I\u2019ll review it today', time: '9:41 AM' },
+  ],
+  2: [
+    { id: 1, from: 'them', text: 'Pushed the fix to staging', time: 'Yesterday' },
+    { id: 2, from: 'me', text: 'Awesome, testing it now', time: 'Yesterday' },
+  ],
+  3: [
+    { id: 1, from: 'them', text: 'New mockups are ready for review', time: 'Yesterday' },
+  ],
+  4: [
+    { id: 1, from: 'me', text: 'Deployed the update', time: 'Mon' },
+    { id: 2, from: 'them', text: 'Thanks for the update!', time: 'Mon' },
+  ],
+  5: [
+    { id: 1, from: 'them', text: 'Can we sync tomorrow?', time: 'Mon' },
+  ],
+};
 
 export default function Chat() {
+  const [selectedId, setSelectedId] = useState(1);
+  const [messages, setMessages] = useState(initialMessages);
+  const [input, setInput] = useState('');
+  const [search, setSearch] = useState('');
+  const scrollRef = useRef(null);
+
+  const selected = conversations.find((c) => c.id === selectedId);
+  const currentMessages = messages[selectedId] || [];
+
+  const filteredConversations = conversations.filter((c) =>
+    c.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [currentMessages.length, selectedId]);
+
+  const handleSend = () => {
+    if (!input.trim()) return;
+    const newMsg = {
+      id: Date.now(),
+      from: 'me',
+      text: input.trim(),
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+    };
+    setMessages((prev) => ({
+      ...prev,
+      [selectedId]: [...(prev[selectedId] || []), newMsg],
+    }));
+    setInput('');
+  };
+
   return (
-    <Box>
-      <Box sx={{ mb: 4 }}>
-        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1 }}>
-          Team Chat
-        </Typography>
-        <Typography sx={{ color: '#64748b' }}>
-          Real-time communication with your team
-        </Typography>
+    <Box sx={{ display: 'flex', height: 'calc(100vh - 60px)', backgroundColor: '#ffffff' }}>
+      {/* Conversation list */}
+      <Box sx={{ width: '300px', borderRight: '1px solid #e5e7eb', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+        <Box sx={{ p: 2, borderBottom: '1px solid #e5e7eb' }}>
+          <Typography sx={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', mb: 1.5 }}>Chats</Typography>
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1,
+              backgroundColor: '#f1f5f9',
+              borderRadius: '8px',
+              px: 1.5,
+              height: '36px',
+            }}
+          >
+            <SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} />
+            <input
+              placeholder="Search conversations..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '13px', width: '100%' }}
+            />
+          </Box>
+        </Box>
+
+        <Box sx={{ flex: 1, overflowY: 'auto' }}>
+          {filteredConversations.map((c) => (
+            <Box
+              key={c.id}
+              onClick={() => setSelectedId(c.id)}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1.5,
+                px: 2,
+                py: 1.5,
+                cursor: 'pointer',
+                backgroundColor: selectedId === c.id ? '#f3f0fe' : 'transparent',
+                borderLeft: selectedId === c.id ? '3px solid #7c3aed' : '3px solid transparent',
+                '&:hover': { backgroundColor: selectedId === c.id ? '#f3f0fe' : '#f8fafc' },
+              }}
+            >
+              <Badge
+                overlap="circular"
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                variant="dot"
+                sx={{
+                  '& .MuiBadge-dot': {
+                    backgroundColor: c.online ? '#22c55e' : '#cbd5e1',
+                    border: '2px solid #fff',
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                  },
+                }}
+              >
+                <Avatar sx={{ width: 40, height: 40, fontSize: '13px', fontWeight: 700, backgroundColor: '#ede9fe', color: '#7c3aed' }}>
+                  {c.initials}
+                </Avatar>
+              </Badge>
+
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <Typography sx={{ fontSize: '13.5px', fontWeight: 600, color: '#1e293b' }} noWrap>
+                    {c.name}
+                  </Typography>
+                  <Typography sx={{ fontSize: '11px', color: '#94a3b8', flexShrink: 0, ml: 1 }}>
+                    {c.time}
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography sx={{ fontSize: '12.5px', color: '#64748b' }} noWrap>
+                    {c.lastMessage}
+                  </Typography>
+                  {c.unread > 0 && (
+                    <Box
+                      sx={{
+                        minWidth: 18,
+                        height: 18,
+                        borderRadius: '9px',
+                        backgroundColor: '#7c3aed',
+                        color: '#fff',
+                        fontSize: '10px',
+                        fontWeight: 700,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        px: 0.5,
+                        ml: 1,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {c.unread}
+                    </Box>
+                  )}
+                </Box>
+              </Box>
+            </Box>
+          ))}
+        </Box>
       </Box>
 
-      <Grid container spacing={3} sx={{ height: 'calc(100vh - 200px)' }}>
-        {/* Channels Sidebar */}
-        <Grid item xs={12} md={3}>
-          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            <CardContent sx={{ pb: 0 }}>
-              <TextField
-                placeholder="Search channels..."
-                size="small"
-                fullWidth
-                sx={{ mb: 2 }}
-              />
-              <Typography sx={{ fontWeight: 700, color: '#1e293b', mb: 2, fontSize: '0.9rem' }}>
-                CHANNELS
-              </Typography>
-            </CardContent>
+      {/* Chat window */}
+      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+        {selected ? (
+          <>
+            <Box
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                px: 3,
+                py: 1.5,
+                borderBottom: '1px solid #e5e7eb',
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                <Avatar sx={{ width: 38, height: 38, fontSize: '13px', fontWeight: 700, backgroundColor: '#ede9fe', color: '#7c3aed' }}>
+                  {selected.initials}
+                </Avatar>
+                <Box>
+                  <Typography sx={{ fontSize: '14px', fontWeight: 600, color: '#1e293b' }}>
+                    {selected.name}
+                  </Typography>
+                  <Typography sx={{ fontSize: '12px', color: selected.online ? '#22c55e' : '#94a3b8' }}>
+                    {selected.online ? 'Active now' : 'Offline'}
+                  </Typography>
+                </Box>
+              </Box>
+              <Box sx={{ display: 'flex', gap: 0.5 }}>
+                <IconButton size="small"><PhoneOutlinedIcon sx={{ fontSize: 19, color: '#64748b' }} /></IconButton>
+                <IconButton size="small"><VideocamOutlinedIcon sx={{ fontSize: 19, color: '#64748b' }} /></IconButton>
+                <IconButton size="small"><MoreVertIcon sx={{ fontSize: 19, color: '#64748b' }} /></IconButton>
+              </Box>
+            </Box>
 
-            <Stack sx={{ flex: 1, px: 2, py: 1, overflowY: 'auto' }}>
-              {channels.map((channel) => (
+            <Box ref={scrollRef} sx={{ flex: 1, overflowY: 'auto', px: 3, py: 2, display: 'flex', flexDirection: 'column', gap: 1.25, backgroundColor: '#f8fafc' }}>
+              {currentMessages.map((msg) => (
                 <Box
-                  key={channel.id}
+                  key={msg.id}
                   sx={{
-                    p: 1.5,
-                    borderRadius: 1,
-                    cursor: 'pointer',
-                    backgroundColor: channel.id === 1 ? 'rgba(124, 58, 237, 0.1)' : 'transparent',
-                    color: channel.id === 1 ? '#7c3aed' : '#64748b',
-                    '&:hover': {
-                      backgroundColor: 'rgba(124, 58, 237, 0.05)',
-                    },
+                    alignSelf: msg.from === 'me' ? 'flex-end' : 'flex-start',
+                    maxWidth: '65%',
                   }}
                 >
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography sx={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                      # {channel.name}
-                    </Typography>
-                    {channel.unread > 0 && (
-                      <Chip
-                        label={channel.unread}
-                        size="small"
-                        sx={{
-                          backgroundColor: '#ef4444',
-                          color: 'white',
-                          height: 20,
-                        }}
-                      />
-                    )}
+                  <Box
+                    sx={{
+                      backgroundColor: msg.from === 'me' ? '#7c3aed' : '#ffffff',
+                      color: msg.from === 'me' ? '#ffffff' : '#1e293b',
+                      border: msg.from === 'me' ? 'none' : '1px solid #e5e7eb',
+                      borderRadius: msg.from === 'me' ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
+                      px: 1.75,
+                      py: 1,
+                    }}
+                  >
+                    <Typography sx={{ fontSize: '13.5px', lineHeight: 1.4 }}>{msg.text}</Typography>
                   </Box>
-                  <Typography sx={{ fontSize: '0.75rem', mt: 0.5 }}>
-                    {channel.members} members
+                  <Typography sx={{ fontSize: '10.5px', color: '#94a3b8', mt: 0.4, textAlign: msg.from === 'me' ? 'right' : 'left' }}>
+                    {msg.time}
                   </Typography>
                 </Box>
               ))}
-            </Stack>
-          </Card>
-        </Grid>
-
-        {/* Chat Area */}
-        <Grid item xs={12} md={9}>
-          <Card sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
-            {/* Chat Header */}
-            <CardContent sx={{ borderBottom: '1px solid #e2e8f0', pb: 2 }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography sx={{ fontWeight: 700, color: '#1e293b' }}>
-                    # General
-                  </Typography>
-                  <Typography sx={{ fontSize: '0.875rem', color: '#64748b' }}>
-                    12 members online
-                  </Typography>
-                </Box>
-                <Button variant="outlined" size="small">
-                  + Add Members
-                </Button>
-              </Box>
-            </CardContent>
-
-            {/* Messages */}
-            <Box sx={{ flex: 1, overflowY: 'auto', p: 2 }}>
-              <Stack spacing={2}>
-                {messages.map((msg) => (
-                  <Box
-                    key={msg.id}
-                    sx={{
-                      display: 'flex',
-                      gap: 2,
-                      justifyContent: msg.isOwn ? 'flex-end' : 'flex-start',
-                    }}
-                  >
-                    {!msg.isOwn && <Avatar src={msg.avatar} />}
-                    <Box
-                      sx={{
-                        maxWidth: '60%',
-                        backgroundColor: msg.isOwn ? 'rgba(124, 58, 237, 0.1)' : '#f1f5f9',
-                        padding: '12px 16px',
-                        borderRadius: msg.isOwn ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                      }}
-                    >
-                      {!msg.isOwn && (
-                        <Typography sx={{ fontWeight: 600, fontSize: '0.875rem', color: '#7c3aed', mb: 0.5 }}>
-                          {msg.user}
-                        </Typography>
-                      )}
-                      <Typography sx={{ color: '#1e293b', fontSize: '0.95rem' }}>
-                        {msg.message}
-                      </Typography>
-                      <Typography sx={{ fontSize: '0.75rem', color: '#94a3b8', mt: 0.5 }}>
-                        {msg.timestamp}
-                      </Typography>
-                    </Box>
-                    {msg.isOwn && <Avatar src={msg.avatar} />}
-                  </Box>
-                ))}
-              </Stack>
             </Box>
 
-            {/* Input Area */}
-            <Divider />
-            <Box sx={{ p: 2 }}>
-              <TextField
-                fullWidth
-                placeholder="Type your message..."
-                multiline
-                maxRows={3}
-                InputProps={{
-                  endAdornment: (
-                    <InputAdornment position="end">
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Button size="small" sx={{ minWidth: 'auto', color: '#7c3aed' }}>
-                          <EmojiEmotionsIcon />
-                        </Button>
-                        <Button size="small" sx={{ minWidth: 'auto', color: '#7c3aed' }}>
-                          <AttachFileIcon />
-                        </Button>
-                        <Button size="small" sx={{ minWidth: 'auto', color: '#7c3aed' }}>
-                          <SendIcon />
-                        </Button>
-                      </Box>
-                    </InputAdornment>
-                  ),
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.5, borderTop: '1px solid #e5e7eb' }}>
+              <input
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="Type a message..."
+                style={{
+                  flex: 1,
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '20px',
+                  padding: '10px 16px',
+                  fontSize: '13.5px',
+                  outline: 'none',
                 }}
               />
+              <IconButton
+                onClick={handleSend}
+                sx={{
+                  backgroundColor: '#7c3aed',
+                  color: '#fff',
+                  width: 38,
+                  height: 38,
+                  '&:hover': { backgroundColor: '#6d28d9' },
+                }}
+              >
+                <SendIcon sx={{ fontSize: 17 }} />
+              </IconButton>
             </Box>
-          </Card>
-        </Grid>
-      </Grid>
+          </>
+        ) : (
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8' }}>
+            Select a conversation
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
