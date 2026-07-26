@@ -62,10 +62,10 @@ export default function AppRouter() {
 
       {/* Catch All */}
       <Route path="settings" element={<Settings />} />
-    </Route>
 
-      {/* Catch all */ }
-  <Route path="*" element={<Navigate to="/" replace />} />
+
+      {/* Catch all */}
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes >
   );
 }
