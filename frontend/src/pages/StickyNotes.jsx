@@ -3,28 +3,45 @@ import { Box, Typography, IconButton, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
 import PushPinIcon from '@mui/icons-material/PushPin';
-
-const COLORS = ['#fef08a', '#fbcfe8', '#bfdbfe', '#bbf7d0', '#fed7aa', '#ddd6fe'];
+import AddNote, { NOTE_COLORS } from './AddNote';
 
 const initialNotes = [
-    { id: 1, text: 'Finalize the Q3 roadmap before Friday standup', color: '#fef08a', pinned: true },
-    { id: 2, text: 'Call design team about the new mockups', color: '#bfdbfe', pinned: false },
-    { id: 3, text: 'Remember to review PR #482 \u2014 auth middleware', color: '#bbf7d0', pinned: false },
-    { id: 4, text: 'Idea: add keyboard shortcuts to task board', color: '#fbcfe8', pinned: false },
+    { id: 1, title: 'Q3 Roadmap', content: 'Finalize the Q3 roadmap before Friday standup', color: NOTE_COLORS[0], pinned: true },
+    { id: 2, title: 'Design Sync', content: 'Call design team about the new mockups', color: NOTE_COLORS[2], pinned: false },
+    { id: 3, title: 'Code Review', content: 'Remember to review PR #482 — auth middleware', color: NOTE_COLORS[3], pinned: false },
+    { id: 4, title: 'Idea', content: 'Add keyboard shortcuts to task board', color: NOTE_COLORS[1], pinned: false },
 ];
 
 let idCounter = 5;
 
+const CARD_HEIGHT = 190;
+
 export default function StickyNotes() {
     const [notes, setNotes] = useState(initialNotes);
+    const [dialogOpen, setDialogOpen] = useState(false);
+    const [activeNote, setActiveNote] = useState(null);
 
-    const addNote = () => {
-        const color = COLORS[Math.floor(Math.random() * COLORS.length)];
-        setNotes((prev) => [{ id: idCounter++, text: '', color, pinned: false }, ...prev]);
+    const openNewNote = () => {
+        setActiveNote(null);
+        setDialogOpen(true);
     };
 
-    const updateNote = (id, text) => {
-        setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, text } : n)));
+    const openExistingNote = (note) => {
+        setActiveNote(note);
+        setDialogOpen(true);
+    };
+
+    const closeDialog = () => {
+        setDialogOpen(false);
+        setActiveNote(null);
+    };
+
+    const saveNote = ({ id, title, color, content }) => {
+        if (id) {
+            setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, title, color, content } : n)));
+        } else {
+            setNotes((prev) => [{ id: idCounter++, title, content, color, pinned: false }, ...prev]);
+        }
     };
 
     const deleteNote = (id) => {
@@ -47,7 +64,7 @@ export default function StickyNotes() {
                     </Typography>
                 </Box>
                 <Button
-                    onClick={addNote}
+                    onClick={openNewNote}
                     startIcon={<AddIcon />}
                     sx={{
                         backgroundColor: '#7c3aed',
@@ -75,21 +92,27 @@ export default function StickyNotes() {
                 {sortedNotes.map((note) => (
                     <Box
                         key={note.id}
+                        onClick={() => openExistingNote(note)}
                         sx={{
                             backgroundColor: note.color,
                             borderRadius: '10px',
                             p: 2,
-                            minHeight: '160px',
+                            height: `${CARD_HEIGHT}px`,
                             display: 'flex',
                             flexDirection: 'column',
                             position: 'relative',
                             boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                            cursor: 'pointer',
                             transition: 'transform 0.15s ease',
                             '&:hover': { transform: 'translateY(-2px)' },
                             '&:hover .note-actions': { opacity: 1 },
                         }}
                     >
-                        <Box className="note-actions" sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 0.5, opacity: 0, transition: 'opacity 0.15s ease' }}>
+                        <Box
+                            className="note-actions"
+                            onClick={(e) => e.stopPropagation()}
+                            sx={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 0.5, opacity: 0, transition: 'opacity 0.15s ease' }}
+                        >
                             <IconButton size="small" onClick={() => togglePin(note.id)} sx={{ p: 0.4 }}>
                                 <PushPinIcon sx={{ fontSize: 15, color: note.pinned ? '#7c3aed' : 'rgba(0,0,0,0.4)', transform: note.pinned ? 'rotate(0deg)' : 'rotate(35deg)' }} />
                             </IconButton>
@@ -102,23 +125,40 @@ export default function StickyNotes() {
                             <PushPinIcon sx={{ position: 'absolute', top: 8, left: 8, fontSize: 14, color: '#7c3aed' }} />
                         )}
 
-                        <textarea
-                            value={note.text}
-                            onChange={(e) => updateNote(note.id, e.target.value)}
-                            placeholder="Write a note..."
-                            style={{
-                                border: 'none',
-                                outline: 'none',
-                                background: 'transparent',
-                                resize: 'none',
-                                width: '100%',
-                                flex: 1,
-                                fontFamily: 'inherit',
+                        {note.title && (
+                            <Typography
+                                sx={{
+                                    fontSize: '14.5px',
+                                    fontWeight: 700,
+                                    color: '#1e293b',
+                                    mt: '18px',
+                                    mb: 0.75,
+                                    flexShrink: 0,
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                }}
+                            >
+                                {note.title}
+                            </Typography>
+                        )}
+
+                        <Box
+                            sx={{
                                 fontSize: '13.5px',
-                                color: '#1e293b',
-                                marginTop: '18px',
-                                lineHeight: 1.5,
+                                color: '#334155',
+                                lineHeight: 1.6,
+                                flex: 1,
+                                minHeight: 0,
+                                overflow: 'hidden',
+                                mt: note.title ? 0 : '18px',
+                                display: '-webkit-box',
+                                WebkitLineClamp: note.title ? 4 : 6,
+                                WebkitBoxOrient: 'vertical',
+                                '& ul, & ol': { pl: 2.5, m: 0 },
+                                '& p': { m: 0 },
                             }}
+                            dangerouslySetInnerHTML={{ __html: note.content }}
                         />
                     </Box>
                 ))}
@@ -129,6 +169,8 @@ export default function StickyNotes() {
                     <Typography sx={{ fontSize: '14px' }}>No notes yet. Click "New Note" to add one.</Typography>
                 </Box>
             )}
+
+            <AddNote open={dialogOpen} onClose={closeDialog} onSave={saveNote} note={activeNote} />
         </Box>
     );
 }

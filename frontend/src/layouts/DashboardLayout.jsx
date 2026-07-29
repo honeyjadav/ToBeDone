@@ -10,10 +10,10 @@ export default function DashboardLayout() {
   const [isOpen, setIsOpen] = useState(true);
 
   return (
-    <Box sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', width: '100%', overflowX: 'hidden' }}>
+    <Box sx={{ height: '100vh', backgroundColor: '#f8fafc', width: '100%', overflow: 'hidden' }}>
       <Header />
 
-      <Box sx={{ display: 'flex', width: '100%', pt: `${HEADER_HEIGHT}px` }}>
+      <Box sx={{ display: 'flex', width: '100%', height: '100%', pt: `${HEADER_HEIGHT}px` }}>
         <Nav isOpen={isOpen} setIsOpen={setIsOpen} />
 
         <Box
@@ -24,10 +24,11 @@ export default function DashboardLayout() {
             flexDirection: 'column',
             width: '100%',
             minWidth: 0,
-            minHeight: `calc(100vh - ${HEADER_HEIGHT}px)`,
+            height: `calc(100vh - ${HEADER_HEIGHT}px)`,
+            overflow: 'hidden',
           }}
         >
-          <Box sx={{ flex: 1 }}>
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             <ErrorBoundary>
               <Outlet />
             </ErrorBoundary>
