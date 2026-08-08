@@ -1,4 +1,9 @@
+import { useNavigate } from "react-router-dom";
+
 export default function Header() {
+    
+    const navigate = useNavigate();
+
     return (
         <header style={{
             position: 'fixed',
@@ -123,36 +128,45 @@ export default function Header() {
                     background: '#e2e8f0'
                 }} />
 
-                <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    cursor: 'pointer'
-                }}>
-                    <div style={{
-                        width: '30px',
-                        height: '30px',
-                        borderRadius: '50%',
-                        background: '#ede9fe',
-                        color: '#7c3aed',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '13px',
-                        fontWeight: 700,
-                        flexShrink: 0
-                    }}>
-                        JD
-                    </div>
-                    <span style={{
-                        color: '#334155',
-                        fontSize: '13.5px',
-                        fontWeight: 600,
-                        whiteSpace: 'nowrap'
-                    }} className="username-display">
-                        John Doe
-                    </span>
-                </div>
+                <div
+    onClick={() => navigate("/dashboard/profile")}
+    style={{
+        display: "flex",
+        alignItems: "center",
+        gap: "8px",
+        cursor: "pointer",
+    }}
+>
+    <div
+        style={{
+            width: "30px",
+            height: "30px",
+            borderRadius: "50%",
+            background: "#ede9fe",
+            color: "#7c3aed",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "13px",
+            fontWeight: 700,
+            flexShrink: 0,
+        }}
+    >
+        JD
+    </div>
+
+    <span
+        className="username-display"
+        style={{
+            color: "#334155",
+            fontSize: "13.5px",
+            fontWeight: 600,
+            whiteSpace: "nowrap",
+        }}
+    >
+        John Doe
+    </span>
+</div>
 
 
             </div>

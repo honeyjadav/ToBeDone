@@ -17,6 +17,7 @@ import {
     ChatBubbleOutline as ChatBubbleOutlineIcon,
     StickyNote2Outlined as StickyNote2OutlinedIcon,
     AutoAwesomeOutlined as AutoAwesomeOutlinedIcon,
+    PeopleOutlined as PeopleOutlinedIcon,
     SettingsOutlined as SettingsOutlinedIcon,
     LogoutOutlined as LogoutOutlinedIcon,
     ChevronLeft as ChevronLeftIcon,
@@ -33,6 +34,7 @@ const links = [
     { label: 'Chats', path: '/dashboard/chat', icon: <ChatBubbleOutlineIcon fontSize="small" /> },
     { label: 'Sticky Notes', path: '/dashboard/notes', icon: <StickyNote2OutlinedIcon fontSize="small" /> },
     { label: 'AI Digest', path: '/dashboard/digest', icon: <AutoAwesomeOutlinedIcon fontSize="small" /> },
+    { label: 'Users', path: '/dashboard/users', icon: <PeopleOutlinedIcon fontSize="small" /> },
 ];
 
 export default function Nav({ isOpen, setIsOpen }) {
