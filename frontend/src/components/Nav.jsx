@@ -17,6 +17,7 @@ import {
   ChatBubbleOutline as ChatBubbleOutlineIcon,
   StickyNote2Outlined as StickyNote2OutlinedIcon,
   AutoAwesomeOutlined as AutoAwesomeOutlinedIcon,
+  PeopleOutlined as PeopleOutlinedIcon,
   SettingsOutlined as SettingsOutlinedIcon,
   LogoutOutlined as LogoutOutlinedIcon,
   WebhookOutlined as WebhookOutlinedIcon,
@@ -58,6 +59,7 @@ const links = [
     path: "/dashboard/webhooks",
     icon: <WebhookOutlinedIcon fontSize="small" />,
   },
+  { label: 'Users', path: '/dashboard/users', icon: <PeopleOutlinedIcon fontSize="small" /> },
 ];
 
 // TEMP mock data — swap for `GET /api/workspaces` (workspaces the user has a Membership in)

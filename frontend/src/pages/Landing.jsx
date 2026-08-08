@@ -1,10 +1,8 @@
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
 import {
   Box,
   Container,
   Button,
-  Grid,
   Card,
   CardContent,
   Typography,
@@ -21,11 +19,6 @@ import {
 // --- CSS Animations ---
 const fadeIn = keyframes`
   from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
-`;
-
-const slideUp = keyframes`
-  from { opacity: 0; transform: translateY(40px); }
   to { opacity: 1; transform: translateY(0); }
 `;
 
@@ -98,33 +91,6 @@ const highlights = [
   { icon: '☁', title: 'Cloud Native', description: 'Accessible anywhere. No installation needed. Works on all devices.' },
 ];
 
-const faqs = [
-  {
-    question: 'Is ToBeDone really free?',
-    answer: 'Yes! ToBeDone is completely free to use with full access to all features. No hidden fees, no premium tier (yet). We believe collaboration tools should be accessible to everyone.'
-  },
-  {
-    question: 'How do I import tasks from another app?',
-    answer: 'We support importing from Asana, Jira, Monday.com, and more. Just contact us or use our import wizard to migrate your existing tasks easily.'
-  },
-  {
-    question: 'Is my data secure?',
-    answer: 'Absolutely. All your data is encrypted in transit and at rest. We follow industry best practices for security and privacy. Your data belongs to you.'
-  },
-  {
-    question: 'Can I use it offline?',
-    answer: 'We\'re working on offline support. For now, ToBeDone requires an internet connection. You can use it on any device with a web browser.'
-  },
-  {
-    question: 'How does the AI email automation work?',
-    answer: 'Our AI agent connects to your email, analyzes incoming messages, suggests smart responses, and helps organize your inbox. You always review before any action is taken.'
-  },
-  {
-    question: 'Can I invite my team?',
-    answer: 'Yes! You can invite unlimited team members for free. Everyone gets access to the same powerful features. No seat limits, ever.'
-  },
-];
-
 const roadmap = [
   { icon: '📱', title: 'Mobile Apps', description: 'iOS and Android apps coming soon' },
   { icon: '🔔', title: 'Smart Notifications', description: 'Intelligent alerts tailored to your workflow' },
@@ -136,7 +102,6 @@ export default function Landing() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const [expandedFAQ, setExpandedFAQ] = useState(null);
 
   const dotGridBg = {
     backgroundColor: '#fafcff',
@@ -159,7 +124,6 @@ export default function Landing() {
         }}
       >
         <Toolbar sx={{ justifyContent: 'space-between', maxWidth: '1400px', width: '100%', mx: 'auto', px: { xs: 2, md: 3 } }}>
-          {/* Logo */}
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }} onClick={() => navigate('/')}>
             <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px', width: 18 }}>
               {['#1a73e8', '#000000', '#000000', '#1a73e8'].map((color, i) => (
@@ -171,7 +135,6 @@ export default function Landing() {
             </Typography>
           </Box>
 
-          {/* Auth Buttons */}
           <Stack direction="row" spacing={1.5}>
             <Button
               onClick={() => navigate('/login')}
@@ -211,8 +174,7 @@ export default function Landing() {
       <Box sx={{ pt: 22, pb: 10, animation: `${fadeIn} 0.8s ease-out` }}>
         <Container maxWidth="lg">
           <Box sx={{ textAlign: 'center', mb: 4 }}>
-            {/* Badge */}
-            <Box sx={{ mb: 3, animation: `${scaleIn} 0.6s ease-out` }}>
+            <Box sx={{ mb: 3, display: 'flex', justifyContent: 'center', animation: `${scaleIn} 0.6s ease-out` }}>
               <Chip
                 label="✨ Free Forever • No Credit Card Required"
                 sx={{
@@ -225,7 +187,6 @@ export default function Landing() {
               />
             </Box>
 
-            {/* Main Headline */}
             <Typography
               variant="h1"
               sx={{
@@ -235,6 +196,8 @@ export default function Landing() {
                 lineHeight: 1.1,
                 letterSpacing: '-2px',
                 mb: 3,
+                maxWidth: '900px',
+                mx: 'auto',
                 animation: `${fadeIn} 0.8s ease-out 0.1s both`
               }}
             >
@@ -250,7 +213,6 @@ export default function Landing() {
               {' '}and organize your work.
             </Typography>
 
-            {/* Subheadline */}
             <Typography
               variant="h5"
               sx={{
@@ -267,7 +229,6 @@ export default function Landing() {
               One free tool for task management, team collaboration, notes, chat, email automation with AI, and more. No limits. Ever.
             </Typography>
 
-            {/* CTA Buttons */}
             <Stack
               direction={isMobile ? 'column' : 'row'}
               spacing={2}
@@ -317,7 +278,6 @@ export default function Landing() {
               </Button>
             </Stack>
 
-            {/* Hero Stats Cards */}
             <Box
               sx={{
                 mt: 8,
@@ -362,7 +322,7 @@ export default function Landing() {
       {/* ====== FEATURES SECTION ====== */}
       <Box sx={{ py: 14, backgroundColor: 'rgba(240, 245, 255, 0.5)', borderTop: '1px solid #f0f0f0' }}>
         <Container maxWidth="lg">
-          <Box data-scroll-reveal sx={{ mb: 8 }}>
+          <Box sx={{ mb: 8 }}>
             <Typography
               variant="h2"
               sx={{
@@ -389,59 +349,67 @@ export default function Landing() {
             </Typography>
           </Box>
 
-          <Grid container spacing={3}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' },
+              gap: 3,
+              alignItems: 'stretch'
+            }}
+          >
             {features.map((feature, index) => (
-              <Grid item xs={12} sm={6} md={4} key={index} data-scroll-reveal>
-                <Card
-                  elevation={0}
-                  sx={{
-                    height: '100%',
-                    borderRadius: '20px',
-                    border: '1.5px solid rgba(26, 115, 232, 0.08)',
-                    background: feature.gradient,
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-8px)',
-                      boxShadow: '0 24px 48px rgba(26, 115, 232, 0.12)',
-                      borderColor: 'rgba(26, 115, 232, 0.3)',
-                    },
-                  }}
-                >
-                  <CardContent sx={{ p: 4 }}>
-                    <Box
-                      sx={{
-                        width: 64,
-                        height: 64,
-                        borderRadius: '16px',
-                        backgroundColor: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        mb: 3,
-                        boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
-                        fontSize: '2rem'
-                      }}
-                    >
-                      {feature.icon}
-                    </Box>
-                    <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 700, color: '#111', fontSize: '1.1rem' }}>
-                      {feature.title}
-                    </Typography>
-                    <Typography sx={{ color: '#555', fontSize: '0.95rem', lineHeight: 1.7 }}>
-                      {feature.description}
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
+              <Card
+                key={index}
+                elevation={0}
+                sx={{
+                  height: '100%',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  borderRadius: '20px',
+                  border: '1.5px solid rgba(26, 115, 232, 0.08)',
+                  background: feature.gradient,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'translateY(-8px)',
+                    boxShadow: '0 24px 48px rgba(26, 115, 232, 0.12)',
+                    borderColor: 'rgba(26, 115, 232, 0.3)',
+                  },
+                }}
+              >
+                <CardContent sx={{ p: 4, display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                  <Box
+                    sx={{
+                      width: 64,
+                      height: 64,
+                      borderRadius: '16px',
+                      backgroundColor: '#ffffff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      mb: 3,
+                      boxShadow: '0 4px 12px rgba(0, 0, 0, 0.06)',
+                      fontSize: '2rem'
+                    }}
+                  >
+                    {feature.icon}
+                  </Box>
+                  <Typography variant="h6" sx={{ mb: 1.5, fontWeight: 700, color: '#111', fontSize: '1.1rem' }}>
+                    {feature.title}
+                  </Typography>
+                  <Typography sx={{ color: '#555', fontSize: '0.95rem', lineHeight: 1.7 }}>
+                    {feature.description}
+                  </Typography>
+                </CardContent>
+              </Card>
             ))}
-          </Grid>
+          </Box>
         </Container>
       </Box>
 
       {/* ====== USE CASES SECTION ====== */}
       <Box sx={{ py: 12, backgroundColor: '#ffffff', borderTop: '1px solid #f0f0f0' }}>
         <Container maxWidth="lg">
-          <Box data-scroll-reveal sx={{ mb: 8 }}>
+          <Box sx={{ mb: 8 }}>
             <Typography
               variant="h2"
               sx={{
@@ -455,82 +423,97 @@ export default function Landing() {
             </Typography>
           </Box>
 
-          <Grid container spacing={3}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+              gap: 3,
+              alignItems: 'stretch'
+            }}
+          >
             {useCases.map((useCase, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index} data-scroll-reveal>
-                <Box
-                  sx={{
-                    p: 4,
-                    borderRadius: '20px',
-                    backgroundColor: '#f9fafb',
-                    border: '1px solid #f0f0f0',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      backgroundColor: '#ffffff',
-                      transform: 'translateY(-8px)',
-                      boxShadow: '0 16px 32px rgba(0, 0, 0, 0.08)',
-                      borderColor: 'rgba(26, 115, 232, 0.2)',
-                    }
-                  }}
-                >
-                  <Box sx={{ fontSize: '3rem', mb: 2 }}>
-                    {useCase.emoji}
-                  </Box>
-                  <Typography sx={{ fontSize: '1.3rem', fontWeight: 700, mb: 1, color: '#000' }}>
-                    {useCase.title}
-                  </Typography>
-                  <Typography sx={{ color: '#666', lineHeight: 1.6 }}>
-                    {useCase.description}
-                  </Typography>
+              <Box
+                key={index}
+                sx={{
+                  p: 4,
+                  borderRadius: '20px',
+                  backgroundColor: '#f9fafb',
+                  border: '1px solid #f0f0f0',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    backgroundColor: '#ffffff',
+                    transform: 'translateY(-8px)',
+                    boxShadow: '0 16px 32px rgba(0, 0, 0, 0.08)',
+                    borderColor: 'rgba(26, 115, 232, 0.2)',
+                  }
+                }}
+              >
+                <Box sx={{ fontSize: '3rem', mb: 2 }}>
+                  {useCase.emoji}
                 </Box>
-              </Grid>
+                <Typography sx={{ fontSize: '1.3rem', fontWeight: 700, mb: 1, color: '#000' }}>
+                  {useCase.title}
+                </Typography>
+                <Typography sx={{ color: '#666', lineHeight: 1.6 }}>
+                  {useCase.description}
+                </Typography>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Container>
       </Box>
 
       {/* ====== HIGHLIGHTS SECTION ====== */}
       <Box sx={{ py: 12, backgroundColor: '#ffffff', borderTop: '1px solid #f0f0f0' }}>
         <Container maxWidth="lg">
-          <Grid container spacing={6} justifyContent="center">
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(3, 1fr)' },
+              gap: 6,
+              justifyItems: 'center',
+              maxWidth: '900px',
+              mx: 'auto'
+            }}
+          >
             {highlights.map((highlight, index) => (
-              <Grid item xs={12} sm={4} key={index} data-scroll-reveal>
-                <Box sx={{ textAlign: 'center' }}>
-                  <Box
-                    sx={{
-                      width: 64,
-                      height: 64,
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #f0f5ff 0%, #e8f0fe 100%)',
-                      border: '2px solid rgba(26, 115, 232, 0.2)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      mx: 'auto',
-                      mb: 2.5,
-                      fontSize: '1.8rem'
-                    }}
-                  >
-                    {highlight.icon}
-                  </Box>
-                  <Typography variant="h6" sx={{ mb: 1, fontWeight: 700, color: '#000000', fontSize: '1.1rem' }}>
-                    {highlight.title}
-                  </Typography>
-                  <Typography sx={{ color: '#666', fontSize: '0.95rem', lineHeight: 1.6 }}>
-                    {highlight.description}
-                  </Typography>
+              <Box key={index} sx={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                <Box
+                  sx={{
+                    width: 64,
+                    height: 64,
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #f0f5ff 0%, #e8f0fe 100%)',
+                    border: '2px solid rgba(26, 115, 232, 0.2)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    mb: 2.5,
+                    fontSize: '1.8rem'
+                  }}
+                >
+                  {highlight.icon}
                 </Box>
-              </Grid>
+                <Typography variant="h6" sx={{ mb: 1, fontWeight: 700, color: '#000000', fontSize: '1.1rem' }}>
+                  {highlight.title}
+                </Typography>
+                <Typography sx={{ color: '#666', fontSize: '0.95rem', lineHeight: 1.6 }}>
+                  {highlight.description}
+                </Typography>
+              </Box>
             ))}
-          </Grid>
+          </Box>
         </Container>
       </Box>
 
       {/* ====== ROADMAP SECTION ====== */}
-      <Box sx={{ py: 14, backgroundColor: 'linear-gradient(135deg, #f9fafb 0%, #f0f5ff 100%)', borderTop: '1px solid #f0f0f0' }}>
+      <Box sx={{ py: 14, background: 'linear-gradient(135deg, #f9fafb 0%, #f0f5ff 100%)', borderTop: '1px solid #f0f0f0' }}>
         <Container maxWidth="lg">
-          <Box data-scroll-reveal sx={{ mb: 8 }}>
+          <Box sx={{ mb: 8 }}>
             <Typography
               variant="h2"
               sx={{
@@ -556,96 +539,45 @@ export default function Landing() {
             </Typography>
           </Box>
 
-          <Grid container spacing={3}>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' },
+              gap: 3,
+              alignItems: 'stretch'
+            }}
+          >
             {roadmap.map((item, index) => (
-              <Grid item xs={12} sm={6} md={3} key={index} data-scroll-reveal>
-                <Box
-                  sx={{
-                    p: 4,
-                    borderRadius: '16px',
-                    backgroundColor: '#ffffff',
-                    border: '1px solid rgba(26, 115, 232, 0.1)',
-                    textAlign: 'center',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      transform: 'translateY(-4px)',
-                      boxShadow: '0 12px 24px rgba(26, 115, 232, 0.08)',
-                    }
-                  }}
-                >
-                  <Box sx={{ fontSize: '2.5rem', mb: 2 }}>
-                    {item.icon}
-                  </Box>
-                  <Typography sx={{ fontWeight: 700, color: '#000', mb: 1 }}>
-                    {item.title}
-                  </Typography>
-                  <Typography sx={{ color: '#666', fontSize: '0.9rem' }}>
-                    {item.description}
-                  </Typography>
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-        </Container>
-      </Box>
-
-      {/* ====== FAQ SECTION ====== */}
-      <Box sx={{ py: 12, backgroundColor: '#ffffff', borderTop: '1px solid #f0f0f0' }}>
-        <Container maxWidth="md">
-          <Box data-scroll-reveal sx={{ mb: 8 }}>
-            <Typography
-              variant="h2"
-              sx={{
-                textAlign: 'center',
-                color: '#000000',
-                fontWeight: 800,
-                fontSize: isMobile ? '2rem' : '2.8rem',
-              }}
-            >
-              Questions? We've Got Answers
-            </Typography>
-          </Box>
-
-          <Stack spacing={2}>
-            {faqs.map((faq, index) => (
               <Box
                 key={index}
-                data-scroll-reveal
-                onClick={() => setExpandedFAQ(expandedFAQ === index ? null : index)}
                 sx={{
-                  border: '1px solid #f0f0f0',
-                  borderRadius: '12px',
-                  p: 3,
-                  backgroundColor: expandedFAQ === index ? '#f9fbff' : '#ffffff',
-                  cursor: 'pointer',
+                  p: 4,
+                  borderRadius: '16px',
+                  backgroundColor: '#ffffff',
+                  border: '1px solid rgba(26, 115, 232, 0.1)',
+                  textAlign: 'center',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
                   transition: 'all 0.3s ease',
-                  '&:hover': { borderColor: '#1a73e8', boxShadow: '0 4px 12px rgba(26, 115, 232, 0.08)' }
+                  '&:hover': {
+                    transform: 'translateY(-4px)',
+                    boxShadow: '0 12px 24px rgba(26, 115, 232, 0.08)',
+                  }
                 }}
               >
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography sx={{ fontWeight: 700, color: '#000', fontSize: '1rem' }}>
-                    {faq.question}
-                  </Typography>
-                  <Box
-                    sx={{
-                      color: '#1a73e8',
-                      fontSize: '1.5rem',
-                      fontWeight: 300,
-                      transition: 'transform 0.3s ease',
-                      transform: expandedFAQ === index ? 'rotate(180deg)' : 'rotate(0deg)',
-                    }}
-                  >
-                    ▼
-                  </Box>
+                <Box sx={{ fontSize: '2.5rem', mb: 2 }}>
+                  {item.icon}
                 </Box>
-                {expandedFAQ === index && (
-                  <Typography sx={{ color: '#666', mt: 2, lineHeight: 1.7, fontSize: '0.95rem', animation: `${fadeIn} 0.3s ease-out` }}>
-                    {faq.answer}
-                  </Typography>
-                )}
+                <Typography sx={{ fontWeight: 700, color: '#000', mb: 1 }}>
+                  {item.title}
+                </Typography>
+                <Typography sx={{ color: '#666', fontSize: '0.9rem' }}>
+                  {item.description}
+                </Typography>
               </Box>
             ))}
-          </Stack>
+          </Box>
         </Container>
       </Box>
 
@@ -660,7 +592,6 @@ export default function Landing() {
           overflow: 'hidden'
         }}
       >
-        {/* Animated Background */}
         <Box
           sx={{
             position: 'absolute',
@@ -676,7 +607,7 @@ export default function Landing() {
         />
 
         <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1 }}>
-          <Box data-scroll-reveal>
+          <Box>
             <Typography
               variant="h3"
               sx={{
@@ -758,7 +689,6 @@ export default function Landing() {
               gap: 4
             }}
           >
-            {/* Brand */}
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-start' }, gap: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
                 <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '3px', width: 14 }}>
@@ -775,7 +705,6 @@ export default function Landing() {
               </Typography>
             </Box>
 
-            {/* Links */}
             <Stack direction="row" spacing={4}>
               <Link
                 href="#"
