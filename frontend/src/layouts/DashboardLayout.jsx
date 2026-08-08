@@ -3,7 +3,6 @@ import { Box } from '@mui/material';
 import { Outlet } from 'react-router-dom';
 import Header from '../components/Header';
 import Nav, { HEADER_HEIGHT } from '../components/Nav';
-import Footer from '../components/Footer';
 import ErrorBoundary from '../components/ErrorBoundary';
 
 export default function DashboardLayout() {
@@ -33,7 +32,6 @@ export default function DashboardLayout() {
               <Outlet />
             </ErrorBoundary>
           </Box>
-          <Footer />
         </Box>
       </Box>
     </Box>

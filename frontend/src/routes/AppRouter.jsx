@@ -10,6 +10,8 @@ import Chat from "../pages/Chat";
 import StickyNotes from "../pages/StickyNotes";
 import Digest from "../pages/Digest";
 import Settings from "../pages/Settings";
+import Webhooks from "../pages/Webhooks";
+import Notifications from "../pages/Notifications";
 
 export default function AppRouter() {
   const { isAuthenticated } = useAuth();
@@ -38,6 +40,8 @@ export default function AppRouter() {
         <Route path="notes" element={<StickyNotes />} />
         <Route path="digest" element={<Digest />} />
         <Route path="settings" element={<Settings />} />
+        <Route path="webhooks" element={<Webhooks />} />
+        <Route path="notifications" element={<Notifications/>}/>
       </Route>
 
       {/* Catch all */}
