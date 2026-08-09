@@ -1,8 +1,14 @@
 import mongoose from "mongoose";
 import crypto from "crypto";
+import { getNextSequence } from "./Counter.js";
 
 const inviteSchema = new mongoose.Schema(
   {
+    inviteId: {
+      type: String,
+      unique: true,
+      index: true,
+    },
     token: {
       type: String,
       unique: true,
@@ -41,6 +47,13 @@ const inviteSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+inviteSchema.pre("save", async function () {
+  if (this.isNew && !this.inviteId) {
+    const seq = await getNextSequence("invite");
+    this.inviteId = `inv${String(seq).padStart(3, "0")}`;
+  }
+});
 
 const Invite = mongoose.model("Invite", inviteSchema);
 export default Invite;
