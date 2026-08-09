@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { getNextSequence } from "./Counter.js";
 
 const commentSchema = new mongoose.Schema(
   {
@@ -17,6 +18,11 @@ const commentSchema = new mongoose.Schema(
 
 const taskSchema = new mongoose.Schema(
   {
+    taskId: {
+      type: String,
+      unique: true,
+      index: true,
+    },
     title: {
       type: String,
       required: true,
@@ -69,14 +75,20 @@ const taskSchema = new mongoose.Schema(
     comments: [commentSchema],
     order: {
       type: Number,
-      default: 0, // for drag-and-drop position within a column
+      default: 0,
     },
   },
   { timestamps: true }
 );
 
-// Useful compound index for board queries
 taskSchema.index({ board: 1, status: 1, order: 1 });
+
+taskSchema.pre("save", async function () {
+  if (this.isNew && !this.taskId) {
+    const seq = await getNextSequence("task");
+    this.taskId = `tsk${String(seq).padStart(3, "0")}`;
+  }
+});
 
 const Task = mongoose.model("Task", taskSchema);
 export default Task;

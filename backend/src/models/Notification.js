@@ -1,49 +1,62 @@
 import mongoose from "mongoose";
+import { getNextSequence } from "./Counter.js";
 
 const notificationSchema = new mongoose.Schema(
   {
-    user: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
+    notificationId: { 
+      type: String, 
+      unique: true, 
+      index: true 
+    },
+    user: { 
+      type: mongoose.Schema.Types.ObjectId, 
+      ref: "User", 
+      required: true 
     },
     workspace: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Workspace",
       required: true,
     },
-    type: {
-      type: String,
-      enum: ["DIGEST", "DIRECT"], // DIGEST = AI-generated batch summary, DIRECT = single event (e.g. @mention)
-      default: "DIGEST",
+    type: { 
+      type: String, 
+      enum: ["DIGEST", "DIRECT"], 
+      default: "DIGEST" 
     },
     title: {
       type: String,
-      required: true, // e.g. "Your daily digest"
+      required: true
     },
     summary: {
-      type: String,
-      required: true, // the AI-generated text, e.g. "3 tasks overdue, 2 comments need your reply..."
+      type: String, 
+      required: true 
     },
     sourceActivityIds: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "ActivityLog",
+      { 
+        type: mongoose.Schema.Types.ObjectId, 
+        ref: "ActivityLog" 
       },
     ],
-    isRead: {
-      type: Boolean,
-      default: false,
+    isRead: { 
+      type: Boolean, 
+      default: false 
     },
-    sentToSlack: {
-      type: Boolean,
-      default: false,
+    sentToSlack: { 
+      type: Boolean, 
+      default: false 
     },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 notificationSchema.index({ user: 1, createdAt: -1 });
+
+notificationSchema.pre("save", async function () {
+  if (this.isNew && !this.notificationId) {
+    const seq = await getNextSequence("notification");
+    this.notificationId = `not${String(seq).padStart(3, "0")}`;
+  }
+});
 
 const Notification = mongoose.model("Notification", notificationSchema);
 export default Notification;
