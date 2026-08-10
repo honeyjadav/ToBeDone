@@ -1,8 +1,32 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import NotificationDropdown from "./NotificationDropdown";
+import { mockNotifications } from "../pages/Notifications";
 
 export default function Header() {
-    
     const navigate = useNavigate();
+
+    // TEMP local state, seeded from the same mock data as the full Notifications
+    // page — replace with a real fetch (GET /api/notifications) once the
+    // backend exists. Kept here (not inside NotificationDropdown) so mark-read
+    // state is shared if you later lift it into a context/provider.
+    const [notifications, setNotifications] = useState(mockNotifications);
+
+    const handleMarkRead = (id) => {
+        setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
+    };
+
+    const handleMarkAllRead = () => {
+        setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    };
+
+    const handleOpenNotification = (notification) => {
+        if (notification.type === "DIGEST") {
+            navigate("/dashboard/digest");
+        } else {
+            navigate("/dashboard/tasks");
+        }
+    };
 
     return (
         <header style={{
@@ -104,23 +128,13 @@ export default function Header() {
                     </svg>
                 </button>
 
-                <button style={iconBtnStyle} aria-label="Notifications">
-                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
-                        <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"
-                            stroke="#475569" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"
-                            stroke="#475569" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                    <span style={{
-                        position: 'absolute',
-                        top: '6px',
-                        right: '6px',
-                        width: '7px',
-                        height: '7px',
-                        borderRadius: '50%',
-                        background: '#7c3aed'
-                    }} />
-                </button>
+                {/* Notification bell — now fed with data, mark-read state, and click routing */}
+                <NotificationDropdown
+                    notifications={notifications}
+                    onMarkRead={handleMarkRead}
+                    onMarkAllRead={handleMarkAllRead}
+                    onOpenNotification={handleOpenNotification}
+                />
 
                 <div style={{
                     width: '1px',
