@@ -98,6 +98,27 @@ export default function UserTable({
                     </Typography>
                 </Box>
 
+                {/* Name */}
+                <Box
+                    sx={{
+                        width: "180px",
+                        px: 1.5,
+                        py: 1.25,
+                    }}
+                >
+                    <Typography
+                        sx={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            color: "#475569",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.3px",
+                        }}
+                    >
+                        Name
+                    </Typography>
+                </Box>
+
                 {/* Email */}
                 <Box
                     sx={{
@@ -116,6 +137,27 @@ export default function UserTable({
                         }}
                     >
                         Email
+                    </Typography>
+                </Box>
+
+                {/* Is Active */}
+                <Box
+                    sx={{
+                        width: "140px",
+                        px: 1.5,
+                        py: 1.25,
+                    }}
+                >
+                    <Typography
+                        sx={{
+                            fontSize: "12px",
+                            fontWeight: 700,
+                            color: "#475569",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.3px",
+                        }}
+                    >
+                        Is Active
                     </Typography>
                 </Box>
 
@@ -231,6 +273,28 @@ export default function UserTable({
                                     </Typography>
                                 </Box>
 
+                                {/* Name */}
+                                <Box
+                                    sx={{
+                                        width: "180px",
+                                        px: 1.5,
+                                        py: 1.25,
+                                    }}
+                                >
+                                    <Typography
+                                        sx={{
+                                            fontSize: "13px",
+                                            fontWeight: 600,
+                                            color: "#334155",
+                                            whiteSpace: "nowrap",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                        }}
+                                    >
+                                        {user.name || "—"}
+                                    </Typography>
+                                </Box>
+
                                 {/* Email */}
                                 <Box
                                     sx={{
@@ -269,6 +333,31 @@ export default function UserTable({
                                     >
                                         {user.email}
                                     </Typography>
+                                </Box>
+
+                                {/* Is Active */}
+                                <Box
+                                    sx={{
+                                        width: "140px",
+                                        px: 1.5,
+                                        py: 1.25,
+                                    }}
+                                >
+                                    <Chip
+                                        label={user.isActive ? "Active" : "Inactive"}
+                                        size="small"
+                                        sx={{
+                                            height: "22px",
+                                            fontSize: "11px",
+                                            fontWeight: 600,
+                                            backgroundColor: user.isActive
+                                                ? "#dcfce7"
+                                                : "#f1f5f9",
+                                            color: user.isActive
+                                                ? "#16a34a"
+                                                : "#64748b",
+                                        }}
+                                    />
                                 </Box>
 
                                 {/* Role */}

@@ -7,8 +7,10 @@ import {
     MenuItem,
     Select,
     FormControl,
+    FormControlLabel,
     Button,
     IconButton,
+    Switch,
 } from "@mui/material";
 
 import CloseIcon from "@mui/icons-material/Close";
@@ -163,7 +165,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                 </Box>
 
                 {/* Role */}
-                <Box>
+                <Box sx={{ mb: 2.5 }}>
                     <Typography
                         sx={{
                             fontSize: "12px",
@@ -198,6 +200,8 @@ export default function AddUser({ open, onClose, onAdd }) {
                         </Select>
                     </FormControl>
                 </Box>
+
+                {/* Status removed */}
             </Box>
 
             {/* Bottom Actions */}
