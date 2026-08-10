@@ -1,112 +1,190 @@
 // src/context/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import APICallService from '../services/APICallService';
+import { LOCAL_STORAGE_KEYS } from '../constants/Constants';
 
 // Create the AuthContext
 const AuthContext = createContext();
 
+const getStoredUser = () => {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEYS.USER);
+    return raw ? JSON.parse(raw) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
 // Provide the AuthContext value to children
 export const AuthProvider = ({ children }) => {
-  // --- Initialize state variables from localStorage defensive parsing ---
-  // This ensures authentication persists across page reloads.
-  const getStoredUser = () => {
-    try {
-      const raw = localStorage.getItem('user');
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) {
-      return null;
-    }
-  };
-
   // State initialization with defensive logic
   const [user, setUser] = useState(() => getStoredUser());
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!getStoredUser());
 
-  // --- useEffect to Keep localStorage synchronized with the 'user' state ---
-  // Added try/catch to gracefully handle rare localStorage errors.
+  // Keep localStorage synchronized with the 'user' state
   useEffect(() => {
     try {
-      if (user) localStorage.setItem('user', JSON.stringify(user));
-      else localStorage.removeItem('user');
+      if (user) localStorage.setItem(LOCAL_STORAGE_KEYS.USER, JSON.stringify(user));
+      else localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
     } catch (e) {
-      // Ignore localStorage errors defensive coding
+      // Ignore localStorage errors
     }
   }, [user]);
 
-  // --- DUMMY AUTHENTICATION METHODS for multi-step flow supporting mock data ---
-
-  // Placeholder function for registration flow described previously
-  const register = async (name, email, password) => {
-    console.log('MOCK Registering with:', name, email);
-    // Real implementation would make an API call here.
-  };
-
-  // Placeholder function to send OTP for 2FA/Password Reset
-  const sendOtp = async (email, type) => {
-    console.log(`MOCK Sending ${type} OTP to: ${email}`);
-    // Real implementation would call a backend service to send an email.
-  };
-
-  // Placeholder function to verify 6-digit OTP for 2FA
-  const verifyOtp = async (otp) => {
-    console.log('MOCK Verifying 2FA OTP:', otp);
-    // Real implementation would verify the OTP on the backend.
-  };
-
-  // Placeholder to handle initial Password Reset request and navigation flow
-  const requestPasswordReset = async (email) => {
-    console.log('MOCK Handling request to reset password for:', email);
-    // Flow: Registration.jsx, ResetPassword.jsx navigation
-  };
-
-  // Placeholder function to handle 6-digit verification code and reset logic
-  const resetPassword = async (otp, password) => {
-    console.log('MOCK Handling password reset with Code:', otp, 'New Password:', password);
-    // Flow: Registration.jsx, ResetPassword.jsx complete verification
-  };
-
-  // Placeholder login function signature supporting multi-role flow (mock)
-  const login = (email, password, role = 'Admin') => {
-    console.log('MOCK Logging in with:', email, password);
-    // Real implementation would call the authentication API.
-
-    // 1. Generate MOCK user data based on multi-step flow
-    const dummyUser = {
-      id: '1',
+// Login step 1: email + password -> OTP sent
+const login = async (email, password) => {
+  try {
+    const response = await APICallService.userLogin({
       email,
-      name: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-      role, // Admin, Manager, Member supported roles
-      avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`,
-      department: role === 'Admin' ? 'Engineering' : role === 'Manager' ? 'Product' : 'Design',
+      password,
+    });
+
+    const payload = response?.data;
+
+    if (!payload?.success) {
+      throw new Error(payload?.message || "Login failed");
+    }
+
+    const pendingEmail = payload?.data?.email || email;
+
+    sessionStorage.setItem(
+      LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL,
+      pendingEmail
+    );
+
+    return {
+      email: pendingEmail,
+      message: payload.message || "OTP sent to your email",
+    };
+  } catch (error) {
+    console.error("Login API error:", error);
+
+    // Axios network error
+    if (error?.code === "ERR_NETWORK") {
+      throw new Error("No Internet connection");
+    }
+    
+    // Backend validation errors
+    const validationMessage= error?.response?.data?.errors?.[0]?.message;
+
+    if (validationMessage) {
+        throw new Error(validationMessage);
+    }
+
+    // Backend MongoDB/DNS/network error
+    const backendMessage =
+      error?.response?.data?.message ||
+      error?.message ||
+      "";
+
+    if (
+      backendMessage.includes("ENOTFOUND") ||
+      backendMessage.includes("ECONNREFUSED") ||
+      backendMessage.includes("ETIMEDOUT") ||
+      backendMessage.includes("MongoServerSelectionError")
+    ) {
+      throw new Error("No Internet connection");
+    }
+
+    throw new Error(backendMessage || "Login failed");
+  }
+};
+
+  // Login step 2: email + OTP -> access token and auth state
+  const verifyLoginOtp = async (otp) => {
+    const email = sessionStorage.getItem(LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL);
+    if (!email) {
+      throw new Error('No pending login flow found. Please log in again.');
+    }
+
+    const response = await APICallService.verifyLoginOtp({ email, otp });
+    const payload = response?.data;
+
+    if (!payload?.success) {
+      throw new Error(payload?.message || 'OTP verification failed');
+    }
+
+    const data = payload.data;
+    const userData = {
+      id: data.id,
+      name: data.name,
+      email: data.email,
+      authProvider: data.authProvider,
+      workspaces: data.workspaces || [],
+      hasWorkspace: data.hasWorkspace,
     };
 
-    // 2. THIS IS CRUCIAL: Set authentication state variable to TRUE
+    localStorage.setItem(LOCAL_STORAGE_KEYS.ACCESS_TOKEN, data.accessToken);
+    setUser(userData);
     setIsAuthenticated(true);
-    setUser(dummyUser); // Set user details from multi-step verification
+    sessionStorage.removeItem(LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL);
 
-    // Persist session to localStorage
-    localStorage.setItem('user', JSON.stringify(dummyUser));
-    // Flow logic like navigate('/workspace') in Login.jsx should now work
+    return userData;
   };
 
-  // Reset all auth state defensive coding
-  const logout = () => {
+  const resendLoginOtp = async () => {
+    const email = sessionStorage.getItem(LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL);
+    if (!email) {
+      throw new Error('No pending login flow found. Please log in again.');
+    }
+
+    const response = await APICallService.resendLoginOtp(email);
+    const payload = response?.data;
+
+    if (!payload?.success) {
+      throw new Error(payload?.message || 'Failed to resend OTP');
+    }
+
+    return payload.message || 'OTP resent successfully';
+  };
+
+  const logout = async () => {
+    try {
+      await APICallService.logout();
+    } catch (error) {
+      console.warn('Logout call failed:', error);
+    }
+
     setUser(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('user');
-    console.log('MOCK Successfully logged out.');
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.ACCESS_TOKEN);
+    sessionStorage.removeItem(LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL);
   };
 
-  // Structure the value object clear structure
+  // Placeholder functions for other auth flows
+  const register = async (name, email, password) => {
+    console.log('MOCK Registering with:', name, email);
+  };
+
+  const sendOtp = async (email, type) => {
+    console.log(`MOCK Sending ${type} OTP to: ${email}`);
+  };
+
+  const verifyOtp = async (otp) => {
+    console.log('MOCK Verifying 2FA OTP:', otp);
+  };
+
+  const requestPasswordReset = async (email) => {
+    console.log('MOCK Handling request to reset password for:', email);
+  };
+
+  const resetPassword = async (otp, password) => {
+    console.log('MOCK Handling password reset with Code:', otp, 'New Password:', password);
+  };
+
   const value = {
     isAuthenticated,
     user,
-    register, // Flow placeholder supporting Registration.jsx
-    sendOtp, // Flow supporting 2FA and ResetPassword.jsx
-    verifyOtp, // Flow placeholder supporting 2fa.jsx
-    requestPasswordReset, // Flow placeholder supporting ForgotPassword.jsx
-    resetPassword, // Flow placeholder supporting ResetPassword.jsx
-    login, // Signature complete support flow
-    logout, // Signature complete support flow
+    register,
+    sendOtp,
+    verifyOtp,
+    requestPasswordReset,
+    resetPassword,
+    login,
+    verifyLoginOtp,
+    resendLoginOtp,
+    logout,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
