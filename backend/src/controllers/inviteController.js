@@ -12,16 +12,15 @@ export const sendInvite = async (req, res, next) => {
     const { workspaceId } = req.params;
     const requesterId = req.user.id;
 
-    // 1. Only ONE Admin allowed per workspace — the owner, set at creation.
-    //    Nobody, including the owner, can invite a second Admin.
+    // 1. Up to TWO Admins allowed per workspace (the creator, plus one more).
     if (role === "Admin") {
-      const existingAdmin = await WorkspaceMember.findOne({
+      const adminCount = await WorkspaceMember.countDocuments({
         workspaceId,
         role: "Admin",
       });
-      if (existingAdmin) {
+      if (adminCount >= 2) {
         res.status(400);
-        throw new Error("This workspace already has an Admin — only one Admin is allowed per workspace");
+        throw new Error("This workspace already has the maximum of 2 Admins");
       }
     }
 
@@ -88,7 +87,7 @@ export const getWorkspaceInvites = async (req, res, next) => {
       .sort({ createdAt: -1 })
       .limit(200)
       .select("-__v");
-
+    console.log("Invites fetched:", invites);
     res.status(200).json({ success: true, data: invites });
   } catch (error) {
     next(error);
@@ -142,18 +141,18 @@ export const acceptInvite = async (req, res, next) => {
       throw new Error("You are already a member of this workspace");
     }
 
-    // Final safety net: re-check Admin uniqueness at accept-time too.
-    // Without this, two people could accept two separate pending Admin
-    // invites for the same workspace in a race, both becoming Admin.
+    // Final safety net: re-check Admin count at accept-time too.
+    // Without this, three+ people could accept separate pending Admin
+    // invites for the same workspace in a race, all becoming Admin.
     if (invite.role === "Admin") {
-      const existingAdmin = await WorkspaceMember.findOne({
+      const adminCount = await WorkspaceMember.countDocuments({
         workspaceId: invite.workspaceId,
         role: "Admin",
       });
-      if (existingAdmin) {
+      if (adminCount >= 2) {
         await Invite.deleteOne({ _id: invite._id });
         res.status(400);
-        throw new Error("This workspace already has an Admin — invite is no longer valid");
+        throw new Error("This workspace already has the maximum of 2 Admins — invite is no longer valid");
       }
     }
 

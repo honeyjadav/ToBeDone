@@ -32,11 +32,6 @@ const taskSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-    board: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Board",
-      required: true,
-    },
     workspace: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Workspace",
@@ -81,7 +76,7 @@ const taskSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-taskSchema.index({ board: 1, status: 1, order: 1 });
+taskSchema.index({ workspace: 1, status: 1, order: 1 });
 
 taskSchema.pre("save", async function () {
   if (this.isNew && !this.taskId) {
