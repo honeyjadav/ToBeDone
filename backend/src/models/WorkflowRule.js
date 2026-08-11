@@ -1,7 +1,13 @@
 import mongoose from "mongoose";
+import { getNextSequence } from "./Counter.js";
 
 const workflowRuleSchema = new mongoose.Schema(
   {
+    ruleId: {
+      type: String,
+      unique: true,
+      index: true,
+    },
     workspace: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Workspace",
@@ -14,7 +20,7 @@ const workflowRuleSchema = new mongoose.Schema(
     },
     name: {
       type: String,
-      required: true, // e.g. "Notify manager when task is Done"
+      required: true,
     },
     trigger: {
       event: {
@@ -24,7 +30,7 @@ const workflowRuleSchema = new mongoose.Schema(
       },
       condition: {
         type: mongoose.Schema.Types.Mixed,
-        default: {}, // e.g. { status: "Done" }
+        default: {},
       },
     },
     action: {
@@ -45,6 +51,13 @@ const workflowRuleSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+workflowRuleSchema.pre("save", async function () {
+  if (this.isNew && !this.ruleId) {
+    const seq = await getNextSequence("workflowRule");
+    this.ruleId = `wfr${String(seq).padStart(3, "0")}`;
+  }
+});
 
 const WorkflowRule = mongoose.model("WorkflowRule", workflowRuleSchema);
 export default WorkflowRule;

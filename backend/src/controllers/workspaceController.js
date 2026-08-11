@@ -11,7 +11,7 @@ export const createWorkspace = async (req, res, next) => {
 
     const workspace = await Workspace.create({
       name,
-      createdBy: userId,
+      owner: userId,
     });
 
     const membership = await WorkspaceMember.create({

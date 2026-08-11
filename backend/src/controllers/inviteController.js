@@ -1,27 +1,32 @@
 import Invite from "../models/Invite.js";
 import WorkspaceMember from "../models/WorkspaceMember.js";
+import Workspace from "../models/Workspace.js";
 import User from "../models/User.js";
 
 // @desc    Admin sends an invite for an email to join a workspace with a specific role
-// @route   POST /api/invites
+// @route   POST /api/invites/:workspaceId
 // @access  Private (must be Admin of the workspace)
 export const sendInvite = async (req, res, next) => {
   try {
-    const { email, workspaceId, role } = req.body;
+    const { email, role } = req.body;
+    const { workspaceId } = req.params;
     const requesterId = req.user.id;
 
-    // 1. Confirm requester is an Admin of this workspace
-    const requesterMembership = await WorkspaceMember.findOne({
-      userId: requesterId,
-      workspaceId,
-    });
-
-    if (!requesterMembership || requesterMembership.role !== "Admin") {
-      res.status(403);
-      throw new Error("Only workspace Admins can send invites");
+    // 1. Only ONE Admin allowed per workspace — the owner, set at creation.
+    //    Nobody, including the owner, can invite a second Admin.
+    if (role === "Admin") {
+      const existingAdmin = await WorkspaceMember.findOne({
+        workspaceId,
+        role: "Admin",
+      });
+      if (existingAdmin) {
+        res.status(400);
+        throw new Error("This workspace already has an Admin — only one Admin is allowed per workspace");
+      }
     }
 
-    // 2. If invitee is already registered, check they aren't already a member
+    // 2. If invitee is already registered, check they aren't already a member.
+    //    NOTE: we don't reveal *why* later on, to avoid leaking account existence.
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       const alreadyMember = await WorkspaceMember.findOne({
@@ -30,7 +35,7 @@ export const sendInvite = async (req, res, next) => {
       });
       if (alreadyMember) {
         res.status(400);
-        throw new Error("This user is already a member of the workspace");
+        throw new Error("Unable to send invite for this email");
       }
     }
 
@@ -45,7 +50,7 @@ export const sendInvite = async (req, res, next) => {
       throw new Error("An active invite already exists for this email");
     }
 
-    // 4. Create the invite with the role the Admin chose
+    // 4. Create the invite with the role chosen (Admin uniqueness already validated above)
     const invite = await Invite.create({
       email,
       workspaceId,
@@ -78,21 +83,96 @@ export const sendInvite = async (req, res, next) => {
 export const getWorkspaceInvites = async (req, res, next) => {
   try {
     const { workspaceId } = req.params;
-    const requesterId = req.user.id;
 
-    const requesterMembership = await WorkspaceMember.findOne({
-      userId: requesterId,
-      workspaceId,
-    });
-
-    if (!requesterMembership) {
-      res.status(403);
-      throw new Error("You are not a member of this workspace");
-    }
-
-    const invites = await Invite.find({ workspaceId }).sort({ createdAt: -1 });
+    const invites = await Invite.find({ workspaceId })
+      .sort({ createdAt: -1 })
+      .limit(200)
+      .select("-__v");
 
     res.status(200).json({ success: true, data: invites });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Logged-in user accepts an invite, becoming a WorkspaceMember with the invited role
+// @route   POST /api/invites/accept/:token
+// @access  Private (must be logged in; invited email must match logged-in user's email)
+export const acceptInvite = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+    const userId = req.user.id;
+
+    if (!token || typeof token !== "string" || token.length > 128) {
+      res.status(400);
+      throw new Error("Invalid invite link");
+    }
+
+    const invite = await Invite.findOne({ token });
+
+    if (!invite) {
+      res.status(404);
+      throw new Error("This invite link is invalid or no longer exists");
+    }
+
+    if (invite.expiresAt < Date.now()) {
+      await Invite.deleteOne({ _id: invite._id });
+      res.status(400);
+      throw new Error("This invite has expired");
+    }
+
+    if (invite.status !== "pending") {
+      res.status(400);
+      throw new Error("This invite is no longer valid");
+    }
+
+    const user = await User.findById(userId);
+    if (!user || user.email.toLowerCase() !== invite.email.toLowerCase()) {
+      res.status(403);
+      throw new Error("This invite is not valid for your account");
+    }
+
+    const alreadyMember = await WorkspaceMember.findOne({
+      userId,
+      workspaceId: invite.workspaceId,
+    });
+    if (alreadyMember) {
+      await Invite.deleteOne({ _id: invite._id });
+      res.status(400);
+      throw new Error("You are already a member of this workspace");
+    }
+
+    // Final safety net: re-check Admin uniqueness at accept-time too.
+    // Without this, two people could accept two separate pending Admin
+    // invites for the same workspace in a race, both becoming Admin.
+    if (invite.role === "Admin") {
+      const existingAdmin = await WorkspaceMember.findOne({
+        workspaceId: invite.workspaceId,
+        role: "Admin",
+      });
+      if (existingAdmin) {
+        await Invite.deleteOne({ _id: invite._id });
+        res.status(400);
+        throw new Error("This workspace already has an Admin — invite is no longer valid");
+      }
+    }
+
+    const membership = await WorkspaceMember.create({
+      userId,
+      workspaceId: invite.workspaceId,
+      role: invite.role,
+    });
+
+    await Invite.deleteOne({ _id: invite._id });
+
+    res.status(200).json({
+      success: true,
+      message: "Invite accepted successfully",
+      data: {
+        workspaceId: membership.workspaceId,
+        role: membership.role,
+      },
+    });
   } catch (error) {
     next(error);
   }
