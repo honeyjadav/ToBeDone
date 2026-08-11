@@ -119,3 +119,39 @@ export const deleteWorkspace = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Get a single workspace by id (must be a member)
+// @route   GET /api/workspaces/:workspaceId
+// @access  Private (any member)
+export const getWorkspaceById = async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+      res.status(404);
+      throw new Error("Workspace not found");
+    }
+
+    const membership = await WorkspaceMember.findOne({ workspaceId, userId });
+    if (!membership) {
+      res.status(403);
+      throw new Error("You are not a member of this workspace");
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        workspaceId: workspace._id,
+        name: workspace.name,
+        description: workspace.description,
+        logo: workspace.logo,
+        slackWebhookUrl: workspace.slackWebhookUrl,
+        role: membership.role,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

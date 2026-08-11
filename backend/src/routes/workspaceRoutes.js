@@ -2,6 +2,7 @@ import express from "express";
 import {
   createWorkspace,
   getMyWorkspaces,
+  getWorkspaceById,
   updateWorkspace,
   deleteWorkspace,
 } from "../controllers/workspaceController.js";
@@ -21,22 +22,23 @@ import taskRoutes from "./taskRoutes.js";
 
 const router = express.Router();
 
-// every route below requires a logged-in user
 router.use(protect);
 
 router.post("/", validate(createWorkspaceSchema), createWorkspace);
 router.get("/", getMyWorkspaces);
 
-// F/—/— (Admin only)
+// Get a single workspace — any member can view
+router.get("/:workspaceId", requireWorkspaceMember, getWorkspaceById);
+
+// Admin only
 router.patch("/:workspaceId", requireWorkspaceRole("Admin"), updateWorkspace);
 router.delete("/:workspaceId", requireWorkspaceRole("Admin"), deleteWorkspace);
 
-// Member management — F/F/F view, F/—/— role changes/removal (Admin only)
+// Member management
 router.get("/:workspaceId/members", requireWorkspaceMember, getWorkspaceMembers);
 router.patch("/:workspaceId/members/:memberId/role", requireWorkspaceRole("Admin"), updateMemberRole);
 router.delete("/:workspaceId/members/:memberId", requireWorkspaceRole("Admin"), removeMember);
 
-// Tasks, nested under a workspace
 router.use("/:workspaceId/tasks", taskRoutes);
 
 export default router;
