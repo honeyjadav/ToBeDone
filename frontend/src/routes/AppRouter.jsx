@@ -30,7 +30,15 @@ export default function AppRouter() {
   // Helper component to redirect authenticated users away from auth pages (login, register, etc.)
   // Redirect to workspace so login lands on the workspace selection screen
   const AuthRoute = ({ children }) => {
-    return isAuthenticated ? <Navigate to="/two-factor-auth" replace /> : children;
+    return isAuthenticated ? <Navigate to="/workspace" replace /> : children;
+  };
+
+  const AuthOnlyRoute = ({ children }) => {
+    return isAuthenticated ? children : <Navigate to="/login" replace />;
+  };
+
+  const TwoFactorRoute = ({ children }) => {
+    return isAuthenticated ? <Navigate to="/workspace" replace /> : children;
   };
 
   return (
@@ -73,7 +81,11 @@ export default function AppRouter() {
       />
       <Route
         path="/workspace"
-        element={<Workspace />}
+        element={
+          <ProtectedRoute>
+            <Workspace />
+          </ProtectedRoute>
+        }
       />
 
       {/* 
@@ -83,9 +95,9 @@ export default function AppRouter() {
       <Route
         path="/two-factor-auth"
         element={
-          <AuthRoute>
+          <TwoFactorRoute>
             <TwoFactorAuth />
-          </AuthRoute>
+          </TwoFactorRoute>
         }
       />
 
@@ -93,9 +105,9 @@ export default function AppRouter() {
       <Route
         path="/dashboard"
         element={
-
-          <DashboardLayout />
-
+          <ProtectedRoute>
+            <DashboardLayout />
+          </ProtectedRoute>
         }
       >
         <Route index element={<Dashboard />} />
