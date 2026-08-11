@@ -1,7 +1,13 @@
 import mongoose from "mongoose";
+import { getNextSequence } from "./Counter.js";
 
 const workspaceSchema = new mongoose.Schema(
   {
+    workspaceId: {
+      type: String,
+      unique: true,
+      index: true,
+    },
     name: {
       type: String,
       required: true,
@@ -27,6 +33,15 @@ const workspaceSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+// No `next` param — this project's Mongoose setup resolves async
+// pre-hooks automatically (see User.js pre-save hook for the same pattern).
+workspaceSchema.pre("save", async function () {
+  if (this.isNew && !this.workspaceId) {
+    const seq = await getNextSequence("workspace");
+    this.workspaceId = `wsp${String(seq).padStart(3, "0")}`;
+  }
+});
 
 const Workspace = mongoose.model("Workspace", workspaceSchema);
 export default Workspace;
