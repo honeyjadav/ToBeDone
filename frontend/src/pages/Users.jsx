@@ -24,20 +24,26 @@ const ROLES = ["Admin", "Manager", "Member"];
 const initialUsers = [
     {
         id: "USR-101",
+        name: "John Doe",
         email: "john@example.com",
         role: "Admin",
+        isActive: true,
         archived: false,
     },
     {
         id: "USR-102",
+        name: "Alex Martin",
         email: "alex@example.com",
         role: "Manager",
+        isActive: true,
         archived: false,
     },
     {
         id: "USR-103",
+        name: "Rahul Sharma",
         email: "rahul@example.com",
         role: "Member",
+        isActive: false,
         archived: false,
     },
 ];
@@ -195,6 +201,9 @@ export default function Users() {
                 search.toLowerCase();
 
             const matchesSearch =
+                user.name
+                    ?.toLowerCase()
+                    .includes(keyword) ||
                 user.email
                     .toLowerCase()
                     .includes(keyword) ||

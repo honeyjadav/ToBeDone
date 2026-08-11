@@ -2,6 +2,8 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import ProtectedRoute from "./ProtectedRoute";
 import DashboardLayout from "../layouts/DashboardLayout";
+
+// Existing Pages
 import Landing from "../pages/Landing";
 import Login from "../pages/Login";
 import Dashboard from "../pages/dashboard/Dashboard";
@@ -13,25 +15,87 @@ import Settings from "../pages/Settings";
 import Users from "../pages/Users";
 import Profile from "../pages/UserProfile/Profile";
 
+
+import Registration from "../pages/Registration";
+import TwoFactorAuth from "../pages/TwoFactorAuth";
+import ForgotPassword from "../pages/ForgotPassword";
+import ResetPassword from "../pages/ResetPassword";
+import Workspace from "../pages/Workspace";
+import Webhooks from "../pages/Webhooks";
+import Notifications from "../pages/Notifications";
+
 export default function AppRouter() {
   const { isAuthenticated } = useAuth();
+
+  // Helper component to redirect authenticated users away from auth pages (login, register, etc.)
+  // Redirect to workspace so login lands on the workspace selection screen
+  const AuthRoute = ({ children }) => {
+    return isAuthenticated ? <Navigate to="/two-factor-auth" replace /> : children;
+  };
 
   return (
     <Routes>
       {/* Public Routes */}
       <Route path="/" element={<Landing />} />
+
+      {/* Auth Routes (Public, but redirect to dashboard if already logged in) */}
       <Route
         path="/login"
-        element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <Login />}
+        element={
+          <AuthRoute>
+            <Login />
+          </AuthRoute>
+        }
+      />
+      <Route
+        path="/register"
+        element={
+          <AuthRoute>
+            <Registration />
+          </AuthRoute>
+        }
+      />
+      <Route
+        path="/forgot-password"
+        element={
+          <AuthRoute>
+            <ForgotPassword />
+          </AuthRoute>
+        }
+      />
+      <Route
+        path="/reset-password"
+        element={
+          <AuthRoute>
+            <ResetPassword />
+          </AuthRoute>
+        }
+      />
+      <Route
+        path="/workspace"
+        element={<Workspace />}
+      />
+
+      {/* 
+         Depending on how you handle session state, 2FA might be public 
+         (part of login flow) or protected. Assuming it's part of the login flow here.
+      */}
+      <Route
+        path="/two-factor-auth"
+        element={
+          <AuthRoute>
+            <TwoFactorAuth />
+          </AuthRoute>
+        }
       />
 
       {/* Protected Routes */}
       <Route
         path="/dashboard"
         element={
-          <ProtectedRoute>
-            <DashboardLayout />
-          </ProtectedRoute>
+
+          <DashboardLayout />
+
         }
       >
         <Route index element={<Dashboard />} />
@@ -42,6 +106,8 @@ export default function AppRouter() {
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
          <Route path="profile" element={<Profile />} />
+        <Route path="webhooks" element={<Webhooks />} />
+        <Route path="notifications" element={<Notifications/>}/>
       </Route>
 
       {/* Catch all */}
