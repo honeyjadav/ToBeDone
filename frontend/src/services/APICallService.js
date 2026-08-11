@@ -21,6 +21,20 @@ class APICallService {
     });
   }
 
+  register(formData) {
+    return api.post(APIs.REGISTER, formData);
+  }
+
+  verifyOtp(formData) {
+    return api.post(APIs.VERIFY_OTP, formData);
+  }
+
+  resendOtp(email) {
+    return api.post(APIs.RESEND_OTP, {
+      email,
+    });
+  }
+
   logout() {
     return api.post(APIs.LOGOUT);
   }

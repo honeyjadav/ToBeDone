@@ -1,54 +1,68 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-    Box,
-    Container,
-    Card,
     TextField,
-    Button,
     Typography,
     InputAdornment,
     IconButton,
     Checkbox,
     FormControlLabel,
-    Link,
-    useMediaQuery,
-    useTheme,
     Stack,
 } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import AuthPageWrapper from './AuthPageWrapper';
+import { useAuth } from '../context/AuthContext';
 
 // Vibrant Purple
 const VIBRANT_PURPLE = '#7c3aed';
+
+const SignupIllustration = () => (
+    <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke={VIBRANT_PURPLE} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.15 }}>
+        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+        <circle cx="8.5" cy="7" r="4" />
+        <line x1="20" y1="8" x2="20" y2="14" />
+        <line x1="23" y1="11" x2="17" y2="11" />
+    </svg>
+);
 
 export default function Registration() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
-    const [agreed, setAgreed] = useState(false);
+    const [agreed, setAgreed] = useState(true);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
 
     const navigate = useNavigate();
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const { register } = useAuth();
 
-    // Simple redirect to 2fa without any validation
-    const handleRegister = (e) => {
+    const handleRegister = async (e) => {
         e.preventDefault();
-        navigate('/login');
-    };
+        setError('');
 
-    // Replaces laptop icon. Represents a handshake or data input.
-    const SignupIllustration = () => (
-        <svg width="200" height="200" viewBox="0 0 24 24" fill="none" stroke={VIBRANT_PURPLE} strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.15 }}>
-            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-            <circle cx="8.5" cy="7" r="4" />
-            <line x1="20" y1="8" x2="20" y2="14" />
-            <line x1="23" y1="11" x2="17" y2="11" />
-        </svg>
-    );
+        if (!name.trim() || !email.trim() || !password.trim()) {
+            setError('Name, email, and password are required.');
+            return;
+        }
+
+        if (!agreed) {
+            setError('You must agree to the terms and conditions.');
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            await register(name.trim(), email.trim(), password);
+            navigate('/two-factor-auth');
+        } catch (err) {
+            setError(err?.message || 'Registration failed. Please try again.');
+        } finally {
+            setLoading(false);
+        }
+    };
 
     return (
         <AuthPageWrapper
@@ -139,6 +153,30 @@ export default function Registration() {
                     }}
                 />
             </Stack>
+
+            <FormControlLabel
+                control={
+                    <Checkbox
+                        checked={agreed}
+                        onChange={(e) => setAgreed(e.target.checked)}
+                        sx={{ color: VIBRANT_PURPLE }}
+                    />
+                }
+                label="I agree to the terms and conditions"
+                sx={{ mt: 1.5 }}
+            />
+
+            {error ? (
+                <Typography color="error" sx={{ mt: 1.5, textAlign: 'center' }}>
+                    {error}
+                </Typography>
+            ) : null}
+
+            {loading ? (
+                <Typography color="#64748b" sx={{ mt: 1.5, textAlign: 'center' }}>
+                    Creating your account...
+                </Typography>
+            ) : null}
 
         </AuthPageWrapper>
     );

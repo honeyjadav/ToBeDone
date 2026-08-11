@@ -43,7 +43,7 @@ const backgroundDots = [
     />
 ));
 
-export default function AuthPageWrapper({ title, subtitle, illustration, children, onSubmit, buttonText }) {
+export default function AuthPageWrapper({ title, subtitle, illustration, children, onSubmit, buttonText, buttonDisabled = false }) {
     const navigate = useNavigate();
     const theme = useTheme();
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -156,6 +156,7 @@ export default function AuthPageWrapper({ title, subtitle, illustration, childre
                                             type="submit"
                                             variant="contained"
                                             fullWidth
+                                            disabled={buttonDisabled}
                                             sx={{
                                                 backgroundColor: VIBRANT_PURPLE,
                                                 color: 'white',

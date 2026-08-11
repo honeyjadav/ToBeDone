@@ -1,5 +1,5 @@
 // src/context/AuthContext.js
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import APICallService from '../services/APICallService';
 import { LOCAL_STORAGE_KEYS } from '../constants/Constants';
 
@@ -10,7 +10,7 @@ const getStoredUser = () => {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEYS.USER);
     return raw ? JSON.parse(raw) : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 };
@@ -150,11 +150,53 @@ const login = async (email, password) => {
     localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.ACCESS_TOKEN);
     sessionStorage.removeItem(LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL);
+    sessionStorage.removeItem(LOCAL_STORAGE_KEYS.PENDING_REGISTER_EMAIL);
   };
 
   // Placeholder functions for other auth flows
   const register = async (name, email, password) => {
-    console.log('MOCK Registering with:', name, email);
+    try {
+      const response = await APICallService.register({
+        name,
+        email,
+        password,
+      });
+
+      const payload = response?.data;
+      if (!payload?.success) {
+        throw new Error(payload?.message || 'Registration failed');
+      }
+
+      const pendingEmail = payload?.data?.email || email;
+      sessionStorage.setItem(LOCAL_STORAGE_KEYS.PENDING_REGISTER_EMAIL, pendingEmail);
+
+      return payload;
+    } catch (error) {
+      if (error?.code === 'ERR_NETWORK') {
+        throw new Error('No Internet connection');
+      }
+
+      const validationMessage = error?.response?.data?.errors?.[0]?.message;
+      if (validationMessage) {
+        throw new Error(validationMessage);
+      }
+
+      const backendMessage =
+        error?.response?.data?.message ||
+        error?.message ||
+        '';
+
+      if (
+        backendMessage.includes('ENOTFOUND') ||
+        backendMessage.includes('ECONNREFUSED') ||
+        backendMessage.includes('ETIMEDOUT') ||
+        backendMessage.includes('MongoServerSelectionError')
+      ) {
+        throw new Error('No Internet connection');
+      }
+
+      throw new Error(backendMessage || 'Registration failed');
+    }
   };
 
   const sendOtp = async (email, type) => {
@@ -162,7 +204,36 @@ const login = async (email, password) => {
   };
 
   const verifyOtp = async (otp) => {
-    console.log('MOCK Verifying 2FA OTP:', otp);
+    const email = sessionStorage.getItem(LOCAL_STORAGE_KEYS.PENDING_REGISTER_EMAIL);
+    if (!email) {
+      throw new Error('No pending registration found. Please sign up again.');
+    }
+
+    const response = await APICallService.verifyOtp({ email, otp });
+    const payload = response?.data;
+
+    if (!payload?.success) {
+      throw new Error(payload?.message || 'OTP verification failed');
+    }
+
+    sessionStorage.removeItem(LOCAL_STORAGE_KEYS.PENDING_REGISTER_EMAIL);
+    return payload;
+  };
+
+  const resendOtp = async () => {
+    const email = sessionStorage.getItem(LOCAL_STORAGE_KEYS.PENDING_REGISTER_EMAIL);
+    if (!email) {
+      throw new Error('No pending registration found. Please sign up again.');
+    }
+
+    const response = await APICallService.resendOtp(email);
+    const payload = response?.data;
+
+    if (!payload?.success) {
+      throw new Error(payload?.message || 'Failed to resend OTP');
+    }
+
+    return payload.message || 'OTP resent successfully';
   };
 
   const requestPasswordReset = async (email) => {
@@ -173,19 +244,23 @@ const login = async (email, password) => {
     console.log('MOCK Handling password reset with Code:', otp, 'New Password:', password);
   };
 
-  const value = {
-    isAuthenticated,
-    user,
-    register,
-    sendOtp,
-    verifyOtp,
-    requestPasswordReset,
-    resetPassword,
-    login,
-    verifyLoginOtp,
-    resendLoginOtp,
-    logout,
-  };
+  const value = useMemo(
+    () => ({
+      isAuthenticated,
+      user,
+      register,
+      sendOtp,
+      verifyOtp,
+      resendOtp,
+      requestPasswordReset,
+      resetPassword,
+      login,
+      verifyLoginOtp,
+      resendLoginOtp,
+      logout,
+    }),
+    [isAuthenticated, user]
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
