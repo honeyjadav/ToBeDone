@@ -1,19 +1,26 @@
 export const APIs = {
   API: "/api",
 
+  // Login
   LOGIN: "/auth/login",
   LOGIN_VERIFY_OTP: "/auth/login/verify-otp",
   LOGIN_RESEND_OTP: "/auth/login/resend-otp",
 
+  // Registration
   REGISTER: "/auth/register",
   VERIFY_OTP: "/auth/verify-otp",
   RESEND_OTP: "/auth/resend-otp",
 
-  REFRESH_TOKEN: "/auth/refresh-token",
-  LOGOUT: "/auth/logout",
-  ME: "/auth/me",
-};
+  // Password
+  FORGOT_PASSWORD: "/auth/forgot-password",
+  RESET_PASSWORD: "/auth/reset-password",
 
+  // Token
+  REFRESH_TOKEN: "/auth/refresh-token",
+
+  // Logout
+  LOGOUT: "/auth/logout",
+};
 
 export const API_STATUS = {
   SUCCESS: 200,
@@ -26,3 +33,4 @@ export const API_STATUS = {
 };
 
 export const BEARERKEY = "Bearer ";
+
