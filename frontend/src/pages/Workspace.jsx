@@ -1,429 +1,665 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import {
-    Box,
-    Container,
-    Card,
-    Grid,
-    Button,
-    Typography,
-    useMediaQuery,
-    useTheme,
-    Stack,
-} from '@mui/material';
-import LaptopMacIcon from '@mui/icons-material/LaptopMac';
-import HubIcon from '@mui/icons-material/Hub';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+  Box,
+  Container,
+  Card,
+  Grid,
+  Button,
+  Typography,
+  useMediaQuery,
+  useTheme,
+  Stack,
+  TextField,
+  CircularProgress,
+  Alert,
+  Modal,
+  Avatar,
+  InputAdornment,
+} from "@mui/material";
+import LaptopMacIcon from "@mui/icons-material/LaptopMac";
+import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
+import AddIcon from "@mui/icons-material/Add";
+import AddBusinessIcon from "@mui/icons-material/AddBusiness";
+import SearchIcon from "@mui/icons-material/Search";
+import { useAuth } from "../hooks/useAuth";
 
-// Color from established theme
-const VIBRANT_PURPLE = '#7c3aed';
+const VIBRANT_PURPLE = "#7c3aed";
+const SEARCH_THRESHOLD = 6;
+const CARD_HEIGHT = { xs: "auto", md: "640px" }; // fixed card height on desktop = stable illustration
 
-// Static style constants reused from login
+const AVATAR_PALETTE = [
+  { bg: "#ede9fe", color: "#7c3aed" },
+  { bg: "#dbeafe", color: "#2563eb" },
+  { bg: "#dcfce7", color: "#16a34a" },
+  { bg: "#fef3c7", color: "#d97706" },
+  { bg: "#fce7f3", color: "#db2777" },
+  { bg: "#e0e7ff", color: "#4f46e5" },
+  { bg: "#ffe4e6", color: "#e11d48" },
+];
+
+function colorFor(id = "") {
+  let hash = 0;
+  for (let i = 0; i < id.length; i++)
+    hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+}
+
+function getInitials(name = "") {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map((n) => n[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
 const backgroundPatternBase = {
-    content: '""',
-    position: 'absolute',
-    border: '1px solid #d1d5db',
-    borderRadius: '16px',
-    transform: 'rotate(-45deg)',
-    zIndex: -1,
+  content: '""',
+  position: "absolute",
+  border: "1px solid #d1d5db",
+  borderRadius: "16px",
+  transform: "rotate(-45deg)",
+  zIndex: -1,
 };
 
 const headerStackStyles = {
-    width: '100%',
-    maxWidth: '1200px',
-    display: 'flex',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    mb: 4,
+  width: "100%",
+  maxWidth: "1200px",
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  mb: 3,
+  flexShrink: 0,
 };
 
-// Dots consolidated from login
 const backgroundDots = [
-    { top: 50, right: 30 },
-    { top: 150, right: 80 },
-    { top: 250, right: 50 },
-    { bottom: 50, left: 30 },
-    { bottom: 150, left: 80 },
-    { bottom: 250, left: 50 },
+  { top: 50, right: 30 },
+  { top: 150, right: 80 },
+  { top: 250, right: 50 },
+  { bottom: 50, left: 30 },
+  { bottom: 150, left: 80 },
+  { bottom: 250, left: 50 },
 ].map((dot, i) => (
-    <Box
-        key={i}
-        sx={{
-            position: 'absolute',
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            backgroundColor: '#000000',
-            opacity: 0.2,
-            zIndex: 0,
-            ...dot,
-        }}
-    />
+  <Box
+    key={i}
+    sx={{
+      position: "absolute",
+      width: 6,
+      height: 6,
+      borderRadius: "50%",
+      backgroundColor: "#000000",
+      opacity: 0.2,
+      zIndex: 0,
+      ...dot,
+    }}
+  />
 ));
 
-// New styles specific to workspaces cards
 const workspaceCardStyles = {
-    backgroundColor: '#ffffff',
-    border: '1px solid #e2e8f0',
-    borderRadius: '12px',
-    p: 3,
-    cursor: 'pointer',
-    transition: 'all 0.3s ease-in-out',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 3,
-    width: '100%',
-    '&:hover': {
-        borderColor: VIBRANT_PURPLE,
-        backgroundColor: '#f8fafc',
-        transform: 'translateY(-4px)',
-        boxShadow: '0 12px 24px rgba(124, 58, 237, 0.15)',
-    },
+  backgroundColor: "#ffffff",
+  border: "1px solid #e2e8f0",
+  borderRadius: "12px",
+  p: 2.5,
+  cursor: "pointer",
+  transition: "all 0.2s ease-in-out",
+  display: "flex",
+  alignItems: "center",
+  gap: 2.5,
+  width: "100%",
+  flexShrink: 0,
+  "&:hover": {
+    borderColor: VIBRANT_PURPLE,
+    backgroundColor: "#f8fafc",
+    transform: "translateY(-2px)",
+    boxShadow: "0 8px 20px rgba(124, 58, 237, 0.12)",
+  },
 };
 
 export default function WorkspaceSelection() {
-    const navigate = useNavigate();
-    const theme = useTheme();
-    const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+  const navigate = useNavigate();
+  const theme = useTheme();
+  const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+  const {
+    workspaces,
+    workspacesLoading,
+    fetchWorkspaces,
+    selectWorkspace,
+    createWorkspace,
+  } = useAuth();
 
-    // Hardcoded data for current workspaces
-    const workspacesData = [
-        {
-            id: 1,
-            name: 'Workspace Alpha',
-            description: 'Primary dashboard, core projects, analytics.',
-            path: '/dashboard',
-        },
-        {
-            id: 2,
-            name: 'Development Hub',
-            description: 'Coding sandboxes, repository links, deployments.',
-            path: '/workspace/dev',
-        },
-        {
-            id: 3,
-            name: 'Marketing Studio',
-            description: 'Campaign assets, SEO tools, content calendar.',
-            path: '/workspace/marketing',
-        },
-    ];
+  const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
-    const handleSelectWorkspace = (id, path) => {
-        if (id === 1) {
-            navigate(path);
-        } else {
-            console.log(`Selected Workspace ${id} - This path is not yet configured.`);
-        }
-    };
+  useEffect(() => {
+    fetchWorkspaces();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    return (
-        <Box
-            component="main"
-            sx={{
-                height: '100vh',
-                backgroundColor: '#f8fafc',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                pt: 3,
-                position: 'relative',
-                overflow: 'hidden',
-                '&::before': {
-                    ...backgroundPatternBase,
-                    width: '300px',
-                    height: '300px',
-                    top: '10%',
-                    left: '-100px',
-                },
-                '&::after': {
-                    ...backgroundPatternBase,
-                    width: '400px',
-                    height: '400px',
-                    bottom: '-50px',
-                    right: '-100px',
-                },
-            }}
+  const filteredWorkspaces = useMemo(() => {
+    if (!query.trim()) return workspaces;
+    const q = query.trim().toLowerCase();
+    return workspaces.filter((w) => w.name.toLowerCase().includes(q));
+  }, [workspaces, query]);
+
+  const hasWorkspaces = workspaces.length > 0;
+
+  const handleSelectWorkspace = async (workspace) => {
+    try {
+      await selectWorkspace(workspace.workspaceId);
+      navigate("/dashboard");
+    } catch (err) {
+      setError(err.message || "Unable to open that workspace.");
+    }
+  };
+
+  const handleCreateWorkspace = async (e) => {
+    e.preventDefault();
+    setCreateError("");
+    if (!newName.trim()) {
+      setCreateError("Workspace name is required.");
+      return;
+    }
+    try {
+      setCreating(true);
+      await createWorkspace({ name: newName.trim() });
+      setModalOpen(false);
+      setNewName("");
+      navigate("/dashboard");
+    } catch (err) {
+      setCreateError(err.message || "Unable to create workspace.");
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <Box
+      component="main"
+      sx={{
+        height: "100vh", // pin to viewport
+        overflow: "hidden", // page itself never scrolls
+        backgroundColor: "#f8fafc",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        pt: 3,
+        position: "relative",
+        "&::before": {
+          ...backgroundPatternBase,
+          width: "300px",
+          height: "300px",
+          top: "10%",
+          left: "-100px",
+        },
+        "&::after": {
+          ...backgroundPatternBase,
+          width: "400px",
+          height: "400px",
+          bottom: "-50px",
+          right: "-100px",
+        },
+      }}
+    >
+      <Box
+        sx={{
+          position: "absolute",
+          top: "-10%",
+          right: "5%",
+          width: "500px",
+          height: "500px",
+          backgroundColor: "#fbbf24",
+          borderRadius: "50% / 10% 60% 30% 90%",
+          transform: "rotate(20deg)",
+          opacity: 0.1,
+          zIndex: 0,
+        }}
+      />
+      <Box
+        sx={{
+          position: "absolute",
+          bottom: "-15%",
+          left: "10%",
+          width: "600px",
+          height: "500px",
+          backgroundColor: "#fbbf24",
+          borderRadius: "50% / 80% 30% 90% 10%",
+          transform: "rotate(-10deg)",
+          opacity: 0.1,
+          zIndex: 0,
+        }}
+      />
+      {backgroundDots}
+
+      <Stack
+        direction="row"
+        sx={{
+          ...headerStackStyles,
+          px: (theme) => (theme.breakpoints.down("sm") ? 2 : 4),
+        }}
+        zIndex={1}
+        position="relative"
+      >
+        <Stack
+          direction="row"
+          alignItems="center"
+          gap={1.5}
+          onClick={() => navigate("/")}
+          sx={{ cursor: "pointer" }}
         >
-            {/* Background Yellow Blobs Consolidation */}
-            <Box
-                sx={{
-                    position: 'absolute',
-                    top: '-10%',
-                    right: '5%',
-                    width: '500px',
-                    height: '500px',
-                    backgroundColor: '#fbbf24',
-                    borderRadius: '50% / 10% 60% 30% 90%',
-                    transform: 'rotate(20deg)',
-                    opacity: 0.1,
-                    zIndex: 0,
-                }}
-            />
-            <Box
-                sx={{
-                    position: 'absolute',
-                    bottom: '-15%',
-                    left: '10%',
-                    width: '600px',
-                    height: '500px',
-                    backgroundColor: '#fbbf24',
-                    borderRadius: '50% / 80% 30% 90% 10%',
-                    transform: 'rotate(-10deg)',
-                    opacity: 0.1,
-                    zIndex: 0,
-                }}
-            />
-            {/* Dots consolidated */}
-            {backgroundDots}
+          <Box
+            display="grid"
+            gridTemplateColumns="repeat(2, 1fr)"
+            gap="4px"
+            width={28}
+          >
+            {[VIBRANT_PURPLE, "#000000", "#000000", VIBRANT_PURPLE].map(
+              (color, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: "50%",
+                    backgroundColor: color,
+                  }}
+                />
+              ),
+            )}
+          </Box>
+          <Typography
+            sx={{
+              fontSize: "2.1rem",
+              fontWeight: 700,
+              color: "#000000",
+              letterSpacing: "-1.5px",
+            }}
+          >
+            ToBeDone
+          </Typography>
+        </Stack>
+      </Stack>
 
-            {/* Top Header Bar Refactored */}
-            <Stack
-                direction="row"
-                sx={{
-                    ...headerStackStyles,
-                    px: theme => (theme.breakpoints.down('sm') ? 2 : 4),
-                }}
-                zIndex={1}
-                position="relative"
+      <Container
+        maxWidth="lg"
+        sx={{
+          position: "relative",
+          zIndex: 1,
+          display: "flex",
+          justifyContent: "center",
+          flex: 1,
+          minHeight: 0, // required for the fixed-height Card below to size correctly
+          pb: 3,
+        }}
+      >
+        <Card
+          elevation={0}
+          sx={{
+            width: "100%",
+            maxWidth: "1100px",
+            height: CARD_HEIGHT,
+            maxHeight: "100%",
+            borderRadius: "24px",
+            backgroundColor: "#ffffff",
+            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.08)",
+            overflow: "hidden", // card boundary is fixed, never grows
+            border: "1px solid #e2e8f0",
+          }}
+        >
+          <Grid
+            container
+            direction={isTablet ? "column-reverse" : "row"}
+            spacing={0}
+            sx={{ height: "100%" }}
+          >
+            {/* Left Pane — Illustration. Fixed size, never affected by list length */}
+            {/* Left Pane — Illustration. Fixed size, never affected by list length */}
+            <Grid
+              item
+              xs={12}
+              md={5}
+              display="flex"
+              flexDirection="column"
+              alignItems="center"
+              justifyContent="center"
+              textAlign="center"
+              p={isTablet ? 4 : 6}
+              position="relative"
+              sx={{
+                background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                overflow: "hidden",
+                height: isTablet ? "auto" : "100%",
+              }}
             >
-                <Stack
-                    direction="row"
-                    alignItems="center"
-                    gap={1.5}
-                    onClick={() => navigate('/')}
-                    sx={{ cursor: 'pointer' }}
+              <Stack
+                alignItems="center"
+                gap={4}
+                sx={{ position: "relative", zIndex: 1 }}
+              >
+                {/* Laptop illustration — icon + screen rendered as ONE unit, so they can't drift apart */}
+                <Box
+                  sx={{
+                    position: "relative",
+                    width: 300,
+                    height: 300,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                    <Box display="grid" gridTemplateColumns="repeat(2, 1fr)" gap="4px" width={28}>
-                        {[VIBRANT_PURPLE, '#000000', '#000000', VIBRANT_PURPLE].map(
-                            (color, i) => (
-                                <Box
-                                    key={i}
-                                    sx={{
-                                        width: 10,
-                                        height: 10,
-                                        borderRadius: '50%',
-                                        backgroundColor: color,
-                                    }}
-                                />
-                            )
-                        )}
-                    </Box>
-                    <Typography
-                        sx={{
-                            fontSize: '2.1rem',
-                            fontWeight: 700,
-                            color: '#000000',
-                            letterSpacing: '-1.5px',
-                        }}
-                    >
-                        ToBeDone
-                    </Typography>
-                </Stack>
-            </Stack>
-
-            {/* Main Two-Pane Card Container Optimization */}
-            <Container
-                maxWidth="lg"
-                sx={{
-                    position: 'relative',
-                    zIndex: 1,
-                    display: 'flex',
-                    justifyContent: 'center',
-                }}
-            >
-                <Card
-                    elevation={0}
+                  <LaptopMacIcon
                     sx={{
-                        width: '100%',
-                        maxWidth: '1100px',
-                        borderRadius: '24px',
-                        backgroundColor: 'rgba(255, 255, 255, 1)',
-                        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.08)',
-                        overflow: 'visible',
-                        mb: 4,
-                        border: '1px solid #e2e8f0',
+                      fontSize: "18rem",
+                      color: VIBRANT_PURPLE,
+                      opacity: 0.08,
+                      position: "absolute",
+                      top: "50%",
+                      left: "50%",
+                      transform: "translate(-50%, -50%) scale(1.3)",
                     }}
+                  />
+                  <Box
+                    sx={{
+                      position: "relative", // relative to the SAME centered wrapper as the icon above
+                      width: "280px",
+                      height: "200px",
+                      backgroundColor: "#e2e8f0",
+                      borderRadius: "20px",
+                      border: "2px solid #cbd5e1",
+                      opacity: 0.6,
+                      // nudge up slightly to sit inside the laptop's screen area, not its base
+                      transform: "translateY(-18px)",
+                    }}
+                  />
+                </Box>
+
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: VIBRANT_PURPLE,
+                    fontWeight: 700,
+                    fontSize: "1.2rem",
+                    letterSpacing: "-0.25px",
+                  }}
                 >
-                    <Grid
-                        container
-                        direction={isTablet ? 'column-reverse' : 'row'}
-                        spacing={0}
+                  Select your active environment
+                </Typography>
+              </Stack>
+            </Grid>
+
+            {/* Right Pane — header/search/CTA fixed, only the list scrolls */}
+            <Grid
+              item
+              xs={12}
+              md={7}
+              backgroundColor="#ffffff"
+              borderRadius={isTablet ? "0" : "0 24px 24px 0"}
+              borderLeft={isTablet ? "none" : "1px solid #e2e8f0"}
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                height: isTablet ? "auto" : "100%",
+                minHeight: 0,
+                p: isTablet ? 4 : 5,
+              }}
+            >
+              <Stack spacing={1} sx={{ flexShrink: 0, mb: 2 }}>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontWeight: 700,
+                    color: "#1e293b",
+                    fontSize: "1.7rem",
+                    letterSpacing: "-0.5px",
+                  }}
+                >
+                  Select Your Workspace
+                </Typography>
+                <Typography
+                  sx={{
+                    color: "#64748b",
+                    fontSize: "0.95rem",
+                    fontWeight: 500,
+                  }}
+                >
+                  Choose where you want to work today
+                </Typography>
+              </Stack>
+
+              {error && (
+                <Alert severity="error" sx={{ flexShrink: 0, mb: 2 }}>
+                  {error}
+                </Alert>
+              )}
+
+              {hasWorkspaces && workspaces.length > SEARCH_THRESHOLD && (
+                <TextField
+                  size="small"
+                  placeholder="Search workspaces..."
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  sx={{ flexShrink: 0, mb: 2 }}
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <SearchIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
+                      </InputAdornment>
+                    ),
+                  }}
+                />
+              )}
+
+              {/* Scrollable region — everything else in the pane is fixed */}
+              <Box
+                sx={{
+                  flex: 1,
+                  minHeight: 0,
+                  overflowY: hasWorkspaces ? "auto" : "hidden",
+                  pr: 1,
+                  "&::-webkit-scrollbar": { width: "6px" },
+                  "&::-webkit-scrollbar-thumb": {
+                    backgroundColor: "#e2e8f0",
+                    borderRadius: "3px",
+                  },
+                  "&::-webkit-scrollbar-track": {
+                    backgroundColor: "transparent",
+                  },
+                }}
+              >
+                {workspacesLoading ? (
+                  <Stack
+                    alignItems="center"
+                    justifyContent="center"
+                    sx={{ height: "100%" }}
+                  >
+                    <CircularProgress sx={{ color: VIBRANT_PURPLE }} />
+                  </Stack>
+                ) : !hasWorkspaces ? (
+                  <Stack
+                    alignItems="center"
+                    justifyContent="center"
+                    spacing={2}
+                    sx={{ height: "100%", textAlign: "center" }}
+                  >
+                    <Box
+                      sx={{
+                        width: 64,
+                        height: 64,
+                        borderRadius: "16px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        backgroundColor: "#ede9fe",
+                        color: VIBRANT_PURPLE,
+                      }}
                     >
-                        {/* Left Pane - Illustration */}
-                        <Grid
-                            item
-                            xs={12}
-                            md={5}
-                            display="flex"
-                            flexDirection="column"
-                            alignItems="center"
-                            justifyContent="center"
-                            textAlign="center"
-                            p={isTablet ? 4 : 6}
-                            pb={isTablet ? 4 : 8}
-                            position="relative"
+                      <AddBusinessIcon sx={{ fontSize: 32 }} />
+                    </Box>
+                    <Stack spacing={0.5}>
+                      <Typography
+                        sx={{
+                          fontWeight: 700,
+                          color: "#1e293b",
+                          fontSize: "1.05rem",
+                        }}
+                      >
+                        No workspaces yet
+                      </Typography>
+                      <Typography
+                        sx={{
+                          color: "#64748b",
+                          fontSize: "0.9rem",
+                          maxWidth: 320,
+                        }}
+                      >
+                        You're not part of any workspace. Create one to get
+                        started.
+                      </Typography>
+                    </Stack>
+                  </Stack>
+                ) : filteredWorkspaces.length === 0 ? (
+                  <Typography
+                    sx={{ color: "#64748b", textAlign: "center", py: 2 }}
+                  >
+                    No workspaces match "{query}"
+                  </Typography>
+                ) : (
+                  <Stack spacing={2}>
+                    {filteredWorkspaces.map((ws) => {
+                      const { bg, color } = colorFor(ws.workspaceId);
+                      return (
+                        <Box
+                          key={ws.workspaceId}
+                          sx={workspaceCardStyles}
+                          onClick={() => handleSelectWorkspace(ws)}
+                        >
+                          <Avatar
+                            src={ws.logo || undefined}
+                            variant="rounded"
                             sx={{
-                                background: 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                              width: 46,
+                              height: 46,
+                              borderRadius: "12px",
+                              backgroundColor: bg,
+                              color,
+                              fontWeight: 700,
+                              fontSize: "1rem",
+                              flexShrink: 0,
                             }}
-                        >
-                            <LaptopMacIcon
-                                sx={{
-                                    fontSize: '18rem',
-                                    color: VIBRANT_PURPLE,
-                                    opacity: 0.08,
-                                    position: 'absolute',
-                                    top: '20%',
-                                    transform: 'scale(1.3)',
-                                    zIndex: 0,
-                                }}
-                            />
-                            <Stack alignItems="center" zIndex={1} position="relative" gap={3}>
-                                <Box
-                                    sx={{
-                                        width: '280px',
-                                        height: '200px',
-                                        backgroundColor: '#e2e8f0',
-                                        borderRadius: '20px',
-                                        border: '2px solid #cbd5e1',
-                                        opacity: 0.6,
-                                    }}
-                                />
-                                <Typography
-                                    variant="h6"
-                                    sx={{
-                                        color: VIBRANT_PURPLE,
-                                        fontWeight: 700,
-                                        fontSize: '1.2rem',
-                                        letterSpacing: '-0.25px',
-                                    }}
-                                >
-                                    Select your active environment
-                                </Typography>
-                            </Stack>
-                        </Grid>
+                          >
+                            {!ws.logo && getInitials(ws.name)}
+                          </Avatar>
+                          <Stack
+                            spacing={0.5}
+                            sx={{ flexGrow: 1, minWidth: 0 }}
+                          >
+                            <Typography
+                              variant="subtitle1"
+                              noWrap
+                              sx={{
+                                fontWeight: 700,
+                                color: "#1e293b",
+                                fontSize: "1rem",
+                              }}
+                            >
+                              {ws.name}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              sx={{ color: "#64748b", fontSize: "0.9rem" }}
+                            >
+                              Role: {ws.role}
+                            </Typography>
+                          </Stack>
+                          <ArrowForwardIosIcon
+                            sx={{
+                              color: "#cbd5e1",
+                              fontSize: "1.1rem",
+                              flexShrink: 0,
+                            }}
+                          />
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                )}
+              </Box>
 
-                        {/* Right Pane - Workspaces Selection */}
-                        <Grid
-                            item
-                            xs={12}
-                            md={7}
-                            p={isTablet ? 4 : 6}
-                            backgroundColor="#ffffff"
-                            borderRadius={isTablet ? '0' : '0 24px 24px 0'}
-                            borderLeft={isTablet ? 'none' : '1px solid #e2e8f0'}
-                        >
-                            <Stack spacing={4}>
-                                {/* Title */}
-                                <Stack spacing={1}>
-                                    <Typography
-                                        variant="h5"
-                                        sx={{
-                                            fontWeight: 700,
-                                            color: '#1e293b',
-                                            fontSize: '1.8rem',
-                                            letterSpacing: '-0.5px',
-                                        }}
-                                    >
-                                        Select Your Workspace
-                                    </Typography>
-                                    <Typography
-                                        sx={{
-                                            color: '#64748b',
-                                            fontSize: '1rem',
-                                            fontWeight: 500,
-                                        }}
-                                    >
-                                        Choose where you want to work today
-                                    </Typography>
-                                </Stack>
+              <Button
+                onClick={() => setModalOpen(true)}
+                startIcon={<AddIcon />}
+                sx={{
+                  color: VIBRANT_PURPLE,
+                  fontWeight: 600,
+                  textTransform: "none",
+                  alignSelf: "center",
+                  flexShrink: 0,
+                  mt: 2,
+                }}
+              >
+                Create a new workspace
+              </Button>
+            </Grid>
+          </Grid>
+        </Card>
+      </Container>
 
-                                {/* Workspace Selection List */}
-                                <Stack spacing={2.5}>
-                                    {workspacesData.map((ws) => (
-                                        <Box
-                                            key={ws.id}
-                                            sx={workspaceCardStyles}
-                                            onClick={() => handleSelectWorkspace(ws.id, ws.path)}
-                                        >
-                                            <Box
-                                                sx={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    width: 50,
-                                                    height: 50,
-                                                    borderRadius: '12px',
-                                                    backgroundColor: '#f1f5f9',
-                                                    flexShrink: 0,
-                                                }}
-                                            >
-                                                <HubIcon
-                                                    sx={{
-                                                        color: VIBRANT_PURPLE,
-                                                        fontSize: '1.8rem',
-                                                    }}
-                                                />
-                                            </Box>
-                                            <Stack spacing={0.5} sx={{ flexGrow: 1 }}>
-                                                <Typography
-                                                    variant="subtitle1"
-                                                    sx={{
-                                                        fontWeight: 700,
-                                                        color: '#1e293b',
-                                                        fontSize: '1rem',
-                                                    }}
-                                                >
-                                                    {ws.name}
-                                                </Typography>
-                                                <Typography
-                                                    variant="body2"
-                                                    sx={{
-                                                        color: '#64748b',
-                                                        fontSize: '0.9rem',
-                                                    }}
-                                                >
-                                                    {ws.description}
-                                                </Typography>
-                                            </Stack>
-                                            <ArrowForwardIosIcon
-                                                sx={{
-                                                    color: '#cbd5e1',
-                                                    fontSize: '1.1rem',
-                                                    flexShrink: 0,
-                                                }}
-                                            />
-                                        </Box>
-                                    ))}
-                                </Stack>
-
-                                {/* Footer Info */}
-                                <Typography
-                                    sx={{
-                                        color: '#94a3b8',
-                                        fontSize: '0.85rem',
-                                        textAlign: 'center',
-                                        mt: 2,
-                                    }}
-                                >
-                                    Can't find your workspace?{' '}
-                                    <Typography
-                                        component="span"
-                                        onClick={() => navigate('/create-workspace')}
-                                        sx={{
-                                            color: VIBRANT_PURPLE,
-                                            fontWeight: 600,
-                                            cursor: 'pointer',
-                                            '&:hover': { textDecoration: 'underline' },
-                                        }}
-                                    >
-                                        Create a new one
-                                    </Typography>
-                                </Typography>
-                            </Stack>
-                        </Grid>
-                    </Grid>
-                </Card>
-            </Container>
+      <Modal open={modalOpen} onClose={() => !creating && setModalOpen(false)}>
+        <Box
+          component="form"
+          onSubmit={handleCreateWorkspace}
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            maxWidth: "90vw",
+            backgroundColor: "#fff",
+            borderRadius: "16px",
+            p: 4,
+            boxShadow: 24,
+          }}
+        >
+          <Stack spacing={2.5}>
+            <Typography variant="h6" fontWeight={700}>
+              Create a new workspace
+            </Typography>
+            <TextField
+              label="Workspace name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              fullWidth
+              autoFocus
+              required
+              disabled={creating}
+              error={!!createError}
+              helperText={createError}
+            />
+            <Stack direction="row" spacing={2} justifyContent="flex-end">
+              <Button onClick={() => setModalOpen(false)} disabled={creating}>
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={creating}
+                sx={{
+                  backgroundColor: VIBRANT_PURPLE,
+                  "&:hover": { backgroundColor: "#6d28d9" },
+                }}
+              >
+                {creating ? "Creating..." : "Create"}
+              </Button>
+            </Stack>
+          </Stack>
         </Box>
-    );
+      </Modal>
+    </Box>
+  );
 }

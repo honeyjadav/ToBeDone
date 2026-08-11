@@ -5,4 +5,5 @@ export const LOCAL_STORAGE_KEYS = {
   ACCESS_TOKEN: "accessToken",
   PENDING_LOGIN_EMAIL: "pendingLoginEmail",
   PENDING_REGISTER_EMAIL: "pendingRegisterEmail",
+  ACTIVE_WORKSPACE_ID: 'activeWorkspaceId',
 };

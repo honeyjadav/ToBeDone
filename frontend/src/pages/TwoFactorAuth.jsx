@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Typography, TextField, Stack, Box, Button } from '@mui/material';
 import AuthPageWrapper from './AuthPageWrapper';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { LOCAL_STORAGE_KEYS } from '../constants/Constants';
 
 // Vibrant Purple from established theme

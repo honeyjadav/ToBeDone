@@ -51,6 +51,48 @@ class APICallService {
   logout() {
     return api.post(APIs.LOGOUT);
   }
+
+   // ---- Workspaces ----
+
+  // Create a workspace (creator becomes Admin)
+  createWorkspace(formData) {
+    return api.post(APIs.WORKSPACES, formData);
+  }
+
+  // Get all workspaces the logged-in user belongs to
+  getMyWorkspaces() {
+    return api.get(APIs.WORKSPACES);
+  }
+
+  // Update a workspace (Admin only)
+  updateWorkspace(workspaceId, formData) {
+    return api.patch(APIs.WORKSPACE_BY_ID(workspaceId), formData);
+  }
+
+  // Delete a workspace (Admin only)
+  deleteWorkspace(workspaceId) {
+    return api.delete(APIs.WORKSPACE_BY_ID(workspaceId));
+  }
+
+  // Get members of a workspace
+  getWorkspaceMembers(workspaceId) {
+    return api.get(APIs.WORKSPACE_MEMBERS(workspaceId));
+  }
+
+  // Update a member's role (Admin only)
+  updateMemberRole(workspaceId, memberId, role) {
+    return api.patch(APIs.WORKSPACE_MEMBER_ROLE(workspaceId, memberId), { role });
+  }
+
+  // Remove a member (Admin only)
+  removeMember(workspaceId, memberId) {
+    return api.delete(APIs.WORKSPACE_MEMBER_REMOVE(workspaceId, memberId));
+  }
+
+   // Get a single workspace by id
+  getWorkspaceById(workspaceId) {
+    return api.get(APIs.WORKSPACE_BY_ID(workspaceId));
+  }
 }
 
 export default new APICallService();

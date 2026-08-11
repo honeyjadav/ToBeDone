@@ -10,7 +10,7 @@ import {
   Tooltip,
 } from "@mui/material";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useAuth } from "../hooks/useAuth";
 import {
   DashboardOutlined as DashboardOutlinedIcon,
   ViewKanbanOutlined as ViewKanbanOutlinedIcon,
@@ -62,23 +62,20 @@ const links = [
   { label: 'Users', path: '/dashboard/users', icon: <PeopleOutlinedIcon fontSize="small" /> },
 ];
 
-// TEMP mock data — swap for `GET /api/workspaces` (workspaces the user has a Membership in)
-// once the backend endpoint exists. Kept local to Nav so nothing else needs to change yet.
-const MOCK_WORKSPACES = [
-  { id: "ws-1", name: "ToBeDone Team", logo: "" },
-  { id: "ws-2", name: "Campus Project Group", logo: "" },
-];
-
 export default function Nav({ isOpen, setIsOpen }) {
   const location = useLocation();
   const navigate = useNavigate();
   const width = isOpen ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
 
-  // TEMP local state for which workspace is active — replace with real
-  // workspace context / API call once the backend supports it.
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState(
-    MOCK_WORKSPACES[0].id,
-  );
+  const { workspaces, activeWorkspace, selectWorkspace, logout } = useAuth();
+
+  const handleSwitchWorkspace = async (workspaceId) => {
+    try {
+      await selectWorkspace(workspaceId);
+    } catch (err) {
+      console.error("Failed to switch workspace:", err);
+    }
+  };
 
   const navItemSx = (isActive) => ({
     borderRadius: "7px",
@@ -163,9 +160,13 @@ export default function Nav({ isOpen, setIsOpen }) {
         <Box>
           {/* Workspace switcher — sits above the Overview label */}
           <WorkspaceSwitcher
-            workspaces={MOCK_WORKSPACES}
-            activeWorkspaceId={activeWorkspaceId}
-            onSwitch={setActiveWorkspaceId}
+            workspaces={workspaces.map((w) => ({
+              id: w.workspaceId,
+              name: w.name,
+              logo: w.logo,
+            }))}
+            activeWorkspaceId={activeWorkspace?.workspaceId}
+            onSwitch={handleSwitchWorkspace}
             onCreateNew={() => navigate("/dashboard/workspaces/new")}
             collapsed={!isOpen}
             isOpen={isOpen}
@@ -220,9 +221,8 @@ export default function Nav({ isOpen, setIsOpen }) {
                 icon: <LogoutOutlinedIcon fontSize="small" />,
                 danger: true,
               },
-              false,
-              () => {
-                localStorage.removeItem("user");
+              async () => {
+                await logout();
                 navigate("/login", { replace: true });
               },
               "logout",
