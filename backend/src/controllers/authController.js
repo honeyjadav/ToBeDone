@@ -375,12 +375,27 @@ export const refreshToken = async (req, res, next) => {
 // @access  Public
 export const logout = async (req, res, next) => {
   try {
-    const token = req.cookies.refreshToken;
+    const token = req.cookies?.refreshToken;
+
+    // Delete refresh-token session from database
     if (token) {
-      await Session.deleteOne({ refreshToken: token });
+      await Session.deleteOne({
+        refreshToken: token,
+      });
     }
-    res.clearCookie("refreshToken");
-    res.status(200).json({ success: true, message: "Logged out successfully" });
+
+    // Clear refresh-token cookie
+    res.clearCookie("refreshToken", {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      path: "/",
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: "Logged out successfully",
+    });
   } catch (error) {
     next(error);
   }

@@ -2,6 +2,8 @@ import Invite from "../models/Invite.js";
 import WorkspaceMember from "../models/WorkspaceMember.js";
 import Workspace from "../models/Workspace.js";
 import User from "../models/User.js";
+import { inviteEmailTemplate } from "../utils/emailTemplates.js";
+import sendEmail from "../utils/sendEmail.js";
 
 // @desc    Admin sends an invite for an email to join a workspace with a specific role
 // @route   POST /api/invites/:workspaceId
@@ -12,56 +14,101 @@ export const sendInvite = async (req, res, next) => {
     const { workspaceId } = req.params;
     const requesterId = req.user.id;
 
-    // 1. Up to TWO Admins allowed per workspace (the creator, plus one more).
+    // 1. Up to TWO Admins allowed per workspace
     if (role === "Admin") {
       const adminCount = await WorkspaceMember.countDocuments({
         workspaceId,
         role: "Admin",
       });
+
       if (adminCount >= 2) {
         res.status(400);
-        throw new Error("This workspace already has the maximum of 2 Admins");
+        throw new Error(
+          "This workspace already has the maximum of 2 Admins"
+        );
       }
     }
 
-    // 2. If invitee is already registered, check they aren't already a member.
-    //    NOTE: we don't reveal *why* later on, to avoid leaking account existence.
-    const existingUser = await User.findOne({ email });
+    // 2. Check if invitee is already registered
+    const existingUser = await User.findOne({
+      email: email.toLowerCase().trim(),
+    });
+
     if (existingUser) {
       const alreadyMember = await WorkspaceMember.findOne({
         userId: existingUser._id,
         workspaceId,
       });
+
       if (alreadyMember) {
         res.status(400);
         throw new Error("Unable to send invite for this email");
       }
     }
 
-    // 3. Prevent duplicate pending invites for the same email + workspace
+    // 3. Prevent duplicate pending invites
     const existingInvite = await Invite.findOne({
-      email,
+      email: email.toLowerCase().trim(),
       workspaceId,
       status: "pending",
     });
+
     if (existingInvite) {
       res.status(400);
-      throw new Error("An active invite already exists for this email");
+      throw new Error(
+        "An active invite already exists for this email"
+      );
     }
 
-    // 4. Create the invite with the role chosen (Admin uniqueness already validated above)
+    // 4. Fetch workspace
+    const workspace = await Workspace.findById(workspaceId);
+
+    if (!workspace) {
+      res.status(404);
+      throw new Error("Workspace not found");
+    }
+
+    // 5. Fetch inviter details
+    const inviter = await User.findById(requesterId).select(
+      "name email"
+    );
+
+    if (!inviter) {
+      res.status(401);
+      throw new Error("Inviter user not found");
+    }
+
+    // 6. Create invite
     const invite = await Invite.create({
-      email,
+      email: email.toLowerCase().trim(),
       workspaceId,
       role: role || "Member",
       invitedBy: requesterId,
     });
 
-    const inviteLink = `${process.env.CLIENT_URL}/invite/${invite.token}`;
+    // 7. Create invite link
+    const inviteLink =
+      `${process.env.CLIENT_URL}/invite/${invite.token}`;
 
+    // 8. Create email HTML
+    const emailHtml = inviteEmailTemplate({
+      workspaceName: workspace.name,
+      inviterName: inviter.name,
+      token: invite.token,
+      role: invite.role,
+    });
+
+    // 9. Send email
+    await sendEmail({
+      to: invite.email,
+      subject: `You're invited to join ${workspace.name}`,
+      html: emailHtml,
+    });
+
+    // 10. Response
     res.status(201).json({
       success: true,
-      message: "Invite created successfully",
+      message: "Invite sent successfully",
       data: {
         token: invite.token,
         email: invite.email,
