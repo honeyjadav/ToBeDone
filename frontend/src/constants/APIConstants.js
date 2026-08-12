@@ -29,7 +29,8 @@ export const APIs = {
     `/workspaces/${workspaceId}/members/${memberId}/role`,
   WORKSPACE_MEMBER_REMOVE: (workspaceId, memberId) =>
     `/workspaces/${workspaceId}/members/${memberId}`,
-  
+  INVITES: (workspaceId) => `/invites/${workspaceId}`,
+  INVITE_ACCEPT: (token) => `/invites/accept/${token}`,
 };
 
 export const API_STATUS = {

@@ -215,18 +215,33 @@ export default function Nav({ isOpen, setIsOpen }) {
               () => navigate("/dashboard/settings"),
               "settings",
             )}
-            {renderItem(
-              {
-                label: "Logout",
-                icon: <LogoutOutlinedIcon fontSize="small" />,
-                danger: true,
-              },
-              async () => {
-                await logout();
-                navigate("/login", { replace: true });
-              },
-              "logout",
-            )}
+            {
+  renderItem(
+    {
+      label: "Logout",
+      icon: <LogoutOutlinedIcon fontSize="small" />,
+      danger: true,
+    },
+    false,
+    async () => {
+      try {
+        await logout();
+
+        navigate("/login", {
+          replace: true,
+        });
+      } catch (error) {
+        console.error("Logout failed:", error);
+
+        // Even if API logout fails, remove the user from the dashboard
+        navigate("/login", {
+          replace: true,
+        });
+      }
+    },
+    "logout",
+  )
+}
           </List>
         </Box>
       </Box>

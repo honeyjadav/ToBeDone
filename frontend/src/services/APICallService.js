@@ -89,7 +89,22 @@ class APICallService {
     return api.delete(APIs.WORKSPACE_MEMBER_REMOVE(workspaceId, memberId));
   }
 
-   // Get a single workspace by id
+  // Send a workspace invite
+  sendWorkspaceInvite(workspaceId, inviteData) {
+    return api.post(APIs.INVITES(workspaceId), inviteData);
+  }
+
+  // Get pending invites for a workspace
+  getWorkspaceInvites(workspaceId) {
+    return api.get(APIs.INVITES(workspaceId));
+  }
+
+  // Accept an invite via token
+  acceptInvite(token) {
+    return api.post(APIs.INVITE_ACCEPT(token));
+  }
+
+  // Get a single workspace by id
   getWorkspaceById(workspaceId) {
     return api.get(APIs.WORKSPACE_BY_ID(workspaceId));
   }

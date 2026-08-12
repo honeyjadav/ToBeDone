@@ -7,10 +7,8 @@ import {
     MenuItem,
     Select,
     FormControl,
-    FormControlLabel,
     Button,
     IconButton,
-    Switch,
 } from "@mui/material";
 
 import CloseIcon from "@mui/icons-material/Close";
@@ -20,32 +18,114 @@ const ROLES = ["Admin", "Manager", "Member"];
 
 export default function AddUser({ open, onClose, onAdd }) {
     const [email, setEmail] = useState("");
-    const [role, setRole] = useState("Member");
+    const [role, setRole] = useState("");
+    const [emailError, setEmailError] = useState("");
+    const [roleError, setRoleError] = useState("");
+    const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState("");
 
-    // Reset form whenever drawer opens
     useEffect(() => {
         if (open) {
             setEmail("");
-            setRole("Member");
+            setRole("");
+            setEmailError("");
+            setRoleError("");
+            setSubmitError("");
         }
     }, [open]);
 
-    // Add User
-    const handleSubmit = () => {
-        if (!email.trim()) return;
+    const validateEmail = (value) => {
+        if (!value.trim()) {
+            return "Email is required";
+        }
 
-        onAdd({
-            email: email.trim(),
-            role,
-        });
+        const emailRegex =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-        onClose();
+        if (!emailRegex.test(value.trim())) {
+            return "Please enter a valid email address";
+        }
+
+        return "";
     };
 
-    // Clear form
+    const validateForm = () => {
+        const emailValidation = validateEmail(email);
+
+        let valid = true;
+
+        if (emailValidation) {
+            setEmailError(emailValidation);
+            valid = false;
+        } else {
+            setEmailError("");
+        }
+
+        if (!role) {
+            setRoleError("Role is required");
+            valid = false;
+        } else {
+            setRoleError("");
+        }
+
+        return valid;
+    };
+
+    const handleEmailChange = (e) => {
+        const value = e.target.value;
+
+        setEmail(value);
+        setSubmitError("");
+
+        if (value.trim()) {
+            setEmailError(validateEmail(value));
+        } else {
+            setEmailError("");
+        }
+    };
+
+    const handleRoleChange = (e) => {
+        setRole(e.target.value);
+        setRoleError("");
+        setSubmitError("");
+    };
+
+    const handleSubmit = async () => {
+        if (!validateForm()) {
+            return;
+        }
+
+        setSubmitting(true);
+        setSubmitError("");
+
+        try {
+            const result = await onAdd({
+                email: email.trim(),
+                role,
+            });
+
+            if (result?.success) {
+                onClose();
+            } else {
+                setSubmitError(
+                    result?.message || "Unable to send invite."
+                );
+            }
+        } catch (error) {
+            setSubmitError(
+                error?.message || "Unable to send invite."
+            );
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const handleClear = () => {
         setEmail("");
-        setRole("Member");
+        setRole("");
+        setEmailError("");
+        setRoleError("");
+        setSubmitError("");
     };
 
     return (
@@ -53,19 +133,20 @@ export default function AddUser({ open, onClose, onAdd }) {
             anchor="right"
             open={open}
             onClose={onClose}
-            PaperProps={{
-                sx: {
-                    width: {
-                        xs: "100%",
-                        sm: "420px",
+            slotProps={{
+                paper: {
+                    sx: {
+                        width: {
+                            xs: "100%",
+                            sm: "420px",
+                        },
+                        display: "flex",
+                        flexDirection: "column",
+                        backgroundColor: "#ffffff",
                     },
-                    display: "flex",
-                    flexDirection: "column",
-                    backgroundColor: "#ffffff",
                 },
             }}
         >
-            {/* Header */}
             <Box
                 sx={{
                     height: "70px",
@@ -84,7 +165,6 @@ export default function AddUser({ open, onClose, onAdd }) {
                         gap: 1.25,
                     }}
                 >
-                    {/* Left Arrow */}
                     <IconButton
                         size="small"
                         sx={{
@@ -110,7 +190,6 @@ export default function AddUser({ open, onClose, onAdd }) {
                     </Typography>
                 </Box>
 
-                {/* Close */}
                 <IconButton
                     size="small"
                     onClick={onClose}
@@ -126,7 +205,6 @@ export default function AddUser({ open, onClose, onAdd }) {
                 </IconButton>
             </Box>
 
-            {/* Content */}
             <Box
                 sx={{
                     flex: 1,
@@ -134,7 +212,6 @@ export default function AddUser({ open, onClose, onAdd }) {
                     p: 2.5,
                 }}
             >
-                {/* Email */}
                 <Box sx={{ mb: 2.5 }}>
                     <Typography
                         sx={{
@@ -152,19 +229,35 @@ export default function AddUser({ open, onClose, onAdd }) {
                         type="email"
                         placeholder="Enter user email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={handleEmailChange}
+                        onBlur={() => {
+                            if (email.trim()) {
+                                setEmailError(
+                                    validateEmail(email)
+                                );
+                            } else {
+                                setEmailError(
+                                    "Email is required"
+                                );
+                            }
+                        }}
                         fullWidth
                         size="small"
+                        error={Boolean(emailError)}
+                        helperText={emailError}
                         sx={{
                             "& .MuiOutlinedInput-root": {
                                 borderRadius: "8px",
                                 fontSize: "13px",
                             },
+                            "& .MuiFormHelperText-root": {
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            },
                         }}
                     />
                 </Box>
 
-                {/* Role */}
                 <Box sx={{ mb: 2.5 }}>
                     <Typography
                         sx={{
@@ -177,14 +270,22 @@ export default function AddUser({ open, onClose, onAdd }) {
                         Role
                     </Typography>
 
-                    <FormControl fullWidth size="small">
+                    <FormControl
+                        fullWidth
+                        size="small"
+                        error={Boolean(roleError)}
+                    >
                         <Select
+                            displayEmpty
                             value={role}
-                            onChange={(e) => setRole(e.target.value)}
+                            onChange={handleRoleChange}
                             sx={{
                                 borderRadius: "8px",
                                 fontSize: "13px",
                             }}
+                            renderValue={(selected) =>
+                                selected || "Select role"
+                            }
                         >
                             {ROLES.map((r) => (
                                 <MenuItem
@@ -198,13 +299,35 @@ export default function AddUser({ open, onClose, onAdd }) {
                                 </MenuItem>
                             ))}
                         </Select>
+
+                        {roleError && (
+                            <Typography
+                                sx={{
+                                    color: "#d32f2f",
+                                    fontSize: "12px",
+                                    mt: 0.5,
+                                    ml: 1.75,
+                                }}
+                            >
+                                {roleError}
+                            </Typography>
+                        )}
                     </FormControl>
                 </Box>
 
-                {/* Status removed */}
+                {/* {submitError && (
+                    <Typography
+                        sx={{
+                            color: "#dc2626",
+                            fontSize: "0.85rem",
+                            mb: 1,
+                        }}
+                    >
+                        {submitError}
+                    </Typography>
+                )} */}
             </Box>
 
-            {/* Bottom Actions */}
             <Box
                 sx={{
                     height: "70px",
@@ -217,10 +340,9 @@ export default function AddUser({ open, onClose, onAdd }) {
                     flexShrink: 0,
                 }}
             >
-                {/* Add User */}
                 <Button
                     onClick={handleSubmit}
-                    disabled={!email.trim()}
+                    disabled={submitting}
                     variant="contained"
                     sx={{
                         height: "40px",
@@ -243,10 +365,9 @@ export default function AddUser({ open, onClose, onAdd }) {
                         },
                     }}
                 >
-                    Add User
+                    {submitting ? "Sending..." : "Add User"}
                 </Button>
 
-                {/* Clear */}
                 <Button
                     onClick={handleClear}
                     sx={{
@@ -265,8 +386,6 @@ export default function AddUser({ open, onClose, onAdd }) {
                 >
                     Clear
                 </Button>
-
-
             </Box>
         </Drawer>
     );
