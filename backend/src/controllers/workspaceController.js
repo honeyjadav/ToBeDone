@@ -55,3 +55,103 @@ export const getMyWorkspaces = async (req, res, next) => {
     next(error);
   }
 };
+
+// @desc    Update workspace details (name, description, logo)
+// @route   PATCH /api/workspaces/:workspaceId
+// @access  Private (Admin only)
+export const updateWorkspace = async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    const { name, description, logo } = req.body;
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+      res.status(404);
+      throw new Error("Workspace not found");
+    }
+
+    if (name !== undefined) workspace.name = name;
+    if (description !== undefined) workspace.description = description;
+    if (logo !== undefined) workspace.logo = logo;
+
+    await workspace.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Workspace updated successfully",
+      data: {
+        workspaceId: workspace._id,
+        name: workspace.name,
+        description: workspace.description,
+        logo: workspace.logo,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Delete a workspace (and its memberships)
+// @route   DELETE /api/workspaces/:workspaceId
+// @access  Private (Admin only)
+export const deleteWorkspace = async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+      res.status(404);
+      throw new Error("Workspace not found");
+    }
+
+    await WorkspaceMember.deleteMany({ workspaceId });
+    await Workspace.deleteOne({ _id: workspaceId });
+
+    // NOTE: Tasks / Messages / Notifications / WorkflowRules tied to this
+    // workspace are intentionally left for a separate cascade-cleanup job
+    // (or cascade here once those controllers/cleanup policy are finalized).
+
+    res.status(200).json({
+      success: true,
+      message: "Workspace deleted successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Get a single workspace by id (must be a member)
+// @route   GET /api/workspaces/:workspaceId
+// @access  Private (any member)
+export const getWorkspaceById = async (req, res, next) => {
+  try {
+    const { workspaceId } = req.params;
+    const userId = req.user.id;
+
+    const workspace = await Workspace.findById(workspaceId);
+    if (!workspace) {
+      res.status(404);
+      throw new Error("Workspace not found");
+    }
+
+    const membership = await WorkspaceMember.findOne({ workspaceId, userId });
+    if (!membership) {
+      res.status(403);
+      throw new Error("You are not a member of this workspace");
+    }
+
+    res.status(200).json({
+      success: true,
+      data: {
+        workspaceId: workspace._id,
+        name: workspace.name,
+        description: workspace.description,
+        logo: workspace.logo,
+        slackWebhookUrl: workspace.slackWebhookUrl,
+        role: membership.role,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};

@@ -1,10 +1,7 @@
-// src/context/AuthContext.js
-import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import APICallService from '../services/APICallService';
 import { LOCAL_STORAGE_KEYS } from '../constants/Constants';
-
-// Create the AuthContext
-const AuthContext = createContext();
+import { AuthContext } from './AuthContextValue';
 
 const getStoredUser = () => {
   try {
@@ -15,82 +12,142 @@ const getStoredUser = () => {
   }
 };
 
-// Provide the AuthContext value to children
 export const AuthProvider = ({ children }) => {
-  // State initialization with defensive logic
   const [user, setUser] = useState(() => getStoredUser());
   const [isAuthenticated, setIsAuthenticated] = useState(() => !!getStoredUser());
 
-  // Keep localStorage synchronized with the 'user' state
+  // ---- Workspace state (NEW) ----
+  const [workspaces, setWorkspaces] = useState([]); // [{ workspaceId, name, role }]
+  const [activeWorkspace, setActiveWorkspace] = useState(null); // full details, incl. logo
+  const [workspacesLoading, setWorkspacesLoading] = useState(false);
+
   useEffect(() => {
     try {
       if (user) localStorage.setItem(LOCAL_STORAGE_KEYS.USER, JSON.stringify(user));
       else localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
-    } catch (e) {
+    } catch {
       // Ignore localStorage errors
     }
   }, [user]);
 
-// Login step 1: email + password -> OTP sent
-const login = async (email, password) => {
-  try {
-    const response = await APICallService.userLogin({
-      email,
-      password,
-    });
+  // Fetch the list of workspaces the user belongs to
+  const fetchWorkspaces = useCallback(async () => {
+    setWorkspacesLoading(true);
+    try {
+      const response = await APICallService.getMyWorkspaces();
+      const list = response?.data?.data || [];
+      setWorkspaces(list);
+      return list;
+    } catch (error) {
+      console.error('Failed to fetch workspaces:', error);
+      setWorkspaces([]);
+      throw error;
+    } finally {
+      setWorkspacesLoading(false);
+    }
+  }, []);
 
+  // Fetch full details for one workspace (name, logo, role, etc.) and make it active
+  const selectWorkspace = useCallback(async (workspaceId) => {
+    const response = await APICallService.getWorkspaceById(workspaceId);
     const payload = response?.data;
 
     if (!payload?.success) {
-      throw new Error(payload?.message || "Login failed");
+      throw new Error(payload?.message || 'Unable to load workspace');
     }
 
-    const pendingEmail = payload?.data?.email || email;
+    setActiveWorkspace(payload.data);
+    localStorage.setItem(LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID, payload.data.workspaceId);
+    return payload.data;
+  }, []);
 
-    sessionStorage.setItem(
-      LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL,
-      pendingEmail
-    );
+  const createWorkspace = useCallback(async (formData) => {
+    const response = await APICallService.createWorkspace(formData);
+    const payload = response?.data;
 
-    return {
-      email: pendingEmail,
-      message: payload.message || "OTP sent to your email",
+    if (!payload?.success) {
+      throw new Error(payload?.message || 'Unable to create workspace');
+    }
+
+    await fetchWorkspaces();
+    await selectWorkspace(payload.data.workspaceId);
+    return payload.data;
+  }, [fetchWorkspaces, selectWorkspace]);
+
+  // On login / app load, restore workspaces + whichever one was last active
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    let isMounted = true;
+
+    (async () => {
+      try {
+        const list = await fetchWorkspaces();
+        if (!isMounted) return;
+
+        const storedId = localStorage.getItem(LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID);
+        const target = list.find((w) => w.workspaceId === storedId) || list[0];
+        if (target) {
+          await selectWorkspace(target.workspaceId);
+        }
+      } catch (error) {
+        console.error('Failed to restore workspace state:', error);
+      }
+    })();
+
+    return () => {
+      isMounted = false;
     };
-  } catch (error) {
-    console.error("Login API error:", error);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
-    // Axios network error
-    if (error?.code === "ERR_NETWORK") {
-      throw new Error("No Internet connection");
+  // ---- existing auth methods (unchanged) ----
+
+  const login = async (email, password) => {
+    try {
+      const response = await APICallService.userLogin({ email, password });
+      const payload = response?.data;
+
+      if (!payload?.success) {
+        throw new Error(payload?.message || 'Login failed');
+      }
+
+      const pendingEmail = payload?.data?.email || email;
+      sessionStorage.setItem(LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL, pendingEmail);
+
+      return {
+        email: pendingEmail,
+        message: payload.message || 'OTP sent to your email',
+      };
+    } catch (error) {
+      console.error('Login API error:', error);
+
+      if (error?.code === 'ERR_NETWORK') {
+        throw new Error('No Internet connection', { cause: error });
+      }
+
+      const validationMessage = error?.response?.data?.errors?.[0]?.message;
+      if (validationMessage) {
+        throw new Error(validationMessage, { cause: error });
+      }
+
+      const backendMessage = error?.response?.data?.message || error?.message || '';
+
+      if (
+        backendMessage.includes('ENOTFOUND') ||
+        backendMessage.includes('ECONNREFUSED') ||
+        backendMessage.includes('ETIMEDOUT') ||
+        backendMessage.includes('MongoServerSelectionError')
+      ) {
+        throw new Error('No Internet connection', { cause: error });
+      }
+
+      throw new Error(backendMessage || 'Login failed', { cause: error });
     }
-    
-    // Backend validation errors
-    const validationMessage= error?.response?.data?.errors?.[0]?.message;
+  };
 
-    if (validationMessage) {
-        throw new Error(validationMessage);
-    }
-
-    // Backend MongoDB/DNS/network error
-    const backendMessage =
-      error?.response?.data?.message ||
-      error?.message ||
-      "";
-
-    if (
-      backendMessage.includes("ENOTFOUND") ||
-      backendMessage.includes("ECONNREFUSED") ||
-      backendMessage.includes("ETIMEDOUT") ||
-      backendMessage.includes("MongoServerSelectionError")
-    ) {
-      throw new Error("No Internet connection");
-    }
-
-    throw new Error(backendMessage || "Login failed");
-  }
-};
-
-  // Login step 2: email + OTP -> access token and auth state
   const verifyLoginOtp = async (otp) => {
     const email = sessionStorage.getItem(LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL);
     if (!email) {
@@ -147,21 +204,18 @@ const login = async (email, password) => {
 
     setUser(null);
     setIsAuthenticated(false);
+    setWorkspaces([]);
+    setActiveWorkspace(null);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.USER);
     localStorage.removeItem(LOCAL_STORAGE_KEYS.ACCESS_TOKEN);
+    localStorage.removeItem(LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID);
     sessionStorage.removeItem(LOCAL_STORAGE_KEYS.PENDING_LOGIN_EMAIL);
     sessionStorage.removeItem(LOCAL_STORAGE_KEYS.PENDING_REGISTER_EMAIL);
   };
 
-  // Placeholder functions for other auth flows
   const register = async (name, email, password) => {
     try {
-      const response = await APICallService.register({
-        name,
-        email,
-        password,
-      });
-
+      const response = await APICallService.register({ name, email, password });
       const payload = response?.data;
       if (!payload?.success) {
         throw new Error(payload?.message || 'Registration failed');
@@ -173,18 +227,15 @@ const login = async (email, password) => {
       return payload;
     } catch (error) {
       if (error?.code === 'ERR_NETWORK') {
-        throw new Error('No Internet connection');
+        throw new Error('No Internet connection', { cause: error });
       }
 
       const validationMessage = error?.response?.data?.errors?.[0]?.message;
       if (validationMessage) {
-        throw new Error(validationMessage);
+        throw new Error(validationMessage, { cause: error });
       }
 
-      const backendMessage =
-        error?.response?.data?.message ||
-        error?.message ||
-        '';
+      const backendMessage = error?.response?.data?.message || error?.message || '';
 
       if (
         backendMessage.includes('ENOTFOUND') ||
@@ -192,10 +243,10 @@ const login = async (email, password) => {
         backendMessage.includes('ETIMEDOUT') ||
         backendMessage.includes('MongoServerSelectionError')
       ) {
-        throw new Error('No Internet connection');
+        throw new Error('No Internet connection', { cause: error });
       }
 
-      throw new Error(backendMessage || 'Registration failed');
+      throw new Error(backendMessage || 'Registration failed', { cause: error });
     }
   };
 
@@ -258,14 +309,20 @@ const login = async (email, password) => {
       verifyLoginOtp,
       resendLoginOtp,
       logout,
+      // Workspace state (NEW)
+      workspaces,
+      activeWorkspace,
+      workspacesLoading,
+      fetchWorkspaces,
+      selectWorkspace,
+      createWorkspace,
     }),
-    [isAuthenticated, user]
+    [isAuthenticated, user, workspaces, activeWorkspace, workspacesLoading, fetchWorkspaces, selectWorkspace, createWorkspace]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// --- Custom Hook to simplify Context Consumption and error checking ---
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

@@ -18,7 +18,7 @@ import {
   useTheme,
   Stack,
 } from "@mui/material";
-import { useAuth } from "../context/AuthContext";
+import { useAuth } from "../hooks/useAuth";
 
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";

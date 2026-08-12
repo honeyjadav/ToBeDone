@@ -20,6 +20,16 @@ export const APIs = {
 
   // Logout
   LOGOUT: "/auth/logout",
+
+  // Workspaces
+  WORKSPACES: "/workspaces",
+  WORKSPACE_BY_ID: (workspaceId) => `/workspaces/${workspaceId}`,
+  WORKSPACE_MEMBERS: (workspaceId) => `/workspaces/${workspaceId}/members`,
+  WORKSPACE_MEMBER_ROLE: (workspaceId, memberId) =>
+    `/workspaces/${workspaceId}/members/${memberId}/role`,
+  WORKSPACE_MEMBER_REMOVE: (workspaceId, memberId) =>
+    `/workspaces/${workspaceId}/members/${memberId}`,
+  
 };
 
 export const API_STATUS = {

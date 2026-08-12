@@ -1,8 +1,9 @@
 import jwt from "jsonwebtoken";
+import ms from "ms"; // jsonwebtoken already depends on this package
 import Session from "../models/Session.js";
 
 const ACCESS_TOKEN_EXPIRY = process.env.ACCESS_TOKEN_EXPIRY || "15m";
-const ACCESS_TOKEN_EXPIRY_MS = 15 * 60 * 1000;
+const ACCESS_TOKEN_EXPIRY_MS = ms(ACCESS_TOKEN_EXPIRY); // now derived from the SAME value used to sign the token
 const REFRESH_TOKEN_EXPIRY_DAYS = Number(process.env.REFRESH_TOKEN_EXPIRY_DAYS || 30);
 
 export const generateAccessToken = (userId) =>
@@ -49,9 +50,6 @@ export const setRefreshTokenCookie = (res, token) => {
   res.cookie("refreshToken", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    // Use 'lax' to allow refresh on top-level navigations while
-    // preventing most cross-site CSRF; change to 'none' + secure
-    // only if you intentionally support cross-site cookies.
     sameSite: "lax",
     maxAge: REFRESH_TOKEN_EXPIRY_DAYS * 24 * 60 * 60 * 1000,
   });
