@@ -4,6 +4,7 @@ import testRoutes from "./testRoutes.js";
 import messageRoutes from "./messageRoutes.js";
 import workspaceRoutes from "./workspaceRoutes.js";
 import inviteRoutes from "./inviteRoutes.js";
+import noteRoutes from "./noteRoutes.js";
 
 const router = express.Router();
 
@@ -16,5 +17,6 @@ router.use("/workspaces", workspaceRoutes);
 router.use("/invites", inviteRoutes);
 router.use("/messages", messageRoutes);
 router.use("/test", testRoutes);
+router.use("/notes", noteRoutes);
 
 export default router;
