@@ -146,6 +146,18 @@ class APICallService {
   deleteTask(workspaceId, taskId) {
     return api.delete(APIs.TASK_BY_ID(workspaceId, taskId));
   }
+
+  // ---- Digest / Activity ----
+
+  // period: "24h" | "week"
+  getDigest(workspaceId, period = "24h") {
+    return api.get(`${APIs.DIGEST(workspaceId)}?period=${period}`);
+  }
+
+  getActivityFeed(workspaceId) {
+    return api.get(APIs.ACTIVITY_FEED(workspaceId));
+  }
+
 }
 
 export default new APICallService();

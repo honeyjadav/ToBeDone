@@ -38,6 +38,10 @@ export const APIs = {
   TASK_BY_ID: (workspaceId, taskId) => `/workspaces/${workspaceId}/tasks/${taskId}`,
   INVITES: (workspaceId) => `/invites/${workspaceId}`,
   INVITE_ACCEPT: (token) => `/invites/accept/${token}`,
+
+  // Digest / Activity
+  DIGEST: (workspaceId) => `/workspaces/${workspaceId}/digest`,
+  ACTIVITY_FEED: (workspaceId) => `/workspaces/${workspaceId}/activity`,
 };
 
 export const API_STATUS = {
