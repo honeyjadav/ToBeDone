@@ -1,8 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import { useAuth } from "../hooks/useAuth";
 import ProtectedRoute from "./ProtectedRoute";
 import DashboardLayout from "../layouts/DashboardLayout";
-
+import { useAuth } from '../hooks/useAuth';
 // Existing Pages
 import Landing from "../pages/Landing";
 import Login from "../pages/Login";
@@ -25,8 +24,7 @@ import Webhooks from "../pages/Webhooks";
 import Notifications from "../pages/Notifications";
 
 export default function AppRouter() {
-  const { isAuthenticated } = useAuth();
-
+  const { isAuthenticated, activeWorkspace } = useAuth();
   // Helper component to redirect authenticated users away from auth pages (login, register, etc.)
   // Redirect to workspace so login lands on the workspace selection screen
   const AuthRoute = ({ children }) => {
@@ -113,13 +111,12 @@ export default function AppRouter() {
         <Route index element={<Dashboard />} />
         <Route path="tasks" element={<Tasks />} />
         <Route path="chat" element={<Chat />} />
-        <Route path="notes" element={<StickyNotes />} />
-        <Route path="digest" element={<Digest />} />
+        <Route path="notes" element={<StickyNotes workspaceId={activeWorkspace?.workspaceId} />} />        <Route path="digest" element={<Digest />} />
         <Route path="users" element={<Users />} />
         <Route path="settings" element={<Settings />} />
-         <Route path="profile" element={<Profile />} />
+        <Route path="profile" element={<Profile />} />
         <Route path="webhooks" element={<Webhooks />} />
-        <Route path="notifications" element={<Notifications/>}/>
+        <Route path="notifications" element={<Notifications />} />
       </Route>
 
       {/* Catch all */}

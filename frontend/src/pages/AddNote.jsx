@@ -20,16 +20,23 @@ export default function AddNote({ open, onClose, onSave, note }) {
     const editorRef = useRef(null);
     const isEditMode = Boolean(note);
 
+    const syncEditorContent = (nextContent = '') => {
+        if (!editorRef.current) return;
+        editorRef.current.innerHTML = nextContent || '';
+    };
+
     useEffect(() => {
         if (!open) return;
+
         if (note) {
             setTitle(note.title || '');
             setColor(note.color || NOTE_COLORS[0]);
-            if (editorRef.current) editorRef.current.innerHTML = note.content || '';
+            const nextContent = typeof note.content === 'string' ? note.content : '';
+            requestAnimationFrame(() => syncEditorContent(nextContent));
         } else {
             setTitle('');
             setColor(NOTE_COLORS[0]);
-            if (editorRef.current) editorRef.current.innerHTML = '';
+            requestAnimationFrame(() => syncEditorContent(''));
         }
     }, [open, note]);
 
@@ -41,7 +48,7 @@ export default function AddNote({ open, onClose, onSave, note }) {
     const handleClose = () => {
         setTitle('');
         setColor(NOTE_COLORS[0]);
-        if (editorRef.current) editorRef.current.innerHTML = '';
+        syncEditorContent('');
         onClose();
     };
 

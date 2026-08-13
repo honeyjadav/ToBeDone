@@ -4,12 +4,20 @@ const noteSchema = new mongoose.Schema(
     {
         title: {
             type: String,
-            required: [true, "Note title is required"],
+            default: "",
             trim: true,
         },
         content: {
             type: String,
             default: "",
+        },
+        color: {
+            type: String,
+            default: "#fff9c4",
+        },
+        pinned: {
+            type: Boolean,
+            default: false,
         },
         workspace: {
             type: mongoose.Schema.Types.ObjectId,
