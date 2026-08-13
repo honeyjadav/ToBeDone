@@ -26,32 +26,31 @@ const activityLogSchema = new mongoose.Schema(
         "MESSAGE_SENT",
         "FILE_UPLOADED",
         "MEMBER_JOINED",
+        "MEMBER_REMOVED",
         "MEMBER_ROLE_CHANGED",
+        "MEMBER_INVITED",
+        "GROUP_CREATED",
+        "GROUP_MEMBER_ADDED",
+        "GROUP_MEMBER_REMOVED",
       ],
     },
     targetType: {
       type: String,
-      enum: ["Task", "Message", "FileUpload", "Membership", "Board"],
+      enum: ["Task", "Message", "FileUpload", "Membership", "Board", "Group"],
     },
-    targetId: {
-      type: mongoose.Schema.Types.ObjectId,
-    },
-    metadata: {
-      type: mongoose.Schema.Types.Mixed, // flexible extra info, e.g. { oldStatus, newStatus }
-      default: {},
-    },
-    // used to mark whether this activity has already been included
-    // in a digest batch sent to the user
-    includedInDigest: {
-      type: Boolean,
-      default: false,
-    },
+    targetId: { type: mongoose.Schema.Types.ObjectId },
+    metadata: { type: mongoose.Schema.Types.Mixed, default: {} },
+    includedInDigest: { type: Boolean, default: false },
   },
-  { timestamps: true }
+  { timestamps: true },
 );
 
 activityLogSchema.index({ workspace: 1, createdAt: -1 });
 activityLogSchema.index({ includedInDigest: 1 });
+activityLogSchema.index(
+  { createdAt: 1 },
+  { expireAfterSeconds: 60 * 60 * 24 * 30 },
+);
 
 const ActivityLog = mongoose.model("ActivityLog", activityLogSchema);
 export default ActivityLog;

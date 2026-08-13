@@ -11,6 +11,11 @@ const messageSchema = new mongoose.Schema(
       type: String,
       default: "general", // simple channel name; can later become its own model
     },
+    group: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Group",
+      default: null,
+    },
     sender: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

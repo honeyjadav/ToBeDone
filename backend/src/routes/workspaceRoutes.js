@@ -19,6 +19,7 @@ import {
   requireWorkspaceMember,
 } from "../middleware/workspaceAuth.js";
 import taskRoutes from "./taskRoutes.js";
+import activityLogRoutes from "./activityLogRoutes.js";
 
 const router = express.Router();
 
@@ -40,5 +41,6 @@ router.patch("/:workspaceId/members/:memberId/role", requireWorkspaceRole("Admin
 router.delete("/:workspaceId/members/:memberId", requireWorkspaceRole("Admin"), removeMember);
 
 router.use("/:workspaceId/tasks", taskRoutes);
+router.use("/:workspaceId", activityLogRoutes);
 
 export default router;

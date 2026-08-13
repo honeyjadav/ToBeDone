@@ -1,4 +1,5 @@
 import WorkspaceMember from "../models/WorkspaceMember.js";
+import { logActivity } from "./activityLogController.js";
 
 // @desc    List all members of a workspace
 // @route   GET /api/workspaces/:workspaceId/members
@@ -45,25 +46,18 @@ export const updateMemberRole = async (req, res, next) => {
       throw new Error("Member not found in this workspace");
     }
 
-    // Enforce max 2 Admins per workspace when promoting to Admin.
+    const oldRole = membership.role;
+
     if (role === "Admin" && membership.role !== "Admin") {
-      const adminCount = await WorkspaceMember.countDocuments({
-        workspaceId,
-        role: "Admin",
-      });
+      const adminCount = await WorkspaceMember.countDocuments({ workspaceId, role: "Admin" });
       if (adminCount >= 2) {
         res.status(400);
         throw new Error("This workspace already has the maximum of 2 Admins");
       }
     }
 
-    // Prevent demoting the last remaining Admin — a workspace must always
-    // keep at least one Admin.
     if (membership.role === "Admin" && role !== "Admin") {
-      const adminCount = await WorkspaceMember.countDocuments({
-        workspaceId,
-        role: "Admin",
-      });
+      const adminCount = await WorkspaceMember.countDocuments({ workspaceId, role: "Admin" });
       if (adminCount <= 1) {
         res.status(400);
         throw new Error("Cannot demote the only remaining Admin of this workspace");
@@ -72,6 +66,15 @@ export const updateMemberRole = async (req, res, next) => {
 
     membership.role = role;
     await membership.save();
+
+    logActivity({
+      workspace: workspaceId,
+      user: req.user.id, // the Admin who made the change
+      action: "MEMBER_ROLE_CHANGED",
+      targetType: "Membership",
+      targetId: membership._id,
+      metadata: { targetUser: membership.userId, oldRole, newRole: role },
+    });
 
     res.status(200).json({
       success: true,
@@ -96,13 +99,8 @@ export const removeMember = async (req, res, next) => {
       throw new Error("Member not found in this workspace");
     }
 
-    // A workspace must always keep at least one Admin — block removing
-    // the last one. (They'd need to promote someone else first.)
     if (membership.role === "Admin") {
-      const adminCount = await WorkspaceMember.countDocuments({
-        workspaceId,
-        role: "Admin",
-      });
+      const adminCount = await WorkspaceMember.countDocuments({ workspaceId, role: "Admin" });
       if (adminCount <= 1) {
         res.status(400);
         throw new Error("Cannot remove the only remaining Admin of this workspace");
@@ -110,6 +108,17 @@ export const removeMember = async (req, res, next) => {
     }
 
     await WorkspaceMember.deleteOne({ _id: membership._id });
+
+    // Note: logged BEFORE targetId would be invalid — membership doc is gone,
+    // so we log the userId/role in metadata instead of relying on targetId lookup later.
+    logActivity({
+      workspace: workspaceId,
+      user: req.user.id,
+      action: "MEMBER_REMOVED",
+      targetType: "Membership",
+      targetId: membership._id,
+      metadata: { targetUser: membership.userId, removedRole: membership.role, removed: true },
+    });
 
     res.status(200).json({
       success: true,

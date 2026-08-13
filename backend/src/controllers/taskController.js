@@ -1,4 +1,5 @@
 import Task from "../models/Task.js";
+import { logActivity } from "./activityLogController.js";
 
 // @desc    Get all tasks in a workspace
 // @route   GET /api/workspaces/:workspaceId/tasks
@@ -80,13 +81,21 @@ export const createTask = async (req, res, next) => {
       taskData.priority = priority || "Medium";
       taskData.assignedTo = Array.isArray(assignedTo) ? assignedTo : assignedTo ? [assignedTo] : [];
     } else {
-      // Member: force self-assignment, cap priority at Medium regardless of body input.
       const HIGH_TIER = ["High", "Urgent"];
       taskData.priority = HIGH_TIER.includes(priority) ? "Medium" : priority || "Medium";
       taskData.assignedTo = [userId];
     }
 
     const task = await Task.create(taskData);
+
+    logActivity({
+      workspace: workspaceId,
+      user: userId,
+      action: "TASK_CREATED",
+      targetType: "Task",
+      targetId: task._id,
+      metadata: { title: task.title },
+    });
 
     res.status(201).json({
       success: true,
@@ -107,6 +116,7 @@ export const updateTask = async (req, res, next) => {
   try {
     const task = req.resource;
     const { title, description, status, priority, dueDate } = req.body;
+    const oldStatus = task.status;
 
     if (title !== undefined) task.title = title;
     if (description !== undefined) task.description = description;
@@ -115,6 +125,26 @@ export const updateTask = async (req, res, next) => {
     if (dueDate !== undefined) task.dueDate = dueDate;
 
     await task.save();
+
+    if (status !== undefined && status !== oldStatus) {
+      logActivity({
+        workspace: task.workspace,
+        user: req.user.id,
+        action: "TASK_STATUS_CHANGED",
+        targetType: "Task",
+        targetId: task._id,
+        metadata: { title: task.title, oldStatus, newStatus: status },
+      });
+    } else {
+      logActivity({
+        workspace: task.workspace,
+        user: req.user.id,
+        action: "TASK_UPDATED",
+        targetType: "Task",
+        targetId: task._id,
+        metadata: { title: task.title },
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -147,6 +177,15 @@ export const assignTask = async (req, res, next) => {
 
     task.assignedTo = Array.isArray(assignedTo) ? assignedTo : [assignedTo];
     await task.save();
+
+    logActivity({
+      workspace: workspaceId,
+      user: req.user.id,
+      action: "TASK_ASSIGNED",
+      targetType: "Task",
+      targetId: task._id,
+      metadata: { title: task.title, assignedTo: task.assignedTo },
+    });
 
     res.status(200).json({
       success: true,
@@ -202,6 +241,15 @@ export const addTaskComment = async (req, res, next) => {
 
     task.comments.push({ author: req.user.id, text });
     await task.save();
+
+    logActivity({
+      workspace: workspaceId,
+      user: req.user.id,
+      action: "TASK_COMMENTED",
+      targetType: "Task",
+      targetId: task._id,
+      metadata: { title: task.title },
+    });
 
     res.status(201).json({
       success: true,
