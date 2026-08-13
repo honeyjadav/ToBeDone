@@ -20,7 +20,7 @@ import {
 } from "../middleware/workspaceAuth.js";
 import taskRoutes from "./taskRoutes.js";
 import activityLogRoutes from "./activityLogRoutes.js";
-
+import groupRoutes from "./groupRoutes.js";
 const router = express.Router();
 
 router.use(protect);
@@ -42,5 +42,6 @@ router.delete("/:workspaceId/members/:memberId", requireWorkspaceRole("Admin"), 
 
 router.use("/:workspaceId/tasks", taskRoutes);
 router.use("/:workspaceId", activityLogRoutes);
+router.use("/:workspaceId/groups", groupRoutes);
 
 export default router;

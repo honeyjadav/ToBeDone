@@ -1,6 +1,5 @@
 import Message from "../models/Message.js";
 import Group from "../models/Group.js";
-import { logActivity } from "./activityLogController.js";
 
 // @desc    Get messages — either a plain channel or a group, based on query
 // @route   GET /api/messages/:workspaceId?channel=general  OR  ?groupId=xxx
@@ -39,62 +38,6 @@ export const getMessages = async (req, res, next) => {
       .populate("attachments");
 
     res.json(messages.reverse());
-  } catch (err) {
-    next(err);
-  }
-};
-
-// @desc    Send a message via REST (in addition to the socket path)
-// @route   POST /api/messages/:workspaceId
-// @access  Private (any member; group messages require group membership)
-export const sendMessage = async (req, res, next) => {
-  try {
-    const { workspaceId } = req.params;
-    const { channel = "general", groupId, content, attachments = [] } = req.body;
-    const userId = req.user.id;
-
-    if (!content) {
-      res.status(400);
-      throw new Error("Message content is required");
-    }
-
-    let groupDoc = null;
-    if (groupId) {
-      groupDoc = await Group.findOne({ _id: groupId, workspace: workspaceId });
-      if (!groupDoc) {
-        res.status(404);
-        throw new Error("Group not found");
-      }
-      if (!groupDoc.members.map(String).includes(userId)) {
-        res.status(403);
-        throw new Error("You are not a member of this group");
-      }
-    }
-
-    const message = await Message.create({
-      workspace: workspaceId,
-      channel: groupId ? undefined : channel,
-      group: groupId || null,
-      sender: userId,
-      content,
-      attachments,
-    });
-
-    const populated = await message.populate("sender", "name email");
-
-    logActivity({
-      workspace: workspaceId,
-      user: userId,
-      action: "MESSAGE_SENT",
-      targetType: "Message",
-      targetId: message._id,
-      metadata: {
-        channel: groupId ? null : channel,
-        groupName: groupDoc?.name || null,
-      },
-    });
-
-    res.status(201).json({ success: true, message: "Message sent", data: populated });
   } catch (err) {
     next(err);
   }

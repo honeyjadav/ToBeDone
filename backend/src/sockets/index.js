@@ -1,4 +1,6 @@
 import { Server } from "socket.io";
+import jwt from "jsonwebtoken";
+import User from "../models/User.js";
 import { registerChatHandlers } from "./chatSocket.js";
 
 let io;
@@ -14,19 +16,34 @@ export function initSocket(server) {
     },
   });
 
-  // TEMP AUTH — no login system yet.
-  // Client must send { userId, name } manually until real JWT auth is ready.
-  // TODO: replace with real JWT verification once authController/login is done.
- // backend/src/sockets/index.js
-io.use((socket, next) => {
-  const userId = socket.handshake.auth?.userId || socket.handshake.query?.userId;
-  const name = socket.handshake.auth?.name || socket.handshake.query?.name;
+  // Real JWT auth — client must connect with:
+  // io(url, { auth: { token: "<accessToken>" } })
+  io.use(async (socket, next) => {
+    try {
+      const token = socket.handshake.auth?.token;
 
-  if (!userId) return next(new Error("userId required (temp auth)"));
+      if (!token) {
+        return next(new Error("Authentication required"));
+      }
 
-  socket.user = { id: userId, name: name || "Anonymous" };
-  next();
-});
+      let decoded;
+      try {
+        decoded = jwt.verify(token, process.env.ACCESS_TOKEN_SECRET);
+      } catch (err) {
+        return next(new Error("Invalid or expired token"));
+      }
+
+      const user = await User.findById(decoded.id).select("name email");
+      if (!user) {
+        return next(new Error("User no longer exists"));
+      }
+
+      socket.user = { id: user._id.toString(), name: user.name };
+      next();
+    } catch (err) {
+      next(new Error("Authentication failed"));
+    }
+  });
 
   io.on("connection", (socket) => {
     console.log("Socket connected:", socket.id, socket.user);
@@ -45,21 +62,17 @@ function handleDisconnect(io, socket, workspacePresence) {
   const workspaceId = socket.data.workspaceId;
   if (!workspaceId || !workspacePresence[workspaceId]) return;
 
-  // 1. Remove the user from presence tracking
   delete workspacePresence[workspaceId][socket.id];
 
-  // 2. Clean up the workspace object if it's completely empty
   if (Object.keys(workspacePresence[workspaceId]).length === 0) {
     delete workspacePresence[workspaceId];
   } else {
-    // 3. Broadcast updated list to remaining users
     io.to(workspaceId).emit(
       "presence:update",
       Object.values(workspacePresence[workspaceId])
     );
   }
 
-  // FIXED: Changed 'socket.to' to 'io.to' because the individual socket is dead
   io.to(workspaceId).emit("user:left", { userId: socket.user.id });
 }
 

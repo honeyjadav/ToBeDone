@@ -87,15 +87,6 @@ export const sendInvite = async (req, res, next) => {
       metadata: { email: invite.email, role: invite.role },
     });
 
-    logActivity({
-      workspace: workspaceId,
-      user: requesterId,
-      action: "MEMBER_INVITED",
-      targetType: "Membership",
-      targetId: invite._id,
-      metadata: { email: invite.email, role: invite.role },
-    });
-
     // 7. Create invite link
     const inviteLink =
       `${process.env.CLIENT_URL}/invite/${invite.token}`;

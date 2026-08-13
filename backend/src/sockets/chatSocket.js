@@ -1,4 +1,6 @@
 import Message from "../models/Message.js";
+import Group from "../models/Group.js";
+import { logActivity } from "../controllers/activityLogController.js";
 
 export function registerChatHandlers(io, socket, workspacePresence) {
   // ---- JOIN WORKSPACE ROOM ----
@@ -23,12 +25,35 @@ export function registerChatHandlers(io, socket, workspacePresence) {
     );
   });
 
-  // ---- SEND MESSAGE ----
-  socket.on("message:send", async ({ workspaceId, channel, content, attachments }) => {
+  // ---- JOIN / LEAVE A GROUP ROOM ----
+  socket.on("group:join", async ({ groupId }) => {
+    const group = await Group.findById(groupId);
+    if (!group || !group.members.map(String).includes(socket.user.id)) {
+      return socket.emit("message:error", { message: "Not authorized to join this group" });
+    }
+    socket.join(`group:${groupId}`);
+  });
+
+  socket.on("group:leave", ({ groupId }) => {
+    socket.leave(`group:${groupId}`);
+  });
+
+  // ---- SEND MESSAGE (channel OR group) ----
+  socket.on("message:send", async ({ workspaceId, channel, groupId, content, attachments }) => {
     try {
+      let groupDoc = null;
+
+      if (groupId) {
+        groupDoc = await Group.findById(groupId);
+        if (!groupDoc || !groupDoc.members.map(String).includes(socket.user.id)) {
+          return socket.emit("message:error", { message: "Not authorized to post in this group" });
+        }
+      }
+
       const message = await Message.create({
         workspace: workspaceId,
-        channel: channel || "general",
+        channel: groupId ? undefined : channel || "general",
+        group: groupId || null,
         sender: socket.user.id,
         content,
         attachments: attachments || [],
@@ -36,28 +61,44 @@ export function registerChatHandlers(io, socket, workspacePresence) {
 
       const populated = await message.populate("sender", "name email");
 
-      // broadcast to everyone in the workspace room (including sender, for confirmation)
-      io.to(workspaceId).emit("message:new", populated);
+      if (groupId) {
+        io.to(`group:${groupId}`).emit("message:new", populated);
+      } else {
+        io.to(workspaceId).emit("message:new", populated);
+      }
+
+      logActivity({
+        workspace: workspaceId,
+        user: socket.user.id,
+        action: "MESSAGE_SENT",
+        targetType: "Message",
+        targetId: message._id,
+        metadata: { channel: groupId ? null : channel, groupName: groupDoc?.name || null },
+      });
     } catch (err) {
       socket.emit("message:error", { message: err.message });
     }
   });
 
   // ---- TYPING INDICATOR ----
-  socket.on("typing:start", ({ workspaceId, channel }) => {
-    socket.to(workspaceId).emit("typing:update", {
+  socket.on("typing:start", ({ workspaceId, channel, groupId }) => {
+    const room = groupId ? `group:${groupId}` : workspaceId;
+    socket.to(room).emit("typing:update", {
       userId: socket.user.id,
       name: socket.user.name,
       channel,
+      groupId,
       typing: true,
     });
   });
 
-  socket.on("typing:stop", ({ workspaceId, channel }) => {
-    socket.to(workspaceId).emit("typing:update", {
+  socket.on("typing:stop", ({ workspaceId, channel, groupId }) => {
+    const room = groupId ? `group:${groupId}` : workspaceId;
+    socket.to(room).emit("typing:update", {
       userId: socket.user.id,
       name: socket.user.name,
       channel,
+      groupId,
       typing: false,
     });
   });
