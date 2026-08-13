@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+
 import {
   Box,
   Container,
@@ -17,16 +18,20 @@ import {
   Avatar,
   InputAdornment,
 } from "@mui/material";
+
 import LaptopMacIcon from "@mui/icons-material/LaptopMac";
 import ArrowForwardIosIcon from "@mui/icons-material/ArrowForwardIos";
 import AddIcon from "@mui/icons-material/Add";
 import AddBusinessIcon from "@mui/icons-material/AddBusiness";
 import SearchIcon from "@mui/icons-material/Search";
+import GroupAddIcon from "@mui/icons-material/GroupAdd";
+
 import { useAuth } from "../hooks/useAuth";
+import APICallService from "../services/APICallService";
 
 const VIBRANT_PURPLE = "#7c3aed";
 const SEARCH_THRESHOLD = 6;
-const CARD_HEIGHT = { xs: "auto", md: "640px" }; // fixed card height on desktop = stable illustration
+const CARD_HEIGHT = { xs: "auto", md: "640px" };
 
 const AVATAR_PALETTE = [
   { bg: "#ede9fe", color: "#7c3aed" },
@@ -40,8 +45,11 @@ const AVATAR_PALETTE = [
 
 function colorFor(id = "") {
   let hash = 0;
-  for (let i = 0; i < id.length; i++)
+
+  for (let i = 0; i < id.length; i++) {
     hash = id.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
   return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
 }
 
@@ -109,6 +117,7 @@ const workspaceCardStyles = {
   gap: 2.5,
   width: "100%",
   flexShrink: 0,
+
   "&:hover": {
     borderColor: VIBRANT_PURPLE,
     backgroundColor: "#f8fafc",
@@ -119,8 +128,10 @@ const workspaceCardStyles = {
 
 export default function WorkspaceSelection() {
   const navigate = useNavigate();
+
   const theme = useTheme();
   const isTablet = useMediaQuery(theme.breakpoints.down("md"));
+
   const {
     workspaces,
     workspacesLoading,
@@ -130,51 +141,166 @@ export default function WorkspaceSelection() {
   } = useAuth();
 
   const [error, setError] = useState("");
+
   const [query, setQuery] = useState("");
+
+  // Create workspace
   const [modalOpen, setModalOpen] = useState(false);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
 
+  // Join workspace
+  const [joinModalOpen, setJoinModalOpen] = useState(false);
+  const [inviteToken, setInviteToken] = useState("");
+  const [joining, setJoining] = useState(false);
+  const [joinError, setJoinError] = useState("");
+
   useEffect(() => {
     fetchWorkspaces();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredWorkspaces = useMemo(() => {
-    if (!query.trim()) return workspaces;
+    if (!query.trim()) {
+      return workspaces;
+    }
+
     const q = query.trim().toLowerCase();
-    return workspaces.filter((w) => w.name.toLowerCase().includes(q));
+
+    return workspaces.filter((w) =>
+      w.name.toLowerCase().includes(q),
+    );
   }, [workspaces, query]);
 
   const hasWorkspaces = workspaces.length > 0;
 
+  // --------------------------------------------------
+  // Select Workspace
+  // --------------------------------------------------
+
   const handleSelectWorkspace = async (workspace) => {
     try {
+      setError("");
+
       await selectWorkspace(workspace.workspaceId);
+
       navigate("/dashboard");
     } catch (err) {
-      setError(err.message || "Unable to open that workspace.");
+      setError(
+        err?.message || "Unable to open that workspace.",
+      );
     }
   };
 
+  // --------------------------------------------------
+  // Create Workspace
+  // --------------------------------------------------
+
   const handleCreateWorkspace = async (e) => {
     e.preventDefault();
+
     setCreateError("");
+
     if (!newName.trim()) {
       setCreateError("Workspace name is required.");
       return;
     }
+
     try {
       setCreating(true);
-      await createWorkspace({ name: newName.trim() });
+
+      await createWorkspace({
+        name: newName.trim(),
+      });
+
       setModalOpen(false);
       setNewName("");
+
       navigate("/dashboard");
     } catch (err) {
-      setCreateError(err.message || "Unable to create workspace.");
+      setCreateError(
+        err?.message || "Unable to create workspace.",
+      );
     } finally {
       setCreating(false);
+    }
+  };
+
+  // --------------------------------------------------
+  // Join Workspace
+  // --------------------------------------------------
+
+  const handleJoinWorkspace = async (e) => {
+    e.preventDefault();
+
+    setJoinError("");
+
+    const token = inviteToken.trim();
+
+    if (!token) {
+      setJoinError("Invite token is required.");
+      return;
+    }
+
+    try {
+      setJoining(true);
+
+      const response =
+        await APICallService.acceptInvite(token);
+
+      const payload = response?.data;
+
+      if (!payload?.success) {
+        throw new Error(
+          payload?.message || "Unable to join workspace.",
+        );
+      }
+
+      /*
+       * Backend response:
+       *
+       * {
+       *   success: true,
+       *   message: "Invite accepted successfully",
+       *   data: {
+       *     workspaceId,
+       *     role
+       *   }
+       * }
+       */
+
+      const joinedWorkspaceId =
+        payload?.data?.workspaceId;
+
+      if (!joinedWorkspaceId) {
+        throw new Error(
+          "Workspace joined, but workspace ID was not returned.",
+        );
+      }
+
+      // Refresh workspace list so the newly joined
+      // workspace appears immediately.
+      await fetchWorkspaces();
+
+      // Select the newly joined workspace.
+      await selectWorkspace(joinedWorkspaceId);
+
+      setInviteToken("");
+      setJoinModalOpen(false);
+
+      navigate("/dashboard");
+    } catch (err) {
+      const message =
+        err?.response?.data?.errors?.[0]?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        "Unable to join workspace.";
+
+      setJoinError(message);
+    } finally {
+      setJoining(false);
     }
   };
 
@@ -182,14 +308,15 @@ export default function WorkspaceSelection() {
     <Box
       component="main"
       sx={{
-        height: "100vh", // pin to viewport
-        overflow: "hidden", // page itself never scrolls
+        height: "100vh",
+        overflow: "hidden",
         backgroundColor: "#f8fafc",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
         pt: 3,
         position: "relative",
+
         "&::before": {
           ...backgroundPatternBase,
           width: "300px",
@@ -197,6 +324,7 @@ export default function WorkspaceSelection() {
           top: "10%",
           left: "-100px",
         },
+
         "&::after": {
           ...backgroundPatternBase,
           width: "400px",
@@ -206,6 +334,8 @@ export default function WorkspaceSelection() {
         },
       }}
     >
+      {/* Background shapes */}
+
       <Box
         sx={{
           position: "absolute",
@@ -220,6 +350,7 @@ export default function WorkspaceSelection() {
           zIndex: 0,
         }}
       />
+
       <Box
         sx={{
           position: "absolute",
@@ -234,13 +365,17 @@ export default function WorkspaceSelection() {
           zIndex: 0,
         }}
       />
+
       {backgroundDots}
+
+      {/* Header */}
 
       <Stack
         direction="row"
         sx={{
           ...headerStackStyles,
-          px: (theme) => (theme.breakpoints.down("sm") ? 2 : 4),
+          px: (theme) =>
+            theme.breakpoints.down("sm") ? 2 : 4,
         }}
         zIndex={1}
         position="relative"
@@ -258,20 +393,24 @@ export default function WorkspaceSelection() {
             gap="4px"
             width={28}
           >
-            {[VIBRANT_PURPLE, "#000000", "#000000", VIBRANT_PURPLE].map(
-              (color, i) => (
-                <Box
-                  key={i}
-                  sx={{
-                    width: 10,
-                    height: 10,
-                    borderRadius: "50%",
-                    backgroundColor: color,
-                  }}
-                />
-              ),
-            )}
+            {[
+              VIBRANT_PURPLE,
+              "#000000",
+              "#000000",
+              VIBRANT_PURPLE,
+            ].map((color, i) => (
+              <Box
+                key={i}
+                sx={{
+                  width: 10,
+                  height: 10,
+                  borderRadius: "50%",
+                  backgroundColor: color,
+                }}
+              />
+            ))}
           </Box>
+
           <Typography
             sx={{
               fontSize: "2.1rem",
@@ -285,6 +424,8 @@ export default function WorkspaceSelection() {
         </Stack>
       </Stack>
 
+      {/* Main Card */}
+
       <Container
         maxWidth="lg"
         sx={{
@@ -293,7 +434,7 @@ export default function WorkspaceSelection() {
           display: "flex",
           justifyContent: "center",
           flex: 1,
-          minHeight: 0, // required for the fixed-height Card below to size correctly
+          minHeight: 0,
           pb: 3,
         }}
       >
@@ -306,19 +447,22 @@ export default function WorkspaceSelection() {
             maxHeight: "100%",
             borderRadius: "24px",
             backgroundColor: "#ffffff",
-            boxShadow: "0 20px 60px rgba(0, 0, 0, 0.08)",
-            overflow: "hidden", // card boundary is fixed, never grows
+            boxShadow:
+              "0 20px 60px rgba(0, 0, 0, 0.08)",
+            overflow: "hidden",
             border: "1px solid #e2e8f0",
           }}
         >
           <Grid
             container
-            direction={isTablet ? "column-reverse" : "row"}
+            direction={
+              isTablet ? "column-reverse" : "row"
+            }
             spacing={0}
             sx={{ height: "100%" }}
           >
-            {/* Left Pane — Illustration. Fixed size, never affected by list length */}
-            {/* Left Pane — Illustration. Fixed size, never affected by list length */}
+            {/* LEFT PANE */}
+
             <Grid
               item
               xs={12}
@@ -331,7 +475,8 @@ export default function WorkspaceSelection() {
               p={isTablet ? 4 : 6}
               position="relative"
               sx={{
-                background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+                background:
+                  "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
                 overflow: "hidden",
                 height: isTablet ? "auto" : "100%",
               }}
@@ -339,9 +484,11 @@ export default function WorkspaceSelection() {
               <Stack
                 alignItems="center"
                 gap={4}
-                sx={{ position: "relative", zIndex: 1 }}
+                sx={{
+                  position: "relative",
+                  zIndex: 1,
+                }}
               >
-                {/* Laptop illustration — icon + screen rendered as ONE unit, so they can't drift apart */}
                 <Box
                   sx={{
                     position: "relative",
@@ -360,19 +507,20 @@ export default function WorkspaceSelection() {
                       position: "absolute",
                       top: "50%",
                       left: "50%",
-                      transform: "translate(-50%, -50%) scale(1.3)",
+                      transform:
+                        "translate(-50%, -50%) scale(1.3)",
                     }}
                   />
+
                   <Box
                     sx={{
-                      position: "relative", // relative to the SAME centered wrapper as the icon above
+                      position: "relative",
                       width: "280px",
                       height: "200px",
                       backgroundColor: "#e2e8f0",
                       borderRadius: "20px",
                       border: "2px solid #cbd5e1",
                       opacity: 0.6,
-                      // nudge up slightly to sit inside the laptop's screen area, not its base
                       transform: "translateY(-18px)",
                     }}
                   />
@@ -392,14 +540,19 @@ export default function WorkspaceSelection() {
               </Stack>
             </Grid>
 
-            {/* Right Pane — header/search/CTA fixed, only the list scrolls */}
+            {/* RIGHT PANE */}
+
             <Grid
               item
               xs={12}
               md={7}
               backgroundColor="#ffffff"
-              borderRadius={isTablet ? "0" : "0 24px 24px 0"}
-              borderLeft={isTablet ? "none" : "1px solid #e2e8f0"}
+              borderRadius={
+                isTablet ? "0" : "0 24px 24px 0"
+              }
+              borderLeft={
+                isTablet ? "none" : "1px solid #e2e8f0"
+              }
               sx={{
                 display: "flex",
                 flexDirection: "column",
@@ -408,7 +561,13 @@ export default function WorkspaceSelection() {
                 p: isTablet ? 4 : 5,
               }}
             >
-              <Stack spacing={1} sx={{ flexShrink: 0, mb: 2 }}>
+              <Stack
+                spacing={1}
+                sx={{
+                  flexShrink: 0,
+                  mb: 2,
+                }}
+              >
                 <Typography
                   variant="h5"
                   sx={{
@@ -420,6 +579,7 @@ export default function WorkspaceSelection() {
                 >
                   Select Your Workspace
                 </Typography>
+
                 <Typography
                   sx={{
                     color: "#64748b",
@@ -432,40 +592,65 @@ export default function WorkspaceSelection() {
               </Stack>
 
               {error && (
-                <Alert severity="error" sx={{ flexShrink: 0, mb: 2 }}>
+                <Alert
+                  severity="error"
+                  sx={{
+                    flexShrink: 0,
+                    mb: 2,
+                  }}
+                >
                   {error}
                 </Alert>
               )}
 
-              {hasWorkspaces && workspaces.length > SEARCH_THRESHOLD && (
-                <TextField
-                  size="small"
-                  placeholder="Search workspaces..."
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  sx={{ flexShrink: 0, mb: 2 }}
-                  InputProps={{
-                    startAdornment: (
-                      <InputAdornment position="start">
-                        <SearchIcon sx={{ fontSize: 18, color: "#94a3b8" }} />
-                      </InputAdornment>
-                    ),
-                  }}
-                />
-              )}
+              {hasWorkspaces &&
+                workspaces.length > SEARCH_THRESHOLD && (
+                  <TextField
+                    size="small"
+                    placeholder="Search workspaces..."
+                    value={query}
+                    onChange={(e) =>
+                      setQuery(e.target.value)
+                    }
+                    sx={{
+                      flexShrink: 0,
+                      mb: 2,
+                    }}
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <SearchIcon
+                            sx={{
+                              fontSize: 18,
+                              color: "#94a3b8",
+                            }}
+                          />
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
+                )}
 
-              {/* Scrollable region — everything else in the pane is fixed */}
+              {/* Workspace list */}
+
               <Box
                 sx={{
                   flex: 1,
                   minHeight: 0,
-                  overflowY: hasWorkspaces ? "auto" : "hidden",
+                  overflowY: hasWorkspaces
+                    ? "auto"
+                    : "hidden",
                   pr: 1,
-                  "&::-webkit-scrollbar": { width: "6px" },
+
+                  "&::-webkit-scrollbar": {
+                    width: "6px",
+                  },
+
                   "&::-webkit-scrollbar-thumb": {
                     backgroundColor: "#e2e8f0",
                     borderRadius: "3px",
                   },
+
                   "&::-webkit-scrollbar-track": {
                     backgroundColor: "transparent",
                   },
@@ -477,14 +662,21 @@ export default function WorkspaceSelection() {
                     justifyContent="center"
                     sx={{ height: "100%" }}
                   >
-                    <CircularProgress sx={{ color: VIBRANT_PURPLE }} />
+                    <CircularProgress
+                      sx={{
+                        color: VIBRANT_PURPLE,
+                      }}
+                    />
                   </Stack>
                 ) : !hasWorkspaces ? (
                   <Stack
                     alignItems="center"
                     justifyContent="center"
                     spacing={2}
-                    sx={{ height: "100%", textAlign: "center" }}
+                    sx={{
+                      height: "100%",
+                      textAlign: "center",
+                    }}
                   >
                     <Box
                       sx={{
@@ -498,8 +690,11 @@ export default function WorkspaceSelection() {
                         color: VIBRANT_PURPLE,
                       }}
                     >
-                      <AddBusinessIcon sx={{ fontSize: 32 }} />
+                      <AddBusinessIcon
+                        sx={{ fontSize: 32 }}
+                      />
                     </Box>
+
                     <Stack spacing={0.5}>
                       <Typography
                         sx={{
@@ -510,6 +705,7 @@ export default function WorkspaceSelection() {
                       >
                         No workspaces yet
                       </Typography>
+
                       <Typography
                         sx={{
                           color: "#64748b",
@@ -517,26 +713,35 @@ export default function WorkspaceSelection() {
                           maxWidth: 320,
                         }}
                       >
-                        You're not part of any workspace. Create one to get
-                        started.
+                        You're not part of any workspace.
+                        Create one to get started.
                       </Typography>
                     </Stack>
                   </Stack>
                 ) : filteredWorkspaces.length === 0 ? (
                   <Typography
-                    sx={{ color: "#64748b", textAlign: "center", py: 2 }}
+                    sx={{
+                      color: "#64748b",
+                      textAlign: "center",
+                      py: 2,
+                    }}
                   >
                     No workspaces match "{query}"
                   </Typography>
                 ) : (
                   <Stack spacing={2}>
                     {filteredWorkspaces.map((ws) => {
-                      const { bg, color } = colorFor(ws.workspaceId);
+                      const { bg, color } = colorFor(
+                        ws.workspaceId,
+                      );
+
                       return (
                         <Box
                           key={ws.workspaceId}
                           sx={workspaceCardStyles}
-                          onClick={() => handleSelectWorkspace(ws)}
+                          onClick={() =>
+                            handleSelectWorkspace(ws)
+                          }
                         >
                           <Avatar
                             src={ws.logo || undefined}
@@ -552,11 +757,16 @@ export default function WorkspaceSelection() {
                               flexShrink: 0,
                             }}
                           >
-                            {!ws.logo && getInitials(ws.name)}
+                            {!ws.logo &&
+                              getInitials(ws.name)}
                           </Avatar>
+
                           <Stack
                             spacing={0.5}
-                            sx={{ flexGrow: 1, minWidth: 0 }}
+                            sx={{
+                              flexGrow: 1,
+                              minWidth: 0,
+                            }}
                           >
                             <Typography
                               variant="subtitle1"
@@ -569,13 +779,18 @@ export default function WorkspaceSelection() {
                             >
                               {ws.name}
                             </Typography>
+
                             <Typography
                               variant="body2"
-                              sx={{ color: "#64748b", fontSize: "0.9rem" }}
+                              sx={{
+                                color: "#64748b",
+                                fontSize: "0.9rem",
+                              }}
                             >
                               Role: {ws.role}
                             </Typography>
                           </Stack>
+
                           <ArrowForwardIosIcon
                             sx={{
                               color: "#cbd5e1",
@@ -590,26 +805,70 @@ export default function WorkspaceSelection() {
                 )}
               </Box>
 
-              <Button
-                onClick={() => setModalOpen(true)}
-                startIcon={<AddIcon />}
+              {/* Bottom Actions */}
+
+              <Stack
+                direction="row"
+                spacing={2}
+                justifyContent="center"
+                alignItems="center"
                 sx={{
-                  color: VIBRANT_PURPLE,
-                  fontWeight: 600,
-                  textTransform: "none",
-                  alignSelf: "center",
                   flexShrink: 0,
                   mt: 2,
+                  flexWrap: "wrap",
                 }}
               >
-                Create a new workspace
-              </Button>
+                {/* Create */}
+
+                <Button
+                  onClick={() => {
+                    setCreateError("");
+                    setNewName("");
+                    setModalOpen(true);
+                  }}
+                  startIcon={<AddIcon />}
+                  sx={{
+                    color: VIBRANT_PURPLE,
+                    fontWeight: 600,
+                    textTransform: "none",
+                  }}
+                >
+                  Create a new workspace
+                </Button>
+
+                {/* Join */}
+
+                <Button
+                  onClick={() => {
+                    setJoinError("");
+                    setInviteToken("");
+                    setJoinModalOpen(true);
+                  }}
+                  startIcon={<GroupAddIcon />}
+                  sx={{
+                    color: VIBRANT_PURPLE,
+                    fontWeight: 600,
+                    textTransform: "none",
+                  }}
+                >
+                  Join a workspace
+                </Button>
+              </Stack>
             </Grid>
           </Grid>
         </Card>
       </Container>
 
-      <Modal open={modalOpen} onClose={() => !creating && setModalOpen(false)}>
+      {/* =====================================================
+          CREATE WORKSPACE MODAL
+          ===================================================== */}
+
+      <Modal
+        open={modalOpen}
+        onClose={() =>
+          !creating && setModalOpen(false)
+        }
+      >
         <Box
           component="form"
           onSubmit={handleCreateWorkspace}
@@ -627,13 +886,19 @@ export default function WorkspaceSelection() {
           }}
         >
           <Stack spacing={2.5}>
-            <Typography variant="h6" fontWeight={700}>
+            <Typography
+              variant="h6"
+              fontWeight={700}
+            >
               Create a new workspace
             </Typography>
+
             <TextField
               label="Workspace name"
               value={newName}
-              onChange={(e) => setNewName(e.target.value)}
+              onChange={(e) =>
+                setNewName(e.target.value)
+              }
               fullWidth
               autoFocus
               required
@@ -641,20 +906,127 @@ export default function WorkspaceSelection() {
               error={!!createError}
               helperText={createError}
             />
-            <Stack direction="row" spacing={2} justifyContent="flex-end">
-              <Button onClick={() => setModalOpen(false)} disabled={creating}>
+
+            <Stack
+              direction="row"
+              spacing={2}
+              justifyContent="flex-end"
+            >
+              <Button
+                onClick={() => setModalOpen(false)}
+                disabled={creating}
+              >
                 Cancel
               </Button>
+
               <Button
                 type="submit"
                 variant="contained"
                 disabled={creating}
                 sx={{
                   backgroundColor: VIBRANT_PURPLE,
-                  "&:hover": { backgroundColor: "#6d28d9" },
+
+                  "&:hover": {
+                    backgroundColor: "#6d28d9",
+                  },
                 }}
               >
                 {creating ? "Creating..." : "Create"}
+              </Button>
+            </Stack>
+          </Stack>
+        </Box>
+      </Modal>
+
+      {/* =====================================================
+          JOIN WORKSPACE MODAL
+          ===================================================== */}
+
+      <Modal
+        open={joinModalOpen}
+        onClose={() =>
+          !joining && setJoinModalOpen(false)
+        }
+      >
+        <Box
+          component="form"
+          onSubmit={handleJoinWorkspace}
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 400,
+            maxWidth: "90vw",
+            backgroundColor: "#fff",
+            borderRadius: "16px",
+            p: 4,
+            boxShadow: 24,
+          }}
+        >
+          <Stack spacing={2.5}>
+            <Stack spacing={0.5}>
+              <Typography
+                variant="h6"
+                fontWeight={700}
+              >
+                Join a workspace
+              </Typography>
+
+              <Typography
+                sx={{
+                  color: "#64748b",
+                  fontSize: "0.9rem",
+                }}
+              >
+                Enter the invite token you received by
+                email.
+              </Typography>
+            </Stack>
+
+            <TextField
+              label="Invite token"
+              placeholder="Enter invite token"
+              value={inviteToken}
+              onChange={(e) =>
+                setInviteToken(e.target.value)
+              }
+              fullWidth
+              autoFocus
+              disabled={joining}
+              error={!!joinError}
+              helperText={joinError}
+            />
+
+            <Stack
+              direction="row"
+              spacing={2}
+              justifyContent="flex-end"
+            >
+              <Button
+                onClick={() =>
+                  setJoinModalOpen(false)
+                }
+                disabled={joining}
+              >
+                Cancel
+              </Button>
+
+              <Button
+                type="submit"
+                variant="contained"
+                disabled={
+                  joining || !inviteToken.trim()
+                }
+                sx={{
+                  backgroundColor: VIBRANT_PURPLE,
+
+                  "&:hover": {
+                    backgroundColor: "#6d28d9",
+                  },
+                }}
+              >
+                {joining ? "Joining..." : "Join"}
               </Button>
             </Stack>
           </Stack>

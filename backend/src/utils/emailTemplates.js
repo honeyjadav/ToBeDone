@@ -79,7 +79,7 @@ export const loginSuccessEmailTemplate = ({ name, loginTime }) =>
   });
 
 // Workspace invite email (bonus — same pattern, reused for your invite feature)
-export const inviteEmailTemplate = ({ workspaceName, inviterName, inviteLink, role }) =>
+export const inviteEmailTemplate = ({ workspaceName, inviterName, token, role }) =>
   baseTemplate({
     title: `You're invited to join ${workspaceName}`,
     bodyHtml: `
@@ -88,13 +88,16 @@ export const inviteEmailTemplate = ({ workspaceName, inviterName, inviteLink, ro
         <strong>${inviterName}</strong> has invited you to join
         <strong>${workspaceName}</strong> as a <strong>${role}</strong>.
       </p>
+      <p style="margin:0 0 24px; font-size:15px; color:#374151;">
+        Use the invite token below to accept the invitation in the app.
+      </p>
       <div style="text-align:center; margin:32px 0;">
-        <a href="${inviteLink}" style="display:inline-block; padding:14px 32px; font-size:15px; font-weight:600; color:#ffffff; background-color:#4f46e5; border-radius:6px; text-decoration:none;">
-          Accept Invite
-        </a>
+        <span style="display:inline-block; padding:14px 28px; font-size:18px; font-weight:700; letter-spacing:1px; color:#4f46e5; background-color:#eef2ff; border-radius:8px; word-break:break-all;">
+          ${token}
+        </span>
       </div>
-      <p style="margin:0; font-size:13px; color:#9ca3af; word-break:break-all;">
-        Or copy this link: ${inviteLink}
+      <p style="margin:0; font-size:13px; color:#9ca3af;">
+        Open the app and paste this token where prompted to accept your invitation.
       </p>
     `,
   });
@@ -123,3 +126,5 @@ export const inviteEmailTemplate = ({ workspaceName, inviterName, inviteLink, ro
       </p>
     `,
   });
+
+  

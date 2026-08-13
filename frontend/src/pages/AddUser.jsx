@@ -7,10 +7,8 @@ import {
     MenuItem,
     Select,
     FormControl,
-    FormControlLabel,
     Button,
     IconButton,
-    Switch,
 } from "@mui/material";
 
 import CloseIcon from "@mui/icons-material/Close";
@@ -20,32 +18,120 @@ const ROLES = ["Admin", "Manager", "Member"];
 
 export default function AddUser({ open, onClose, onAdd }) {
     const [email, setEmail] = useState("");
-    const [role, setRole] = useState("Member");
+    const [role, setRole] = useState("");
+    const [emailTouched, setEmailTouched] = useState(false);
+    const [roleTouched, setRoleTouched] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
 
-    // Reset form whenever drawer opens
+    // Reset everything when drawer opens/closes
     useEffect(() => {
         if (open) {
+            // Drawer is opening - reset all state
             setEmail("");
-            setRole("Member");
+            setRole("");
+            setEmailTouched(false);
+            setRoleTouched(false);
+            setSubmitting(false);
         }
     }, [open]);
 
-    // Add User
-    const handleSubmit = () => {
-        if (!email.trim()) return;
+    // Email validation function
+    const getEmailError = () => {
+        if (!emailTouched) return "";
+        
+        if (!email.trim()) {
+            return "Email is required";
+        }
 
-        onAdd({
-            email: email.trim(),
-            role,
-        });
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            return "Please enter a valid email address";
+        }
 
-        onClose();
+        return "";
     };
 
-    // Clear form
+    // Role validation function
+    const getRoleError = () => {
+        if (!roleTouched) return "";
+        if (!role) return "Role is required";
+        return "";
+    };
+
+    const emailError = getEmailError();
+    const roleError = getRoleError();
+
+    // Handle email input change
+    const handleEmailChange = (e) => {
+        setEmail(e.target.value);
+    };
+
+    // Handle email blur
+    const handleEmailBlur = () => {
+        setEmailTouched(true);
+    };
+
+    // Handle role change
+    const handleRoleChange = (e) => {
+        setRole(e.target.value);
+    };
+
+    // Handle role blur
+    const handleRoleBlur = () => {
+        setRoleTouched(true);
+    };
+
+    // Validate before submit
+    const validateBeforeSubmit = () => {
+        if (!email.trim()) {
+            setEmailTouched(true);
+            return false;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            setEmailTouched(true);
+            return false;
+        }
+
+        if (!role) {
+            setRoleTouched(true);
+            return false;
+        }
+
+        return true;
+    };
+
+    // Handle submit
+    const handleSubmit = async () => {
+        if (!validateBeforeSubmit()) {
+            return;
+        }
+
+        setSubmitting(true);
+
+        try {
+            const result = await onAdd({
+                email: email.trim(),
+                role,
+            });
+
+            if (result?.success) {
+                onClose();
+            }
+        } catch (error) {
+            console.error("Error adding user:", error);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
+    // Handle clear
     const handleClear = () => {
         setEmail("");
-        setRole("Member");
+        setRole("");
+        setEmailTouched(false);
+        setRoleTouched(false);
     };
 
     return (
@@ -53,15 +139,17 @@ export default function AddUser({ open, onClose, onAdd }) {
             anchor="right"
             open={open}
             onClose={onClose}
-            PaperProps={{
-                sx: {
-                    width: {
-                        xs: "100%",
-                        sm: "420px",
+            slotProps={{
+                paper: {
+                    sx: {
+                        width: {
+                            xs: "100%",
+                            sm: "420px",
+                        },
+                        display: "flex",
+                        flexDirection: "column",
+                        backgroundColor: "#ffffff",
                     },
-                    display: "flex",
-                    flexDirection: "column",
-                    backgroundColor: "#ffffff",
                 },
             }}
         >
@@ -84,7 +172,6 @@ export default function AddUser({ open, onClose, onAdd }) {
                         gap: 1.25,
                     }}
                 >
-                    {/* Left Arrow */}
                     <IconButton
                         size="small"
                         sx={{
@@ -110,7 +197,6 @@ export default function AddUser({ open, onClose, onAdd }) {
                     </Typography>
                 </Box>
 
-                {/* Close */}
                 <IconButton
                     size="small"
                     onClick={onClose}
@@ -134,7 +220,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                     p: 2.5,
                 }}
             >
-                {/* Email */}
+                {/* Email Field */}
                 <Box sx={{ mb: 2.5 }}>
                     <Typography
                         sx={{
@@ -152,19 +238,26 @@ export default function AddUser({ open, onClose, onAdd }) {
                         type="email"
                         placeholder="Enter user email"
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={handleEmailChange}
+                        onBlur={handleEmailBlur}
                         fullWidth
                         size="small"
+                        error={Boolean(emailError)}
+                        helperText={emailError}
                         sx={{
                             "& .MuiOutlinedInput-root": {
                                 borderRadius: "8px",
                                 fontSize: "13px",
                             },
+                            "& .MuiFormHelperText-root": {
+                                marginLeft: 0,
+                                fontSize: "12px",
+                            },
                         }}
                     />
                 </Box>
 
-                {/* Role */}
+                {/* Role Field */}
                 <Box sx={{ mb: 2.5 }}>
                     <Typography
                         sx={{
@@ -177,14 +270,23 @@ export default function AddUser({ open, onClose, onAdd }) {
                         Role
                     </Typography>
 
-                    <FormControl fullWidth size="small">
+                    <FormControl
+                        fullWidth
+                        size="small"
+                        error={Boolean(roleError)}
+                    >
                         <Select
+                            displayEmpty
                             value={role}
-                            onChange={(e) => setRole(e.target.value)}
+                            onChange={handleRoleChange}
+                            onBlur={handleRoleBlur}
                             sx={{
                                 borderRadius: "8px",
                                 fontSize: "13px",
                             }}
+                            renderValue={(selected) =>
+                                selected || "Select role"
+                            }
                         >
                             {ROLES.map((r) => (
                                 <MenuItem
@@ -198,13 +300,24 @@ export default function AddUser({ open, onClose, onAdd }) {
                                 </MenuItem>
                             ))}
                         </Select>
+
+                        {roleError && (
+                            <Typography
+                                sx={{
+                                    color: "#d32f2f",
+                                    fontSize: "12px",
+                                    mt: 0.5,
+                                    ml: 1.75,
+                                }}
+                            >
+                                {roleError}
+                            </Typography>
+                        )}
                     </FormControl>
                 </Box>
-
-                {/* Status removed */}
             </Box>
 
-            {/* Bottom Actions */}
+            {/* Footer */}
             <Box
                 sx={{
                     height: "70px",
@@ -217,10 +330,9 @@ export default function AddUser({ open, onClose, onAdd }) {
                     flexShrink: 0,
                 }}
             >
-                {/* Add User */}
                 <Button
                     onClick={handleSubmit}
-                    disabled={!email.trim()}
+                    disabled={submitting}
                     variant="contained"
                     sx={{
                         height: "40px",
@@ -243,10 +355,9 @@ export default function AddUser({ open, onClose, onAdd }) {
                         },
                     }}
                 >
-                    Add User
+                    {submitting ? "Sending..." : "Add User"}
                 </Button>
 
-                {/* Clear */}
                 <Button
                     onClick={handleClear}
                     sx={{
@@ -265,8 +376,6 @@ export default function AddUser({ open, onClose, onAdd }) {
                 >
                     Clear
                 </Button>
-
-
             </Box>
         </Drawer>
     );

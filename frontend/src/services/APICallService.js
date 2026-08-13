@@ -47,9 +47,26 @@ class APICallService {
   resetPassword(formData) {
     return api.post(APIs.RESET_PASSWORD, formData);
   }
+
+  // Change password (logged-in user)
+  changePassword(formData) {
+    return api.patch(APIs.CHANGE_PASSWORD, formData);
+  }
+  
   // Logout
   logout() {
     return api.post(APIs.LOGOUT);
+  }
+
+  // Get logged-in user's profile
+  getMe() {
+      return api.get(APIs.GET_ME);
+  }
+
+  updateProfile(name) {
+    return api.patch(APIs.UPDATE_PROFILE, {
+        name,
+    });
   }
 
   // ---- Workspaces ----
@@ -87,6 +104,21 @@ class APICallService {
   // Remove a member (Admin only)
   removeMember(workspaceId, memberId) {
     return api.delete(APIs.WORKSPACE_MEMBER_REMOVE(workspaceId, memberId));
+  }
+
+  // Send a workspace invite
+  sendWorkspaceInvite(workspaceId, inviteData) {
+    return api.post(APIs.INVITES(workspaceId), inviteData);
+  }
+
+  // Get pending invites for a workspace
+  getWorkspaceInvites(workspaceId) {
+    return api.get(APIs.INVITES(workspaceId));
+  }
+
+  // Accept an invite via token
+  acceptInvite(token) {
+    return api.post(APIs.INVITE_ACCEPT(token));
   }
 
   // Get a single workspace by id

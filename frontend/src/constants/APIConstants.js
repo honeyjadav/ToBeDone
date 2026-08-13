@@ -5,6 +5,8 @@ export const APIs = {
   LOGIN: "/auth/login",
   LOGIN_VERIFY_OTP: "/auth/login/verify-otp",
   LOGIN_RESEND_OTP: "/auth/login/resend-otp",
+  GET_ME: "/auth/me",
+  UPDATE_PROFILE: "/auth/me",
 
   // Registration
   REGISTER: "/auth/register",
@@ -14,6 +16,7 @@ export const APIs = {
   // Password
   FORGOT_PASSWORD: "/auth/forgot-password",
   RESET_PASSWORD: "/auth/reset-password",
+  CHANGE_PASSWORD: "/auth/change-password",
 
   // Token
   REFRESH_TOKEN: "/auth/refresh-token",
@@ -33,6 +36,8 @@ export const APIs = {
   // Tasks
   TASKS: (workspaceId) => `/workspaces/${workspaceId}/tasks`,
   TASK_BY_ID: (workspaceId, taskId) => `/workspaces/${workspaceId}/tasks/${taskId}`,
+  INVITES: (workspaceId) => `/invites/${workspaceId}`,
+  INVITE_ACCEPT: (token) => `/invites/accept/${token}`,
 };
 
 export const API_STATUS = {
