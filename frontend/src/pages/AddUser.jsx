@@ -19,84 +19,96 @@ const ROLES = ["Admin", "Manager", "Member"];
 export default function AddUser({ open, onClose, onAdd }) {
     const [email, setEmail] = useState("");
     const [role, setRole] = useState("");
-    const [emailError, setEmailError] = useState("");
-    const [roleError, setRoleError] = useState("");
+    const [emailTouched, setEmailTouched] = useState(false);
+    const [roleTouched, setRoleTouched] = useState(false);
     const [submitting, setSubmitting] = useState(false);
-    const [submitError, setSubmitError] = useState("");
 
+    // Reset everything when drawer opens/closes
     useEffect(() => {
         if (open) {
+            // Drawer is opening - reset all state
             setEmail("");
             setRole("");
-            setEmailError("");
-            setRoleError("");
-            setSubmitError("");
+            setEmailTouched(false);
+            setRoleTouched(false);
+            setSubmitting(false);
         }
     }, [open]);
 
-    const validateEmail = (value) => {
-        if (!value.trim()) {
+    // Email validation function
+    const getEmailError = () => {
+        if (!emailTouched) return "";
+        
+        if (!email.trim()) {
             return "Email is required";
         }
 
-        const emailRegex =
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-        if (!emailRegex.test(value.trim())) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
             return "Please enter a valid email address";
         }
 
         return "";
     };
 
-    const validateForm = () => {
-        const emailValidation = validateEmail(email);
+    // Role validation function
+    const getRoleError = () => {
+        if (!roleTouched) return "";
+        if (!role) return "Role is required";
+        return "";
+    };
 
-        let valid = true;
+    const emailError = getEmailError();
+    const roleError = getRoleError();
 
-        if (emailValidation) {
-            setEmailError(emailValidation);
-            valid = false;
-        } else {
-            setEmailError("");
+    // Handle email input change
+    const handleEmailChange = (e) => {
+        setEmail(e.target.value);
+    };
+
+    // Handle email blur
+    const handleEmailBlur = () => {
+        setEmailTouched(true);
+    };
+
+    // Handle role change
+    const handleRoleChange = (e) => {
+        setRole(e.target.value);
+    };
+
+    // Handle role blur
+    const handleRoleBlur = () => {
+        setRoleTouched(true);
+    };
+
+    // Validate before submit
+    const validateBeforeSubmit = () => {
+        if (!email.trim()) {
+            setEmailTouched(true);
+            return false;
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+            setEmailTouched(true);
+            return false;
         }
 
         if (!role) {
-            setRoleError("Role is required");
-            valid = false;
-        } else {
-            setRoleError("");
+            setRoleTouched(true);
+            return false;
         }
 
-        return valid;
+        return true;
     };
 
-    const handleEmailChange = (e) => {
-        const value = e.target.value;
-
-        setEmail(value);
-        setSubmitError("");
-
-        if (value.trim()) {
-            setEmailError(validateEmail(value));
-        } else {
-            setEmailError("");
-        }
-    };
-
-    const handleRoleChange = (e) => {
-        setRole(e.target.value);
-        setRoleError("");
-        setSubmitError("");
-    };
-
+    // Handle submit
     const handleSubmit = async () => {
-        if (!validateForm()) {
+        if (!validateBeforeSubmit()) {
             return;
         }
 
         setSubmitting(true);
-        setSubmitError("");
 
         try {
             const result = await onAdd({
@@ -106,26 +118,20 @@ export default function AddUser({ open, onClose, onAdd }) {
 
             if (result?.success) {
                 onClose();
-            } else {
-                setSubmitError(
-                    result?.message || "Unable to send invite."
-                );
             }
         } catch (error) {
-            setSubmitError(
-                error?.message || "Unable to send invite."
-            );
+            console.error("Error adding user:", error);
         } finally {
             setSubmitting(false);
         }
     };
 
+    // Handle clear
     const handleClear = () => {
         setEmail("");
         setRole("");
-        setEmailError("");
-        setRoleError("");
-        setSubmitError("");
+        setEmailTouched(false);
+        setRoleTouched(false);
     };
 
     return (
@@ -147,6 +153,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                 },
             }}
         >
+            {/* Header */}
             <Box
                 sx={{
                     height: "70px",
@@ -205,6 +212,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                 </IconButton>
             </Box>
 
+            {/* Content */}
             <Box
                 sx={{
                     flex: 1,
@@ -212,6 +220,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                     p: 2.5,
                 }}
             >
+                {/* Email Field */}
                 <Box sx={{ mb: 2.5 }}>
                     <Typography
                         sx={{
@@ -230,17 +239,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                         placeholder="Enter user email"
                         value={email}
                         onChange={handleEmailChange}
-                        onBlur={() => {
-                            if (email.trim()) {
-                                setEmailError(
-                                    validateEmail(email)
-                                );
-                            } else {
-                                setEmailError(
-                                    "Email is required"
-                                );
-                            }
-                        }}
+                        onBlur={handleEmailBlur}
                         fullWidth
                         size="small"
                         error={Boolean(emailError)}
@@ -258,6 +257,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                     />
                 </Box>
 
+                {/* Role Field */}
                 <Box sx={{ mb: 2.5 }}>
                     <Typography
                         sx={{
@@ -279,6 +279,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                             displayEmpty
                             value={role}
                             onChange={handleRoleChange}
+                            onBlur={handleRoleBlur}
                             sx={{
                                 borderRadius: "8px",
                                 fontSize: "13px",
@@ -314,20 +315,9 @@ export default function AddUser({ open, onClose, onAdd }) {
                         )}
                     </FormControl>
                 </Box>
-
-                {/* {submitError && (
-                    <Typography
-                        sx={{
-                            color: "#dc2626",
-                            fontSize: "0.85rem",
-                            mb: 1,
-                        }}
-                    >
-                        {submitError}
-                    </Typography>
-                )} */}
             </Box>
 
+            {/* Footer */}
             <Box
                 sx={{
                     height: "70px",

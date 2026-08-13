@@ -7,10 +7,15 @@ import {
     Divider,
     InputAdornment,
     IconButton,
+    CircularProgress,
+    Snackbar,
+    Alert,
 } from "@mui/material";
 
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined";
+
+import APICallService from "../../services/APICallService";
 
 export default function ChangePassword() {
     const [showCurrentPassword, setShowCurrentPassword] =
@@ -28,6 +33,18 @@ export default function ChangePassword() {
         confirmPassword: "",
     });
 
+    // =====================================================
+    // SUBMIT STATE
+    // =====================================================
+
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const [snackbar, setSnackbar] = useState({
+        open: false,
+        message: "",
+        severity: "success",
+    });
+
     const handlePasswordChange = (field, value) => {
         setPasswordData((prev) => ({
             ...prev,
@@ -35,10 +52,75 @@ export default function ChangePassword() {
         }));
     };
 
-    const handleChangePassword = () => {
-        console.log("Change password:", passwordData);
+    // =====================================================
+    // NEW PASSWORD VALIDATION (mirrors backend Joi rules)
+    // =====================================================
 
-        // API call will be added here
+    const validateNewPassword = (value) => {
+        if (!value) return "";
+
+        if (value.length < 8) {
+            return "Password must be at least 8 characters long";
+        }
+        if (!/[A-Z]/.test(value)) {
+            return "Password must contain at least one uppercase letter";
+        }
+        if (!/[a-z]/.test(value)) {
+            return "Password must contain at least one lowercase letter";
+        }
+        if (!/[0-9]/.test(value)) {
+            return "Password must contain at least one digit";
+        }
+        if (!/[!@#$%^&*(),.?":{}|<>]/.test(value)) {
+            return "Password must contain at least one special character";
+        }
+
+        return "";
+    };
+
+    const newPasswordError = validateNewPassword(
+        passwordData.newPassword
+    );
+
+    const handleChangePassword = async () => {
+        try {
+            setIsSubmitting(true);
+
+            const response = await APICallService.changePassword({
+                currentPassword: passwordData.currentPassword,
+                newPassword: passwordData.newPassword,
+            });
+
+            setSnackbar({
+                open: true,
+                message:
+                    response?.data?.message ||
+                    "Password changed successfully.",
+                severity: "success",
+            });
+
+            setPasswordData({
+                currentPassword: "",
+                newPassword: "",
+                confirmPassword: "",
+            });
+        } catch (error) {
+            console.error("Change password error:", error);
+
+            const message =
+                error?.response?.data?.errors?.[0]?.message ||
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to change password.";
+
+            setSnackbar({
+                open: true,
+                message,
+                severity: "error",
+            });
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     const passwordsMatch =
@@ -49,7 +131,9 @@ export default function ChangePassword() {
         passwordData.currentPassword &&
         passwordData.newPassword &&
         passwordData.confirmPassword &&
-        passwordsMatch;
+        passwordsMatch &&
+        !newPasswordError &&
+        !isSubmitting;
 
     return (
         <Box
@@ -116,6 +200,7 @@ export default function ChangePassword() {
                         }
                         fullWidth
                         size="small"
+                        disabled={isSubmitting}
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -163,6 +248,16 @@ export default function ChangePassword() {
                         }
                         fullWidth
                         size="small"
+                        disabled={isSubmitting}
+                        error={
+                            passwordData.newPassword.length > 0 &&
+                            Boolean(newPasswordError)
+                        }
+                        helperText={
+                            passwordData.newPassword.length > 0
+                                ? newPasswordError
+                                : ""
+                        }
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -210,6 +305,7 @@ export default function ChangePassword() {
                         }
                         fullWidth
                         size="small"
+                        disabled={isSubmitting}
                         error={
                             passwordData.confirmPassword.length > 0 &&
                             !passwordsMatch
@@ -283,11 +379,66 @@ export default function ChangePassword() {
                                 },
                             }}
                         >
-                            Change Password
+                            {isSubmitting ? (
+                                <CircularProgress
+                                    size={16}
+                                    sx={{ color: "#94a3b8" }}
+                                />
+                            ) : (
+                                "Change Password"
+                            )}
                         </Button>
                     </Box>
                 </Box>
             </Box>
+
+            {/* Snackbar */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={3000}
+                onClose={() =>
+                    setSnackbar((prev) => ({
+                        ...prev,
+                        open: false,
+                    }))
+                }
+                anchorOrigin={{
+                    vertical: "bottom",
+                    horizontal: "center",
+                }}
+            >
+                <Alert
+                    onClose={() =>
+                        setSnackbar((prev) => ({
+                            ...prev,
+                            open: false,
+                        }))
+                    }
+                    severity={snackbar.severity}
+                    variant="filled"
+                    sx={{
+                        width: "100%",
+                        borderRadius: "10px",
+                        fontSize: "13px",
+                        fontWeight: 500,
+                        color: "#ffffff",
+
+                        "& .MuiAlert-icon": {
+                            color: "#ffffff",
+                        },
+
+                        "& .MuiAlert-action": {
+                            color: "#ffffff",
+                        },
+
+                        "& .MuiIconButton-root": {
+                            color: "#ffffff",
+                        },
+                    }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }

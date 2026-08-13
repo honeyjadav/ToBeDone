@@ -59,7 +59,11 @@ const links = [
     path: "/dashboard/webhooks",
     icon: <WebhookOutlinedIcon fontSize="small" />,
   },
-  { label: 'Users', path: '/dashboard/users', icon: <PeopleOutlinedIcon fontSize="small" /> },
+  {
+    label: "Users",
+    path: "/dashboard/users",
+    icon: <PeopleOutlinedIcon fontSize="small" />,
+  },
 ];
 
 export default function Nav({ isOpen, setIsOpen }) {
@@ -70,12 +74,15 @@ export default function Nav({ isOpen, setIsOpen }) {
   const { workspaces, activeWorkspace, selectWorkspace, logout } = useAuth();
 
   const handleSwitchWorkspace = async (workspaceId) => {
-    try {
-      await selectWorkspace(workspaceId);
-    } catch (err) {
-      console.error("Failed to switch workspace:", err);
-    }
-  };
+  try {
+    await selectWorkspace(workspaceId);
+
+    // Reload the CURRENT page
+    window.location.reload();
+  } catch (err) {
+    console.error("Failed to switch workspace:", err);
+  }
+};
 
   const navItemSx = (isActive) => ({
     borderRadius: "7px",
@@ -167,7 +174,7 @@ export default function Nav({ isOpen, setIsOpen }) {
             }))}
             activeWorkspaceId={activeWorkspace?.workspaceId}
             onSwitch={handleSwitchWorkspace}
-            onCreateNew={() => navigate("/dashboard/workspaces/new")}
+            onCreateNew={() => navigate("/workspace")}
             collapsed={!isOpen}
             isOpen={isOpen}
             onToggle={() => setIsOpen(!isOpen)}
@@ -215,33 +222,31 @@ export default function Nav({ isOpen, setIsOpen }) {
               () => navigate("/dashboard/settings"),
               "settings",
             )}
-            {
-  renderItem(
-    {
-      label: "Logout",
-      icon: <LogoutOutlinedIcon fontSize="small" />,
-      danger: true,
-    },
-    false,
-    async () => {
-      try {
-        await logout();
+            {renderItem(
+              {
+                label: "Logout",
+                icon: <LogoutOutlinedIcon fontSize="small" />,
+                danger: true,
+              },
+              false,
+              async () => {
+                try {
+                  await logout();
 
-        navigate("/login", {
-          replace: true,
-        });
-      } catch (error) {
-        console.error("Logout failed:", error);
+                  navigate("/login", {
+                    replace: true,
+                  });
+                } catch (error) {
+                  console.error("Logout failed:", error);
 
-        // Even if API logout fails, remove the user from the dashboard
-        navigate("/login", {
-          replace: true,
-        });
-      }
-    },
-    "logout",
-  )
-}
+                  // Even if API logout fails, remove the user from the dashboard
+                  navigate("/login", {
+                    replace: true,
+                  });
+                }
+              },
+              "logout",
+            )}
           </List>
         </Box>
       </Box>

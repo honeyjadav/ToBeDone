@@ -1,31 +1,44 @@
-import { useRef, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
     Box,
     Typography,
-    Avatar,
     Chip,
     Divider,
     Button,
     TextField,
-    IconButton,
-    Tooltip,
+    CircularProgress,
 } from "@mui/material";
 
-import PhotoCameraOutlinedIcon from "@mui/icons-material/PhotoCameraOutlined";
+import APICallService from "../../services/APICallService";
 
-export default function ProfileDetails({ user }) {
+export default function ProfileDetails({
+    user,
+    workspace,
+    onUserUpdated,
+}) {
     const [isEditing, setIsEditing] = useState(false);
 
     const [profileData, setProfileData] = useState({
-        name: user?.name || "",
+        name: "",
     });
 
-    const [avatarPreview, setAvatarPreview] = useState(
-        user?.avatar || ""
-    );
+    const [isUpdating, setIsUpdating] = useState(false);
+    const [error, setError] = useState("");
 
-    const fileInputRef = useRef(null);
+    // =====================================================
+    // UPDATE FORM WHEN USER CHANGES
+    // =====================================================
+
+    useEffect(() => {
+        setProfileData({
+            name: user?.name || "",
+        });
+    }, [user]);
+
+    // =====================================================
+    // INPUT CHANGE
+    // =====================================================
 
     const handleChange = (field, value) => {
         setProfileData((prev) => ({
@@ -34,57 +47,111 @@ export default function ProfileDetails({ user }) {
         }));
     };
 
-    // ==============================
-    // Avatar Upload
-    // ==============================
+    // =====================================================
+    // UPDATE PROFILE
+    // =====================================================
 
-    const handleAvatarClick = () => {
-        fileInputRef.current?.click();
-    };
+    const handleUpdateProfile = async () => {
+        try {
+            setError("");
 
-    const handleAvatarChange = (event) => {
-        const file = event.target.files?.[0];
+            const updatedName = profileData.name.trim();
 
-        if (!file) return;
+            // Validate name
+            if (!updatedName) {
+                setError("Name is required.");
+                return;
+            }
 
-        // Allow only image files
-        if (!file.type.startsWith("image/")) {
-            alert("Please select an image file.");
-            return;
+            // Prevent unnecessary API call
+            if (updatedName === user?.name) {
+                setIsEditing(false);
+                return;
+            }
+
+            setIsUpdating(true);
+
+            console.log("PATCH PROFILE REQUEST:", {
+                name: updatedName,
+            });
+
+            // =================================================
+            // PATCH /api/auth/me
+            //
+            // Only name is sent
+            // =================================================
+
+            const response =
+                await APICallService.updateProfile(
+                    updatedName
+                );
+
+            console.log(
+                "PATCH PROFILE RESPONSE:",
+                response
+            );
+
+            // =================================================
+            // Get updated user
+            // =================================================
+
+            const updatedUser =
+                response?.data?.data;
+
+            if (!updatedUser) {
+                throw new Error(
+                    "Updated user information not found."
+                );
+            }
+
+            console.log(
+                "UPDATED USER:",
+                updatedUser
+            );
+
+            // =================================================
+            // Update parent Profile component
+            // =================================================
+
+            if (onUserUpdated) {
+                onUserUpdated(updatedUser);
+            }
+
+            // Update local form state
+            setProfileData({
+                name: updatedUser.name || "",
+            });
+
+            // Exit edit mode
+            setIsEditing(false);
+            window.location.reload();
+
+        } catch (error) {
+            console.error(
+                "Failed to update profile:",
+                error
+            );
+
+            setError(
+                error?.response?.data?.message ||
+                error?.message ||
+                "Failed to update profile."
+            );
+        } finally {
+            setIsUpdating(false);
         }
-
-        // Optional size validation: 5 MB
-        if (file.size > 5 * 1024 * 1024) {
-            alert("Image size must be less than 5 MB.");
-            return;
-        }
-
-        // Create preview
-        const imageUrl = URL.createObjectURL(file);
-
-        setAvatarPreview(imageUrl);
-
-        // Later send `file` to backend API
-        console.log("Selected avatar:", file);
     };
 
-    const handleUpdateProfile = () => {
-        console.log("Updated profile:", {
-            name: profileData.name,
-            avatar: avatarPreview,
-        });
-
-        // API call will be added here later
-
-        setIsEditing(false);
-    };
+    // =====================================================
+    // CANCEL
+    // =====================================================
 
     const handleCancel = () => {
         setProfileData({
             name: user?.name || "",
         });
 
-        setAvatarPreview(user?.avatar || "");
+        setError("");
 
         setIsEditing(false);
     };
@@ -95,10 +162,9 @@ export default function ProfileDetails({ user }) {
                 maxWidth: "900px",
             }}
         >
-            {/* ================= PROFILE AVATAR ================= */}
-
-           
-            {/* ================= PERSONAL INFORMATION ================= */}
+            {/* =================================================
+                PERSONAL INFORMATION
+            ================================================= */}
 
             <Box
                 sx={{
@@ -108,7 +174,7 @@ export default function ProfileDetails({ user }) {
                     mb: 2,
                 }}
             >
-                {/* Header */}
+                {/* HEADER */}
 
                 <Box
                     sx={{
@@ -116,7 +182,6 @@ export default function ProfileDetails({ user }) {
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
-                        gap: 2,
                     }}
                 >
                     <Box>
@@ -144,7 +209,10 @@ export default function ProfileDetails({ user }) {
                     {!isEditing && (
                         <Button
                             variant="outlined"
-                            onClick={() => setIsEditing(true)}
+                            onClick={() => {
+                                setError("");
+                                setIsEditing(true);
+                            }}
                             sx={{
                                 height: "36px",
                                 px: 2,
@@ -168,9 +236,32 @@ export default function ProfileDetails({ user }) {
 
                 <Divider />
 
-                {isEditing ? (
-                    /* ================= EDIT PROFILE ================= */
+                {/* =================================================
+                    ERROR
+                ================================================= */}
 
+                {error && (
+                    <Box
+                        sx={{
+                            mx: 2.5,
+                            mt: 2,
+                            p: 1.5,
+                            borderRadius: "6px",
+                            backgroundColor: "#fef2f2",
+                            border: "1px solid #fecaca",
+                            color: "#dc2626",
+                            fontSize: "13px",
+                        }}
+                    >
+                        {error}
+                    </Box>
+                )}
+
+                {/* =================================================
+                    EDIT MODE
+                ================================================= */}
+
+                {isEditing ? (
                     <Box
                         sx={{
                             p: 2.5,
@@ -179,7 +270,7 @@ export default function ProfileDetails({ user }) {
                             gap: 2,
                         }}
                     >
-                        {/* Name */}
+                        {/* NAME */}
 
                         <TextField
                             label="Name"
@@ -192,9 +283,10 @@ export default function ProfileDetails({ user }) {
                             }
                             fullWidth
                             size="small"
+                            disabled={isUpdating}
                         />
 
-                        {/* Email - Cannot Change */}
+                        {/* EMAIL */}
 
                         <TextField
                             label="Email"
@@ -205,33 +297,21 @@ export default function ProfileDetails({ user }) {
                             helperText="Email cannot be changed."
                         />
 
-                        {/* Buttons */}
+                        {/* BUTTONS */}
 
                         <Box
                             sx={{
                                 display: "flex",
                                 justifyContent: "flex-end",
                                 gap: 1,
-                                mt: 1,
                             }}
                         >
                             <Button
                                 variant="outlined"
                                 onClick={handleCancel}
+                                disabled={isUpdating}
                                 sx={{
-                                    height: "38px",
-                                    px: 2.5,
                                     textTransform: "none",
-                                    fontSize: "13px",
-                                    fontWeight: 600,
-                                    color: "#475569",
-                                    borderColor: "#cbd5e1",
-                                    borderRadius: "8px",
-
-                                    "&:hover": {
-                                        borderColor: "#94a3b8",
-                                        backgroundColor: "#f8fafc",
-                                    },
                                 }}
                             >
                                 Cancel
@@ -241,35 +321,36 @@ export default function ProfileDetails({ user }) {
                                 variant="contained"
                                 onClick={handleUpdateProfile}
                                 disabled={
+                                    isUpdating ||
                                     !profileData.name.trim()
                                 }
                                 sx={{
-                                    height: "38px",
-                                    px: 2.5,
-                                    textTransform: "none",
-                                    fontSize: "13px",
-                                    fontWeight: 600,
                                     backgroundColor: "#7c3aed",
-                                    borderRadius: "8px",
-                                    boxShadow: "none",
+                                    textTransform: "none",
 
                                     "&:hover": {
-                                        backgroundColor: "#6d28d9",
-                                        boxShadow: "none",
-                                    },
-
-                                    "&:disabled": {
-                                        backgroundColor: "#e2e8f0",
-                                        color: "#94a3b8",
+                                        backgroundColor:
+                                            "#6d28d9",
                                     },
                                 }}
                             >
-                                Save Changes
+                                {isUpdating ? (
+                                    <CircularProgress
+                                        size={18}
+                                        sx={{
+                                            color: "#ffffff",
+                                        }}
+                                    />
+                                ) : (
+                                    "Save Changes"
+                                )}
                             </Button>
                         </Box>
                     </Box>
                 ) : (
-                    /* ================= VIEW PROFILE ================= */
+                    /* =================================================
+                       VIEW MODE
+                    ================================================= */
 
                     <Box
                         sx={{
@@ -280,113 +361,30 @@ export default function ProfileDetails({ user }) {
                             },
                         }}
                     >
-                        {/* Name */}
+                        <ProfileField
+                            label="Name"
+                            value={user?.name || "-"}
+                            borderRight
+                        />
+
+                        <ProfileField
+                            label="Email"
+                            value={user?.email || "-"}
+                        />
+
+                        <ProfileField
+                            label="Authentication"
+                            value={
+                                user?.authProvider || "-"
+                            }
+                            borderRight
+                        />
 
                         <Box
                             sx={{
                                 p: 2.5,
-                                borderRight: {
-                                    xs: "none",
-                                    sm: "1px solid #e2e8f0",
-                                },
-                                borderBottom:
-                                    "1px solid #e2e8f0",
                             }}
                         >
-                            <Typography
-                                sx={{
-                                    fontSize: "11px",
-                                    fontWeight: 600,
-                                    color: "#94a3b8",
-                                    textTransform: "uppercase",
-                                    mb: 0.75,
-                                }}
-                            >
-                                Name
-                            </Typography>
-
-                            <Typography
-                                sx={{
-                                    fontSize: "13px",
-                                    color: "#334155",
-                                    fontWeight: 500,
-                                }}
-                            >
-                                {user?.name || "-"}
-                            </Typography>
-                        </Box>
-
-                        {/* Email */}
-
-                        <Box
-                            sx={{
-                                p: 2.5,
-                                borderBottom:
-                                    "1px solid #e2e8f0",
-                            }}
-                        >
-                            <Typography
-                                sx={{
-                                    fontSize: "11px",
-                                    fontWeight: 600,
-                                    color: "#94a3b8",
-                                    textTransform: "uppercase",
-                                    mb: 0.75,
-                                }}
-                            >
-                                Email
-                            </Typography>
-
-                            <Typography
-                                sx={{
-                                    fontSize: "13px",
-                                    color: "#334155",
-                                    fontWeight: 500,
-                                    wordBreak: "break-word",
-                                }}
-                            >
-                                {user?.email || "-"}
-                            </Typography>
-                        </Box>
-
-                        {/* Authentication */}
-
-                        <Box
-                            sx={{
-                                p: 2.5,
-                                borderRight: {
-                                    xs: "none",
-                                    sm: "1px solid #e2e8f0",
-                                },
-                            }}
-                        >
-                            <Typography
-                                sx={{
-                                    fontSize: "11px",
-                                    fontWeight: 600,
-                                    color: "#94a3b8",
-                                    textTransform: "uppercase",
-                                    mb: 0.75,
-                                }}
-                            >
-                                Authentication
-                            </Typography>
-
-                            <Typography
-                                sx={{
-                                    fontSize: "13px",
-                                    color: "#334155",
-                                    fontWeight: 500,
-                                    textTransform: "capitalize",
-                                }}
-                            >
-                                {user?.authProvider || "-"}
-                            </Typography>
-                        </Box>
-
-                        {/* Email Status */}
-
-                        <Box sx={{ p: 2.5 }}>
                             <Typography
                                 sx={{
                                     fontSize: "11px",
@@ -402,9 +400,10 @@ export default function ProfileDetails({ user }) {
                             <Typography
                                 sx={{
                                     fontSize: "13px",
-                                    color: user?.isEmailVerified
-                                        ? "#16a34a"
-                                        : "#dc2626",
+                                    color:
+                                        user?.isEmailVerified
+                                            ? "#16a34a"
+                                            : "#dc2626",
                                     fontWeight: 600,
                                 }}
                             >
@@ -417,7 +416,9 @@ export default function ProfileDetails({ user }) {
                 )}
             </Box>
 
-            {/* ================= WORKSPACE INFORMATION ================= */}
+            {/* =================================================
+                WORKSPACE INFORMATION
+            ================================================= */}
 
             <Box
                 sx={{
@@ -427,7 +428,11 @@ export default function ProfileDetails({ user }) {
                     mb: 2,
                 }}
             >
-                <Box sx={{ p: 2.5 }}>
+                <Box
+                    sx={{
+                        p: 2.5,
+                    }}
+                >
                     <Typography
                         sx={{
                             fontSize: "15px",
@@ -460,7 +465,7 @@ export default function ProfileDetails({ user }) {
                         },
                     }}
                 >
-                    {/* Workspace */}
+                    {/* WORKSPACE */}
 
                     <Box
                         sx={{
@@ -490,13 +495,17 @@ export default function ProfileDetails({ user }) {
                                 fontWeight: 500,
                             }}
                         >
-                            {user?.workspace || "-"}
+                            {workspace?.name || "-"}
                         </Typography>
                     </Box>
 
-                    {/* Role */}
+                    {/* ROLE */}
 
-                    <Box sx={{ p: 2.5 }}>
+                    <Box
+                        sx={{
+                            p: 2.5,
+                        }}
+                    >
                         <Typography
                             sx={{
                                 fontSize: "11px",
@@ -510,7 +519,9 @@ export default function ProfileDetails({ user }) {
                         </Typography>
 
                         <Chip
-                            label={user?.role || "Member"}
+                            label={
+                                workspace?.role || "Member"
+                            }
                             size="small"
                             sx={{
                                 height: "22px",
@@ -524,7 +535,9 @@ export default function ProfileDetails({ user }) {
                 </Box>
             </Box>
 
-            {/* ================= ACCOUNT INFORMATION ================= */}
+            {/* =================================================
+                ACCOUNT INFORMATION
+            ================================================= */}
 
             <Box
                 sx={{
@@ -533,7 +546,11 @@ export default function ProfileDetails({ user }) {
                     borderRadius: "8px",
                 }}
             >
-                <Box sx={{ p: 2.5 }}>
+                <Box
+                    sx={{
+                        p: 2.5,
+                    }}
+                >
                     <Typography
                         sx={{
                             fontSize: "15px",
@@ -556,15 +573,21 @@ export default function ProfileDetails({ user }) {
                         },
                     }}
                 >
-                    {/* Last Login */}
+                    <ProfileField
+                        label="Created"
+                        value={
+                            user?.createdAt
+                                ? new Date(
+                                      user.createdAt
+                                  ).toLocaleDateString()
+                                : "-"
+                        }
+                        borderRight
+                    />
 
                     <Box
                         sx={{
                             p: 2.5,
-                            borderRight: {
-                                xs: "none",
-                                sm: "1px solid #e2e8f0",
-                            },
                         }}
                     >
                         <Typography
@@ -576,45 +599,75 @@ export default function ProfileDetails({ user }) {
                                 mb: 0.75,
                             }}
                         >
-                            Last Login
+                            Account Status
                         </Typography>
 
                         <Typography
                             sx={{
                                 fontSize: "13px",
-                                color: "#334155",
-                            }}
-                        >
-                            {user?.lastLogin || "-"}
-                        </Typography>
-                    </Box>
-
-                    {/* Created */}
-
-                    <Box sx={{ p: 2.5 }}>
-                        <Typography
-                            sx={{
-                                fontSize: "11px",
+                                color: user?.isActive
+                                    ? "#16a34a"
+                                    : "#dc2626",
                                 fontWeight: 600,
-                                color: "#94a3b8",
-                                textTransform: "uppercase",
-                                mb: 0.75,
                             }}
                         >
-                            Created
-                        </Typography>
-
-                        <Typography
-                            sx={{
-                                fontSize: "13px",
-                                color: "#334155",
-                            }}
-                        >
-                            {user?.createdAt || "-"}
+                            {user?.isActive
+                                ? "Active"
+                                : "Inactive"}
                         </Typography>
                     </Box>
                 </Box>
             </Box>
+        </Box>
+    );
+}
+
+// =====================================================
+// REUSABLE PROFILE FIELD
+// =====================================================
+
+function ProfileField({
+    label,
+    value,
+    borderRight = false,
+}) {
+    return (
+        <Box
+            sx={{
+                p: 2.5,
+
+                borderRight: {
+                    xs: "none",
+                    sm: borderRight
+                        ? "1px solid #e2e8f0"
+                        : "none",
+                },
+
+                borderBottom: "1px solid #e2e8f0",
+            }}
+        >
+            <Typography
+                sx={{
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    color: "#94a3b8",
+                    textTransform: "uppercase",
+                    mb: 0.75,
+                }}
+            >
+                {label}
+            </Typography>
+
+            <Typography
+                sx={{
+                    fontSize: "13px",
+                    color: "#334155",
+                    fontWeight: 500,
+                    wordBreak: "break-word",
+                }}
+            >
+                {value}
+            </Typography>
         </Box>
     );
 }
