@@ -29,7 +29,10 @@ export const APIs = {
     `/workspaces/${workspaceId}/members/${memberId}/role`,
   WORKSPACE_MEMBER_REMOVE: (workspaceId, memberId) =>
     `/workspaces/${workspaceId}/members/${memberId}`,
-  
+
+  // Tasks
+  TASKS: (workspaceId) => `/workspaces/${workspaceId}/tasks`,
+  TASK_BY_ID: (workspaceId, taskId) => `/workspaces/${workspaceId}/tasks/${taskId}`,
 };
 
 export const API_STATUS = {

@@ -1,24 +1,18 @@
 import { useState, useEffect } from 'react';
 import {
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
     TextField,
     MenuItem,
     Select,
-    InputLabel,
     FormControl,
-    Button,
-    IconButton,
     Box,
+    Typography,
 } from '@mui/material';
-import CloseIcon from '@mui/icons-material/Close';
 import BugReportIcon from '@mui/icons-material/BugReport';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import ScienceIcon from '@mui/icons-material/Science';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
+import Drawer from '../components/Drawer';
 
 const WORK_ITEM_TYPES = ['Bug', 'Feature', 'Task', 'Test Case', 'User Story'];
 const TYPE_CONFIG = {
@@ -32,125 +26,185 @@ const STATES = ['Backlog', 'In Progress', 'In Review', 'Done'];
 const PRIORITIES = ['High', 'Medium', 'Low'];
 const ASSIGNEES = ['JD', 'AK', 'RS'];
 
-export default function AddTask({ open, onClose, onAdd, defaultColumn }) {
+// Shared label element so every field's title is styled identically
+const FieldLabel = ({ children }) => (
+    <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#334155', mb: 0.75 }}>
+        {children}
+    </Typography>
+);
+
+export default function AddTask({ open, onClose, onAdd, onSave, task, defaultColumn, members = [] }) {
+    const isEditMode = Boolean(task);
     const [title, setTitle] = useState('');
     const [type, setType] = useState('Task');
     const [column, setColumn] = useState(defaultColumn || STATES[0]);
     const [priority, setPriority] = useState('Medium');
-    const [assignee, setAssignee] = useState('JD');
+    const [assigneeId, setAssigneeId] = useState(members[0]?.userId || '');
     const [area, setArea] = useState('ToBeDone');
     const [description, setDescription] = useState('');
 
     useEffect(() => {
-        if (open) {
-            setTitle('');
-            setType('Task');
-            setColumn(defaultColumn || STATES[0]);
-            setPriority('Medium');
-            setAssignee('JD');
-            setArea('ToBeDone');
-            setDescription('');
+        if (!open) return;
+
+        if (task) {
+            setTitle(task.title || '');
+            setType(task.type || 'Task');
+            setColumn(task.column || task.status || defaultColumn || STATES[0]);
+            setPriority(task.priority || 'Medium');
+            setAssigneeId(task.assigneeId || members[0]?.userId || '');
+            setArea(task.area || 'ToBeDone');
+            setDescription(task.description || '');
+            return;
         }
-    }, [open, defaultColumn]);
+
+        setTitle('');
+        setType('Task');
+        setColumn(defaultColumn || STATES[0]);
+        setPriority('Medium');
+        setAssigneeId(members[0]?.userId || '');
+        setArea('ToBeDone');
+        setDescription('');
+    }, [open, task, defaultColumn, members]);
 
     const handleSubmit = () => {
         if (!title.trim()) return;
-        onAdd({ title: title.trim(), type, column, priority, assignee, area, description, tags: [] });
+
+        const payload = {
+            id: task?.id,
+            title: title.trim(),
+            type,
+            column,
+            priority,
+            assigneeId,
+            assignee: members.find((member) => (member.userId || member._id) === assigneeId)?.name || '',
+            area,
+            description,
+            tags: task?.tags || [],
+        };
+
+        if (isEditMode && onSave) {
+            onSave(payload);
+        } else if (onAdd) {
+            onAdd(payload);
+        }
+
         onClose();
     };
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="xs">
-            <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '16px', fontWeight: 700, color: '#1e293b' }}>
-                New Work Item
-                <IconButton size="small" onClick={onClose}>
-                    <CloseIcon sx={{ fontSize: 18 }} />
-                </IconButton>
-            </DialogTitle>
-
-            <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
-                <FormControl fullWidth size="small">
-                    <InputLabel>Work Item Type</InputLabel>
-                    <Select label="Work Item Type" value={type} onChange={(e) => setType(e.target.value)}>
-                        {WORK_ITEM_TYPES.map((t) => {
-                            const Icon = TYPE_CONFIG[t].icon;
-                            return (
-                                <MenuItem key={t} value={t}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <Icon sx={{ fontSize: 16, color: TYPE_CONFIG[t].color }} />
-                                        {t}
-                                    </Box>
-                                </MenuItem>
-                            );
-                        })}
-                    </Select>
-                </FormControl>
-
-                <TextField
-                    autoFocus
-                    label="Title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
-                    fullWidth
-                    size="small"
-                />
-
-                <Box sx={{ display: 'flex', gap: 2 }}>
+        <Drawer
+            open={open}
+            onClose={onClose}
+            title={isEditMode ? 'Edit Work Item' : 'New Work Item'}
+            width={460}
+            primaryAction={{
+                label: isEditMode ? 'Update' : 'Add',
+                onClick: handleSubmit,
+                disabled: !title.trim(),
+            }}
+            secondaryAction={{
+                label: 'Cancel',
+                onClick: onClose,
+            }}
+        >
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
+                <Box>
+                    <FieldLabel>Work Item Type</FieldLabel>
                     <FormControl fullWidth size="small">
-                        <InputLabel>State</InputLabel>
-                        <Select label="State" value={column} onChange={(e) => setColumn(e.target.value)}>
-                            {STATES.map((s) => (
-                                <MenuItem key={s} value={s}>{s}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-
-                    <FormControl fullWidth size="small">
-                        <InputLabel>Priority</InputLabel>
-                        <Select label="Priority" value={priority} onChange={(e) => setPriority(e.target.value)}>
-                            {PRIORITIES.map((p) => (
-                                <MenuItem key={p} value={p}>{p}</MenuItem>
-                            ))}
+                        <Select value={type} onChange={(e) => setType(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                            {WORK_ITEM_TYPES.map((t) => {
+                                const Icon = TYPE_CONFIG[t].icon;
+                                return (
+                                    <MenuItem key={t} value={t}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <Icon sx={{ fontSize: 16, color: TYPE_CONFIG[t].color }} />
+                                            {t}
+                                        </Box>
+                                    </MenuItem>
+                                );
+                            })}
                         </Select>
                     </FormControl>
                 </Box>
 
-                <Box sx={{ display: 'flex', gap: 2 }}>
-                    <FormControl fullWidth size="small">
-                        <InputLabel>Assigned To</InputLabel>
-                        <Select label="Assigned To" value={assignee} onChange={(e) => setAssignee(e.target.value)}>
-                            {ASSIGNEES.map((a) => (
-                                <MenuItem key={a} value={a}>{a}</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-
-                    <TextField label="Area" value={area} onChange={(e) => setArea(e.target.value)} fullWidth size="small" />
+                <Box>
+                    <FieldLabel>Title</FieldLabel>
+                    <TextField
+                        autoFocus
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
+                        fullWidth
+                        size="small"
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                    />
                 </Box>
 
-                <TextField
-                    label="Description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    fullWidth
-                    multiline
-                    minRows={3}
-                    size="small"
-                />
-            </DialogContent>
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                        <FieldLabel>State</FieldLabel>
+                        <FormControl fullWidth size="small">
+                            <Select value={column} onChange={(e) => setColumn(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                                {STATES.map((s) => (
+                                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Box>
 
-            <DialogActions sx={{ px: 3, pb: 2.5 }}>
-                <Button onClick={onClose} sx={{ textTransform: 'none', color: '#64748b' }}>Cancel</Button>
-                <Button
-                    onClick={handleSubmit}
-                    disabled={!title.trim()}
-                    variant="contained"
-                    sx={{ textTransform: 'none', backgroundColor: '#7c3aed', '&:hover': { backgroundColor: '#6d28d9' } }}
-                >
-                    Add
-                </Button>
-            </DialogActions>
-        </Dialog>
+                    <Box sx={{ flex: 1 }}>
+                        <FieldLabel>Priority</FieldLabel>
+                        <FormControl fullWidth size="small">
+                            <Select value={priority} onChange={(e) => setPriority(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                                {PRIORITIES.map((p) => (
+                                    <MenuItem key={p} value={p}>{p}</MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                        <FieldLabel>Assigned To</FieldLabel>
+                        <FormControl fullWidth size="small">
+                            <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                                {members.length ? members.map((member) => (
+                                    <MenuItem key={member.userId || member._id} value={member.userId || member._id}>
+                                        {member.name}
+                                    </MenuItem>
+                                )) : (
+                                    <MenuItem value="">No members available</MenuItem>
+                                )}
+                            </Select>
+                        </FormControl>
+                    </Box>
+
+                    <Box sx={{ flex: 1 }}>
+                        <FieldLabel>Area</FieldLabel>
+                        <TextField
+                            value={area}
+                            onChange={(e) => setArea(e.target.value)}
+                            fullWidth
+                            size="small"
+                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                        />
+                    </Box>
+                </Box>
+
+                <Box>
+                    <FieldLabel>Description</FieldLabel>
+                    <TextField
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        fullWidth
+                        multiline
+                        minRows={3}
+                        size="small"
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                    />
+                </Box>
+            </Box>
+        </Drawer>
     );
 }

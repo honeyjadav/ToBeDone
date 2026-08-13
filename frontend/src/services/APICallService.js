@@ -44,7 +44,7 @@ class APICallService {
   }
 
   //Reset Paaword
-  resetPassword(formData){
+  resetPassword(formData) {
     return api.post(APIs.RESET_PASSWORD, formData);
   }
   // Logout
@@ -52,7 +52,7 @@ class APICallService {
     return api.post(APIs.LOGOUT);
   }
 
-   // ---- Workspaces ----
+  // ---- Workspaces ----
 
   // Create a workspace (creator becomes Admin)
   createWorkspace(formData) {
@@ -89,9 +89,30 @@ class APICallService {
     return api.delete(APIs.WORKSPACE_MEMBER_REMOVE(workspaceId, memberId));
   }
 
-   // Get a single workspace by id
+  // Get a single workspace by id
   getWorkspaceById(workspaceId) {
     return api.get(APIs.WORKSPACE_BY_ID(workspaceId));
+  }
+
+  // ---- Tasks ----
+  getTasks(workspaceId) {
+    return api.get(APIs.TASKS(workspaceId));
+  }
+
+  getTaskById(workspaceId, taskId) {
+    return api.get(APIs.TASK_BY_ID(workspaceId, taskId));
+  }
+
+  createTask(workspaceId, formData) {
+    return api.post(APIs.TASKS(workspaceId), formData);
+  }
+
+  updateTask(workspaceId, taskId, formData) {
+    return api.patch(APIs.TASK_BY_ID(workspaceId, taskId), formData);
+  }
+
+  deleteTask(workspaceId, taskId) {
+    return api.delete(APIs.TASK_BY_ID(workspaceId, taskId));
   }
 }
 
