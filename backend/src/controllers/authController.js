@@ -566,3 +566,123 @@ export const resetPassword = async (req, res, next) => {
     next(error);
   }
 };
+
+export const getMe = async (req, res, next) => {
+    try {
+        const user = await User.findById(req.user.id).select(
+            "-password"
+        );
+
+        if (!user) {
+            res.status(404);
+            throw new Error("User not found");
+        }
+
+        res.status(200).json({
+            success: true,
+            data: user,
+        });
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const updateProfile = async (req, res) => {
+    try {
+        const { name } = req.body;
+
+        if (!name || !name.trim()) {
+            return res.status(400).json({
+                success: false,
+                message: "Name is required",
+            });
+        }
+
+        const user = await User.findByIdAndUpdate(
+            req.user.id,
+            {
+                $set: {
+                    name: name.trim(),
+                },
+            },
+            {
+                new: true,
+                runValidators: true,
+            }
+        ).select("-password");
+
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully",
+            data: user,
+        });
+
+    } catch (error) {
+        console.error(
+            "Update profile error:",
+            error
+        );
+
+        return res.status(500).json({
+            success: false,
+            message: "Failed to update profile",
+        });
+    }
+};
+
+// @desc    Change password for a logged-in user (requires current password)
+// @route   PATCH /api/auth/change-password
+// @access  Private
+export const changePassword = async (req, res, next) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    const user = await User.findById(req.user.id).select("+password");
+    if (!user) {
+      res.status(404);
+      throw new Error("User not found");
+    }
+
+    if (user.authProvider !== "local") {
+      res.status(400);
+      throw new Error(
+        `This account uses ${user.authProvider} sign-in and does not have a password.`
+      );
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      res.status(401);
+      throw new Error("Current password is incorrect");
+    }
+
+    if (currentPassword === newPassword) {
+      res.status(400);
+      throw new Error("New password must be different from the current password");
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    // Revoke every other session, keep the current device logged in
+    const currentToken = req.cookies?.refreshToken;
+    await Session.deleteMany({
+      userId: user._id,
+      ...(currentToken ? { refreshToken: { $ne: currentToken } } : {}),
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
+  } catch (error) {
+    next(error);
+  }
+};

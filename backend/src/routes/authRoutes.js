@@ -12,7 +12,10 @@ import {
   getMySessions,
   revokeSession,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getMe,
+  updateProfile,
+  changePassword
 } from "../controllers/authController.js";
 import validate from "../middleware/validate.js";
 import {
@@ -20,6 +23,7 @@ import {
   verifyOtpSchema,
   resendOtpSchema,
   loginSchema,
+  changePasswordSchema
 } from "../validators/authValidator.js";
 import { protect } from "../middleware/auth.js";
 
@@ -38,5 +42,8 @@ router.get("/sessions", protect, getMySessions);
 router.delete("/sessions/:sessionId", protect, revokeSession);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password",  resetPassword);
+router.get("/me", protect, getMe);
+router.patch("/me", protect, updateProfile);
+router.patch("/change-password", protect, validate(changePasswordSchema), changePassword);
 
 export default router;

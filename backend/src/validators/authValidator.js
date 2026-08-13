@@ -47,3 +47,21 @@ export const loginSchema = Joi.object({
     "string.empty": "Password is required",
   }),
 });
+
+export const changePasswordSchema = Joi.object({
+  currentPassword: Joi.string().required().messages({
+    "string.empty": "Current password is required",
+  }),
+  newPassword: Joi.string()
+    .min(8)
+    .pattern(/[A-Z]/, "uppercase letter")
+    .pattern(/[a-z]/, "lowercase letter")
+    .pattern(/[0-9]/, "digit")
+    .pattern(/[!@#$%^&*(),.?":{}|<>]/, "special character")
+    .required()
+    .messages({
+      "string.min": "Password must be at least 8 characters long",
+      "string.pattern.name": "Password must contain at least one {#name}",
+      "string.empty": "New password is required",
+    }),
+});
