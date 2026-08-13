@@ -57,7 +57,7 @@ export const getTaskById = async (req, res, next) => {
 export const createTask = async (req, res, next) => {
   try {
     const { workspaceId } = req.params;
-    const { title, description, status, priority, assignedTo, dueDate } = req.body;
+    const { title, description, status, priority, assignedTo, dueDate, type } = req.body;
     const role = req.membership.role;
     const userId = req.user.id;
 
@@ -70,6 +70,7 @@ export const createTask = async (req, res, next) => {
 
     const taskData = {
       title,
+      type: type || "Task",
       description: description || "",
       workspace: workspaceId,
       createdBy: userId,
@@ -115,10 +116,11 @@ export const createTask = async (req, res, next) => {
 export const updateTask = async (req, res, next) => {
   try {
     const task = req.resource;
-    const { title, description, status, priority, dueDate } = req.body;
+    const { title, description, status, priority, dueDate, type } = req.body;
     const oldStatus = task.status;
 
     if (title !== undefined) task.title = title;
+    if (type !== undefined) task.type = type;
     if (description !== undefined) task.description = description;
     if (status !== undefined) task.status = status;
     if (priority !== undefined) task.priority = priority;

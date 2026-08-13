@@ -12,18 +12,17 @@ import {
   getMySessions,
   revokeSession,
   forgotPassword,
-  resetPassword,
-  getMe,
-  updateProfile,
-  changePassword
+  resetPassword
 } from "../controllers/authController.js";
+
+import { createNote, getWorkspaceNotes } from "../controllers/noteController.js";
+
 import validate from "../middleware/validate.js";
 import {
   registerSchema,
   verifyOtpSchema,
   resendOtpSchema,
   loginSchema,
-  changePasswordSchema
 } from "../validators/authValidator.js";
 import { protect } from "../middleware/auth.js";
 
@@ -41,9 +40,10 @@ router.post("/logout-all", protect, logoutAll);
 router.get("/sessions", protect, getMySessions);
 router.delete("/sessions/:sessionId", protect, revokeSession);
 router.post("/forgot-password", forgotPassword);
-router.post("/reset-password",  resetPassword);
-router.get("/me", protect, getMe);
-router.patch("/me", protect, updateProfile);
-router.patch("/change-password", protect, validate(changePasswordSchema), changePassword);
+router.post("/reset-password", resetPassword);
+// --- 👉 2. ADD YOUR NEW NOTE ROUTES HERE ---
+// Notice we use `protect` here so only logged-in users can access them
+router.post("/create-note", protect, createNote);
+router.get("/workspace-notes/:workspaceId", protect, getWorkspaceNotes);
 
 export default router;

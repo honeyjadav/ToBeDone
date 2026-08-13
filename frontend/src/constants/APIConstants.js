@@ -32,6 +32,10 @@ export const APIs = {
     `/workspaces/${workspaceId}/members/${memberId}/role`,
   WORKSPACE_MEMBER_REMOVE: (workspaceId, memberId) =>
     `/workspaces/${workspaceId}/members/${memberId}`,
+
+  // Tasks
+  TASKS: (workspaceId) => `/workspaces/${workspaceId}/tasks`,
+  TASK_BY_ID: (workspaceId, taskId) => `/workspaces/${workspaceId}/tasks/${taskId}`,
   INVITES: (workspaceId) => `/invites/${workspaceId}`,
   INVITE_ACCEPT: (token) => `/invites/accept/${token}`,
 };

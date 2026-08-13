@@ -28,6 +28,11 @@ const taskSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    type: {
+      type: String,
+      enum: ["Bug", "Feature", "Task", "Test Case", "User Story"],
+      default: "Task",
+    },
     description: {
       type: String,
       default: "",

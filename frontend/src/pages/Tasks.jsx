@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
     Box,
     Typography,
@@ -32,6 +32,8 @@ import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import ScienceIcon from '@mui/icons-material/Science';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import AddTask from '../pages/AddTask';
+import APICallService from '../services/APICallService';
+import { useAuth } from '../hooks/useAuth';
 
 const COLUMNS = ['Backlog', 'In Progress', 'In Review', 'Done'];
 const PRIORITIES = ['High', 'Medium', 'Low'];
@@ -111,10 +113,11 @@ function FilterDropdown({ label, options, selected, onToggle, renderOption }) {
 // ---------- Table ----------
 const HEADERS = [
     { key: 'id', label: 'ID', width: '90px' },
+    { key: 'type', label: 'Type', width: '120px' },
     { key: 'title', label: 'Title', width: 'auto' },
+    { key: 'priority', label: 'Priority', width: '110px' },
     { key: 'column', label: 'State', width: '140px' },
     { key: 'area', label: 'Area', width: '160px' },
-    { key: 'tags', label: 'Tags', width: '160px' },
     { key: 'assignee', label: 'Assigned To', width: '150px' },
 ];
 
@@ -154,6 +157,7 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
             }}
         >
             {/* Header row (fixed, does not scroll) */}
+            {/* Header row (fixed, does not scroll) */}
             <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', flexShrink: 0 }}>
                 <Box sx={{ width: '44px', display: 'flex', justifyContent: 'center' }}>
                     <Checkbox
@@ -163,7 +167,6 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
                         onChange={() => onToggleSelectAll(tasks.map((t) => t.id))}
                     />
                 </Box>
-                <Box sx={{ width: '36px' }} />
                 {HEADERS.map((h) => (
                     <Box
                         key={h.key}
@@ -225,16 +228,32 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
                                         onChange={() => onToggleSelect(task.id)}
                                     />
                                 </Box>
-                                <Box sx={{ width: '36px', display: 'flex', justifyContent: 'center' }} onClick={() => onRowClick(task)}>
-                                    {TypeIcon && <TypeIcon sx={{ fontSize: 17, color: typeColor }} />}
-                                </Box>
                                 <Box sx={{ width: '90px', px: 1.5, py: 1.25 }} onClick={() => onRowClick(task)}>
                                     <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#7c3aed' }}>{task.id}</Typography>
+                                </Box>
+                                <Box sx={{ width: '120px', px: 1.5, py: 1.25, display: 'flex', alignItems: 'center', gap: 0.75 }} onClick={() => onRowClick(task)}>
+                                    {TypeIcon && <TypeIcon sx={{ fontSize: 15, color: typeColor }} />}
+                                    <Typography sx={{ fontSize: '13px', color: '#334155' }}>{task.type}</Typography>
                                 </Box>
                                 <Box sx={{ flex: 1, px: 1.5, py: 1.25, minWidth: 0 }} onClick={() => onRowClick(task)}>
                                     <Typography sx={{ fontSize: '13.5px', fontWeight: 500, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {task.title}
                                     </Typography>
+                                </Box>
+                                <Box sx={{ width: '110px', px: 1.5, py: 1.25 }} onClick={() => onRowClick(task)}>
+                                    <Box sx={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        borderRadius: '999px',
+                                        px: 1,
+                                        py: 0.35,
+                                        backgroundColor: PRIORITY_COLORS[task.priority]?.bg || '#f1f5f9',
+                                        color: PRIORITY_COLORS[task.priority]?.color || '#475569',
+                                        fontSize: '11px',
+                                        fontWeight: 700,
+                                    }}>
+                                        {task.priority}
+                                    </Box>
                                 </Box>
                                 <Box sx={{ width: '140px', px: 1.5, py: 1.25, display: 'flex', alignItems: 'center', gap: 1 }} onClick={() => onRowClick(task)}>
                                     <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: COLUMN_COLORS[task.column], flexShrink: 0 }} />
@@ -244,11 +263,6 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
                                     <Typography sx={{ fontSize: '13px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {task.area}
                                     </Typography>
-                                </Box>
-                                <Box sx={{ width: '160px', px: 1.5, py: 1.25, display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
-                                    {(task.tags || []).map((tag) => (
-                                        <Chip key={tag} label={tag} size="small" sx={{ height: '18px', fontSize: '10.5px', backgroundColor: '#f1f5f9', color: '#475569' }} />
-                                    ))}
                                 </Box>
                                 <Box sx={{ width: '150px', px: 1.5, py: 1.25, display: 'flex', alignItems: 'center', gap: 1 }} onClick={() => onRowClick(task)}>
                                     <Avatar sx={{ width: 22, height: 22, fontSize: '10px', fontWeight: 700, backgroundColor: '#ede9fe', color: '#7c3aed' }}>
@@ -407,8 +421,68 @@ function TaskDrawer({ task, onClose, onSave, onArchive, onDelete }) {
 }
 
 // ---------- Main page ----------
+const mapStatusToColumn = (status) => {
+    if (!status) return 'Backlog';
+    if (status === 'To Do') return 'Backlog';
+    return status;
+};
+
+const mapColumnToStatus = (column) => {
+    if (column === 'Backlog') return 'To Do';
+    return column || 'To Do';
+};
+
+const mapPriorityToUi = (priority) => {
+    if (!priority) return 'Medium';
+    if (priority === 'Urgent') return 'High';
+    return priority;
+};
+
+const mapPriorityToApi = (priority) => {
+    if (!priority) return 'Medium';
+    if (priority === 'High') return 'High';
+    if (priority === 'Low') return 'Low';
+    if (priority === 'Medium') return 'Medium';
+    return 'Medium';
+};
+
+const mapApiTaskToUi = (task, memberLookup = {}) => {
+    const assignedUsers = Array.isArray(task.assignedTo) ? task.assignedTo : task.assignedTo ? [task.assignedTo] : [];
+    const firstAssigned = assignedUsers[0];
+    const assigneeId = firstAssigned && typeof firstAssigned === 'object'
+        ? firstAssigned._id || firstAssigned.userId || firstAssigned.id || ''
+        : firstAssigned || '';
+
+    return {
+        id: task.taskId || task.id || '',
+        type: task.type || 'Task',
+        title: task.title || '',
+        description: task.description || '',
+        column: mapStatusToColumn(task.status),
+        priority: mapPriorityToUi(task.priority),
+        assignee: memberLookup[assigneeId] || (firstAssigned && typeof firstAssigned === 'object' ? firstAssigned.name || 'Unassigned' : 'Unassigned'),
+        assigneeId,
+        area: task.area || 'ToBeDone',
+        tags: Array.isArray(task.tags) ? task.tags : [],
+        archived: Boolean(task.archived),
+        raw: task,
+    };
+};
+
+const mapUiTaskToApi = (task) => ({
+    title: task.title,
+    type: task.type || 'Task',
+    description: task.description || '',
+    status: mapColumnToStatus(task.column),
+    priority: mapPriorityToApi(task.priority),
+    area: task.area || 'ToBeDone',
+    assignedTo: task.assigneeId ? [task.assigneeId] : undefined,
+});
+
 export default function Tasks() {
-    const [tasks, setTasks] = useState(initialTasks);
+    const { activeWorkspace } = useAuth();
+    const [tasks, setTasks] = useState([]);
+    const [workspaceMembers, setWorkspaceMembers] = useState([]);
     const [search, setSearch] = useState('');
     const [typeFilter, setTypeFilter] = useState([]);
     const [priorityFilter, setPriorityFilter] = useState([]);
@@ -416,7 +490,63 @@ export default function Tasks() {
     const [showArchived, setShowArchived] = useState(false);
     const [selected, setSelected] = useState([]);
     const [addTaskOpen, setAddTaskOpen] = useState(false);
-    const [activeTask, setActiveTask] = useState(null);
+    const [editingTask, setEditingTask] = useState(null);
+
+    useEffect(() => {
+        if (!activeWorkspace?.workspaceId) {
+            setTasks([]);
+            setWorkspaceMembers([]);
+            return;
+        }
+
+        let isMounted = true;
+
+        const normalizeList = (payload) => {
+            if (Array.isArray(payload)) return payload;
+            if (Array.isArray(payload?.data)) return payload.data;
+            if (Array.isArray(payload?.data?.data)) return payload.data.data;
+            return [];
+        };
+
+        const loadMembers = async () => {
+            try {
+                const response = await APICallService.getWorkspaceMembers(activeWorkspace.workspaceId);
+                if (!isMounted) return;
+
+                const members = normalizeList(response?.data);
+                setWorkspaceMembers(members);
+            } catch (error) {
+                console.error('Failed to load workspace members:', error);
+                if (isMounted) {
+                    setWorkspaceMembers([]);
+                }
+            }
+        };
+
+        const loadTasks = async () => {
+            try {
+                const response = await APICallService.getTasks(activeWorkspace.workspaceId);
+                if (!isMounted) return;
+
+                const list = normalizeList(response?.data);
+                const memberLookup = Object.fromEntries(
+                    (workspaceMembers || []).map((member) => [(member.userId || member._id || member.id), member.name || ''])
+                );
+
+                setTasks(list.map((task) => mapApiTaskToUi(task, memberLookup)));
+            } catch (error) {
+                console.error('Failed to load tasks:', error);
+                if (isMounted) {
+                    setTasks([]);
+                }
+            }
+        };
+
+        loadMembers();
+        loadTasks();
+
+        return () => { isMounted = false; };
+    }, [activeWorkspace?.workspaceId]);
 
     const hasActiveFilters = search || typeFilter.length || priorityFilter.length || stateFilter.length;
     const visibleTasks = tasks.filter((t) => (showArchived ? t.archived : !t.archived));
@@ -445,33 +575,95 @@ export default function Tasks() {
         setSelected(allSelected ? selected.filter((id) => !ids.includes(id)) : [...new Set([...selected, ...ids])]);
     };
 
-    const handleAddTask = (newFields) => {
-        const newTask = { id: `TB-${idCounter++}`, archived: false, ...newFields };
-        setTasks((prev) => [...prev, newTask]);
+    const handleAddTask = async (newFields) => {
+        if (!activeWorkspace?.workspaceId) return;
+
+        try {
+            const response = await APICallService.createTask(activeWorkspace.workspaceId, mapUiTaskToApi(newFields));
+            const createdTask = response?.data?.data;
+            if (createdTask) {
+                setTasks((prev) => [...prev, mapApiTaskToUi(createdTask)]);
+            }
+        } catch (error) {
+            console.error('Failed to create task:', error);
+        }
     };
 
-    const handleSaveTask = (updated) => {
-        setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)));
+    const handleSaveTask = async (updated) => {
+        if (!activeWorkspace?.workspaceId || !updated?.id) return;
+
+        try {
+            const response = await APICallService.updateTask(activeWorkspace.workspaceId, updated.id, mapUiTaskToApi(updated));
+            const updatedTask = response?.data?.data;
+            if (updatedTask) {
+                setTasks((prev) => prev.map((t) => (t.id === updated.id ? mapApiTaskToUi(updatedTask) : t)));
+            }
+        } catch (error) {
+            console.error('Failed to update task:', error);
+        }
     };
 
-    const handleArchiveOne = (id) => {
-        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, archived: true } : t)));
+    const handleArchiveOne = async (id) => {
+        const task = tasks.find((item) => item.id === id);
+        if (!task || !activeWorkspace?.workspaceId) return;
+
+        try {
+            await APICallService.updateTask(activeWorkspace.workspaceId, id, {
+                ...mapUiTaskToApi(task),
+                status: 'Done',
+            });
+            setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, archived: true } : t)));
+        } catch (error) {
+            console.error('Failed to archive task:', error);
+        }
         setSelected((prev) => prev.filter((x) => x !== id));
     };
 
-    const handleUnarchiveOne = (id) => {
-        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, archived: false } : t)));
+    const handleUnarchiveOne = async (id) => {
+        const task = tasks.find((item) => item.id === id);
+        if (!task || !activeWorkspace?.workspaceId) return;
+
+        try {
+            await APICallService.updateTask(activeWorkspace.workspaceId, id, {
+                ...mapUiTaskToApi(task),
+                status: 'To Do',
+            });
+            setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, archived: false } : t)));
+        } catch (error) {
+            console.error('Failed to restore task:', error);
+        }
         setSelected((prev) => prev.filter((x) => x !== id));
     };
 
-    const handleDeleteOne = (id) => {
-        setTasks((prev) => prev.filter((t) => t.id !== id));
+    const handleDeleteOne = async (id) => {
+        if (!activeWorkspace?.workspaceId) return;
+
+        try {
+            await APICallService.deleteTask(activeWorkspace.workspaceId, id);
+            setTasks((prev) => prev.filter((t) => t.id !== id));
+        } catch (error) {
+            console.error('Failed to delete task:', error);
+        }
         setSelected((prev) => prev.filter((x) => x !== id));
     };
 
-    const handleArchiveSelected = () => {
-        setTasks((prev) => prev.map((t) => (selected.includes(t.id) ? { ...t, archived: !showArchived } : t)));
-        setSelected([]);
+    const handleArchiveSelected = async () => {
+        if (!activeWorkspace?.workspaceId || !selected.length) return;
+
+        try {
+            const nextStatus = showArchived ? 'To Do' : 'Done';
+            const selectedTasks = tasks.filter((task) => selected.includes(task.id));
+
+            await Promise.all(selectedTasks.map((task) => APICallService.updateTask(activeWorkspace.workspaceId, task.id, {
+                ...mapUiTaskToApi(task),
+                status: nextStatus,
+            })));
+
+            setTasks((prev) => prev.map((task) => (selected.includes(task.id) ? { ...task, archived: !showArchived } : task)));
+            setSelected([]);
+        } catch (error) {
+            console.error('Failed to archive selected tasks:', error);
+        }
     };
 
     const hasSelection = selected.length > 0;
@@ -485,6 +677,28 @@ export default function Tasks() {
 
             {/* Filter bar + action buttons, all in one row */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2, flexWrap: 'wrap', flexShrink: 0 }}>
+
+                <Button
+                    onClick={() => {
+                        setEditingTask(null);
+                        setAddTaskOpen(true);
+                    }}
+                    startIcon={<AddIcon sx={{ fontSize: 18 }} />}
+                    variant="contained"
+                    sx={{
+                        textTransform: 'none',
+                        fontSize: '13.5px',
+                        fontWeight: 600,
+                        backgroundColor: '#7c3aed',
+                        borderRadius: '8px',
+                        height: '36px',
+                        flexShrink: 0,
+                        '&:hover': { backgroundColor: '#6d28d9' },
+                    }}
+                >
+                    Add Task
+                </Button>
+
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', px: 1.5, height: '36px', minWidth: '220px' }}>
                     <SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} />
                     <input
@@ -523,12 +737,6 @@ export default function Tasks() {
                         </Box>
                     )}
                 />
-
-                {hasActiveFilters && (
-                    <Button onClick={clearFilters} startIcon={<ClearIcon sx={{ fontSize: 16 }} />} sx={{ textTransform: 'none', fontSize: '13px', fontWeight: 600, color: '#64748b', '&:hover': { backgroundColor: '#f1f5f9' } }}>
-                        Clear
-                    </Button>
-                )}
 
                 <Box sx={{ flex: 1 }} />
 
@@ -573,23 +781,7 @@ export default function Tasks() {
                     {showArchived ? 'Restore' : 'Archive'}{selected.length ? ` (${selected.length})` : ''}
                 </Button>
 
-                <Button
-                    onClick={() => setAddTaskOpen(true)}
-                    startIcon={<AddIcon sx={{ fontSize: 18 }} />}
-                    variant="contained"
-                    sx={{
-                        textTransform: 'none',
-                        fontSize: '13.5px',
-                        fontWeight: 600,
-                        backgroundColor: '#7c3aed',
-                        borderRadius: '8px',
-                        height: '36px',
-                        flexShrink: 0,
-                        '&:hover': { backgroundColor: '#6d28d9' },
-                    }}
-                >
-                    Add Task
-                </Button>
+
             </Box>
 
             {/* Table takes remaining height and scrolls internally */}
@@ -599,18 +791,23 @@ export default function Tasks() {
                     selected={selected}
                     onToggleSelect={toggleSelect}
                     onToggleSelectAll={toggleSelectAll}
-                    onRowClick={(task) => setActiveTask(task)}
+                    onRowClick={(task) => {
+                        setEditingTask(task);
+                        setAddTaskOpen(true);
+                    }}
                 />
             </Box>
 
-            <AddTask open={addTaskOpen} onClose={() => setAddTaskOpen(false)} onAdd={handleAddTask} />
-
-            <TaskDrawer
-                task={activeTask}
-                onClose={() => setActiveTask(null)}
+            <AddTask
+                open={addTaskOpen}
+                onClose={() => {
+                    setAddTaskOpen(false);
+                    setEditingTask(null);
+                }}
+                task={editingTask}
+                onAdd={handleAddTask}
                 onSave={handleSaveTask}
-                onArchive={showArchived ? handleUnarchiveOne : handleArchiveOne}
-                onDelete={handleDeleteOne}
+                members={workspaceMembers}
             />
         </Box>
     );
