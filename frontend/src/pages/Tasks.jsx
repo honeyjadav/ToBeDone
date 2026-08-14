@@ -35,14 +35,13 @@ import AddTask from '../pages/AddTask';
 import APICallService from '../services/APICallService';
 import { useAuth } from '../hooks/useAuth';
 
-const COLUMNS = ['Backlog', 'In Progress', 'In Review', 'Done'];
+const COLUMNS = ['To Do', 'In Progress', 'Done'];
 const PRIORITIES = ['High', 'Medium', 'Low'];
 const WORK_ITEM_TYPES = ['Bug', 'Feature', 'Task', 'Test Case', 'User Story'];
 
 const COLUMN_COLORS = {
-    Backlog: '#94a3b8',
+    'To Do': '#94a3b8',
     'In Progress': '#3b82f6',
-    'In Review': '#f59e0b',
     Done: '#22c55e',
 };
 
@@ -67,8 +66,8 @@ const initialTasks = [
     { id: 'TB-104', type: 'Feature', title: 'Integrate AI digest summary', description: 'Summarize daily activity using an AI digest widget.', column: 'In Progress', priority: 'Medium', assignee: 'RS', area: 'ToBeDone\\AI', tags: ['ai'], archived: false },
     { id: 'TB-105', type: 'Bug', title: 'Fix sidebar overlap on header', description: 'Sidebar overlaps header on collapse/expand transition.', column: 'In Review', priority: 'High', assignee: 'JD', area: 'ToBeDone\\Layout', tags: ['bug', 'css'], archived: false },
     { id: 'TB-106', type: 'Test Case', title: 'Write unit tests for chat module', description: 'Add Jest tests covering the chat send/receive flow.', column: 'In Review', priority: 'Low', assignee: 'AK', area: 'ToBeDone\\Chat', tags: ['testing'], archived: false },
-    { id: 'TB-107', type: 'User Story', title: 'Plan Q3 roadmap', description: 'Draft the roadmap doc for Q3 deliverables.', column: 'Backlog', priority: 'Low', assignee: 'RS', area: 'ToBeDone\\Planning', tags: [], archived: false },
-    { id: 'TB-108', type: 'Task', title: 'Research push notification providers', description: 'Compare FCM vs OneSignal vs Pusher for push notifications.', column: 'Backlog', priority: 'Medium', assignee: 'JD', area: 'ToBeDone\\Infra', tags: ['research'], archived: false },
+    { id: 'TB-107', type: 'User Story', title: 'Plan Q3 roadmap', description: 'Draft the roadmap doc for Q3 deliverables.', column: 'To Do', priority: 'Low', assignee: 'RS', area: 'ToBeDone\\Planning', tags: [], archived: false },
+    { id: 'TB-108', type: 'Task', title: 'Research push notification providers', description: 'Compare FCM vs OneSignal vs Pusher for push notifications.', column: 'To Do', priority: 'Medium', assignee: 'JD', area: 'ToBeDone\\Infra', tags: ['research'], archived: false },
 ];
 
 let idCounter = 109;
@@ -422,14 +421,16 @@ function TaskDrawer({ task, onClose, onSave, onArchive, onDelete }) {
 
 // ---------- Main page ----------
 const mapStatusToColumn = (status) => {
-    if (!status) return 'Backlog';
-    if (status === 'To Do') return 'Backlog';
-    return status;
+    if (!status) return 'To Do';
+    const normalized = String(status).trim();
+    if (normalized === 'Backlog' || normalized === 'In Review') return 'To Do';
+    return normalized;
 };
 
 const mapColumnToStatus = (column) => {
-    if (column === 'Backlog') return 'To Do';
-    return column || 'To Do';
+    const normalized = String(column || 'To Do').trim();
+    if (normalized === 'Backlog' || normalized === 'In Review') return 'To Do';
+    return normalized;
 };
 
 const mapPriorityToUi = (priority) => {

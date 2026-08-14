@@ -45,10 +45,11 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                 flexDirection: 'column',
                 height: '100%',
                 overflow: 'hidden',
+                minWidth: 0,
             }}
         >
-            <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', flexShrink: 0 }}>
-                <Box sx={{ width: '44px', display: 'flex', justifyContent: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', flexShrink: 0, minWidth: 820, width: '100%' }}>
+                <Box sx={{ width: '44px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
                     <Checkbox
                         size="small"
                         checked={allSelected}
@@ -86,7 +87,7 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                 ))}
             </Box>
 
-            <Box sx={{ flex: 1, overflowY: 'auto' }}>
+            <Box sx={{ flex: 1, overflow: 'auto' }}>
                 {sortedWebhooks.length === 0 ? (
                     <Box sx={{ py: 5, textAlign: 'center' }}>
                         <Typography sx={{ fontSize: '13px', color: '#94a3b8' }}>No webhooks to show</Typography>
@@ -103,11 +104,13 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                                     borderBottom: '1px solid #f1f5f9',
                                     cursor: 'pointer',
                                     backgroundColor: isChecked ? '#f5f3ff' : 'transparent',
+                                    minWidth: 820,
+                                    width: '100%',
                                     '&:hover': { backgroundColor: isChecked ? '#f5f3ff' : '#f8fafc' },
                                     '&:last-of-type': { borderBottom: 'none' },
                                 }}
                             >
-                                <Box sx={{ width: '44px', display: 'flex', justifyContent: 'center', py: 1 }}>
+                                <Box sx={{ width: '44px', display: 'flex', justifyContent: 'center', py: 1, flexShrink: 0 }}>
                                     <Checkbox
                                         size="small"
                                         checked={isChecked}
@@ -115,10 +118,10 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                                         onChange={() => onToggleSelect(wh.id)}
                                     />
                                 </Box>
-                                <Box sx={{ width: '36px', display: 'flex', justifyContent: 'center' }} onClick={() => onRowClick(wh)}>
+                                <Box sx={{ width: '36px', display: 'flex', justifyContent: 'center', flexShrink: 0 }} onClick={() => onRowClick(wh)}>
                                     <LinkIcon sx={{ fontSize: 17, color: '#7c3aed' }} />
                                 </Box>
-                                <Box sx={{ width: '90px', px: 1.5, py: 1.25 }} onClick={() => onRowClick(wh)}>
+                                <Box sx={{ width: '90px', px: 1.5, py: 1.25, flexShrink: 0 }} onClick={() => onRowClick(wh)}>
                                     <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#7c3aed' }}>{wh.id}</Typography>
                                 </Box>
                                 <Box sx={{ flex: 1, px: 1.5, py: 1.25, minWidth: 0 }} onClick={() => onRowClick(wh)}>
@@ -126,15 +129,15 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                                         {wh.name}
                                     </Typography>
                                 </Box>
-                                <Box sx={{ width: '280px', px: 1.5, py: 1.25 }} onClick={() => onRowClick(wh)}>
+                                <Box sx={{ width: '280px', px: 1.5, py: 1.25, flexShrink: 0 }} onClick={() => onRowClick(wh)}>
                                     <Typography sx={{ fontSize: '13px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {wh.url}
                                     </Typography>
                                 </Box>
-                                <Box sx={{ width: '160px', px: 1.5, py: 1.25 }} onClick={() => onRowClick(wh)}>
+                                <Box sx={{ width: '160px', px: 1.5, py: 1.25, flexShrink: 0 }} onClick={() => onRowClick(wh)}>
                                     <Chip label={wh.event} size="small" sx={{ height: '20px', fontSize: '11px', backgroundColor: '#f1f5f9', color: '#475569' }} />
                                 </Box>
-                                <Box sx={{ width: '110px', px: 1.5, py: 1.25, display: 'flex', alignItems: 'center', gap: 0.75 }}>
+                                <Box sx={{ width: '110px', px: 1.5, py: 1.25, display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
                                     <Switch
                                         size="small"
                                         checked={wh.active}
