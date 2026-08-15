@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import baseTheme from './theme/theme';
@@ -9,6 +10,9 @@ import { getAppSettings } from './utils/preferences';
 
 export default function App() {
   const [settings, setSettings] = useState(() => getAppSettings());
+  const location = useLocation();
+  const isPublicRoute = ['/', '/login', '/register', '/forgot-password', '/reset-password', '/two-factor-auth'].includes(location.pathname);
+  const effectiveDarkMode = !isPublicRoute && settings.darkMode;
 
   useEffect(() => {
     const handleSettingsChange = (event) => {
@@ -28,20 +32,20 @@ export default function App() {
         ...baseTheme,
         palette: {
           ...baseTheme.palette,
-          mode: settings.darkMode ? 'dark' : 'light',
+          mode: effectiveDarkMode ? 'dark' : 'light',
           background: {
-            default: settings.darkMode ? '#020817' : '#f8fafc',
-            paper: settings.darkMode ? '#0f172a' : '#ffffff',
+            default: effectiveDarkMode ? '#020817' : '#f8fafc',
+            paper: effectiveDarkMode ? '#0f172a' : '#ffffff',
           },
           text: {
             ...baseTheme.palette.text,
-            primary: settings.darkMode ? '#e2e8f0' : '#1e293b',
-            secondary: settings.darkMode ? '#94a3b8' : '#64748b',
+            primary: effectiveDarkMode ? '#e2e8f0' : '#1e293b',
+            secondary: effectiveDarkMode ? '#94a3b8' : '#64748b',
           },
-          divider: settings.darkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(15, 23, 42, 0.08)',
+          divider: effectiveDarkMode ? 'rgba(148, 163, 184, 0.2)' : 'rgba(15, 23, 42, 0.08)',
         },
       }),
-    [settings.darkMode],
+    [effectiveDarkMode],
   );
 
   return (

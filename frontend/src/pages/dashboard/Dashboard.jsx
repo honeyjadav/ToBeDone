@@ -6,6 +6,7 @@ import {
     LinearProgress,
     Divider,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -195,12 +196,13 @@ function SummaryCard({
     icon: Icon,
     iconBackground,
     iconColor,
+    isDark,
 }) {
     return (
         <Box
             sx={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
+                backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                 borderRadius: "10px",
                 p: 2,
                 minWidth: 0,
@@ -219,7 +221,7 @@ function SummaryCard({
                     <Typography
                         sx={{
                             fontSize: "12px",
-                            color: "#64748b",
+                            color: isDark ? "#cbd5e1" : "#64748b",
                             fontWeight: 600,
                             mb: 0.75,
                         }}
@@ -232,7 +234,7 @@ function SummaryCard({
                             fontSize: "25px",
                             lineHeight: 1.2,
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: isDark ? "#f8fafc" : "#1e293b",
                         }}
                     >
                         {value}
@@ -259,7 +261,7 @@ function SummaryCard({
             <Typography
                 sx={{
                     fontSize: "11px",
-                    color: "#94a3b8",
+                    color: isDark ? "#94a3b8" : "#94a3b8",
                     mt: 1,
                 }}
             >
@@ -273,7 +275,7 @@ function SummaryCard({
    MONTHLY COMPLETED TASKS SVG CHART
 ========================================================= */
 
-function MonthlyCompletedChart() {
+function MonthlyCompletedChart({ isDark }) {
     const data = [
         { month: "Mar", value: 8 },
         { month: "Apr", value: 13 },
@@ -284,6 +286,8 @@ function MonthlyCompletedChart() {
     ];
 
     const maxValue = 30;
+    const gridColor = isDark ? "rgba(148, 163, 184, 0.18)" : "#e2e8f0";
+    const labelColor = isDark ? "#94a3b8" : "#94a3b8";
 
     return (
         <Box sx={{ width: "100%", overflow: "hidden" }}>
@@ -304,7 +308,7 @@ function MonthlyCompletedChart() {
                             y1={y}
                             x2="625"
                             y2={y}
-                            stroke="#e2e8f0"
+                            stroke={gridColor}
                             strokeWidth="1"
                         />
                     );
@@ -317,7 +321,7 @@ function MonthlyCompletedChart() {
                         x="8"
                         y={40 + index * 45}
                         fontSize="11"
-                        fill="#94a3b8"
+                        fill={labelColor}
                     >
                         {value}
                     </text>
@@ -350,7 +354,7 @@ function MonthlyCompletedChart() {
                                 textAnchor="middle"
                                 fontSize="11"
                                 fontWeight="600"
-                                fill="#475569"
+                                fill={isDark ? "#e2e8f0" : "#475569"}
                             >
                                 {item.value}
                             </text>
@@ -360,7 +364,7 @@ function MonthlyCompletedChart() {
                                 y="240"
                                 textAnchor="middle"
                                 fontSize="11"
-                                fill="#94a3b8"
+                                fill={labelColor}
                             >
                                 {item.month}
                             </text>
@@ -376,7 +380,7 @@ function MonthlyCompletedChart() {
    TASK STATUS SVG CHART
 ========================================================= */
 
-function TaskStatusChart() {
+function TaskStatusChart({ isDark }) {
     const total = tasks.length;
 
     const statusData = [
@@ -446,7 +450,7 @@ function TaskStatusChart() {
                         cy="95"
                         r="72"
                         fill="none"
-                        stroke="#f1f5f9"
+                        stroke={isDark ? "rgba(148, 163, 184, 0.12)" : "#f1f5f9"}
                         strokeWidth="22"
                     />
 
@@ -493,7 +497,7 @@ function TaskStatusChart() {
                         sx={{
                             fontSize: "27px",
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: isDark ? "#f8fafc" : "#1e293b",
                         }}
                     >
                         {total}
@@ -502,7 +506,7 @@ function TaskStatusChart() {
                     <Typography
                         sx={{
                             fontSize: "11px",
-                            color: "#94a3b8",
+                            color: isDark ? "#cbd5e1" : "#94a3b8",
                         }}
                     >
                         Total Tasks
@@ -535,7 +539,7 @@ function TaskStatusChart() {
                             sx={{
                                 flex: 1,
                                 fontSize: "12px",
-                                color: "#475569",
+                                color: isDark ? "#e2e8f0" : "#475569",
                             }}
                         >
                             {item.label}
@@ -545,7 +549,7 @@ function TaskStatusChart() {
                             sx={{
                                 fontSize: "12px",
                                 fontWeight: 700,
-                                color: "#1e293b",
+                                color: isDark ? "#f8fafc" : "#1e293b",
                             }}
                         >
                             {item.value}
@@ -561,12 +565,12 @@ function TaskStatusChart() {
    UPCOMING TASKS
 ========================================================= */
 
-function UpcomingTasks() {
+function UpcomingTasks({ isDark }) {
     return (
         <Box
             sx={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
+                backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                 borderRadius: "10px",
                 overflow: "hidden",
             }}
@@ -584,7 +588,7 @@ function UpcomingTasks() {
                         sx={{
                             fontSize: "15px",
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: isDark ? "#f8fafc" : "#1e293b",
                         }}
                     >
                         Upcoming Tasks
@@ -593,7 +597,7 @@ function UpcomingTasks() {
                     <Typography
                         sx={{
                             fontSize: "11px",
-                            color: "#94a3b8",
+                            color: isDark ? "#cbd5e1" : "#94a3b8",
                             mt: 0.3,
                         }}
                     >
@@ -625,8 +629,7 @@ function UpcomingTasks() {
                             sx={{
                                 px: 2,
                                 py: 1.5,
-                                borderBottom:
-                                    "1px solid #f1f5f9",
+                                borderBottom: isDark ? "1px solid rgba(148, 163, 184, 0.15)" : "1px solid #f1f5f9",
 
                                 "&:last-child": {
                                     borderBottom: "none",
@@ -645,14 +648,12 @@ function UpcomingTasks() {
                                     sx={{
                                         fontSize: "13px",
                                         fontWeight: 600,
-                                        color: "#334155",
+                                        color: isDark ? "#e2e8f0" : "#334155",
                                         flex: 1,
                                         minWidth: 0,
                                         overflow: "hidden",
-                                        textOverflow:
-                                            "ellipsis",
-                                        whiteSpace:
-                                            "nowrap",
+                                        textOverflow: "ellipsis",
+                                        whiteSpace: "nowrap",
                                     }}
                                 >
                                     {task.title}
@@ -698,7 +699,7 @@ function UpcomingTasks() {
                                 <Typography
                                     sx={{
                                         fontSize: "11px",
-                                        color: "#94a3b8",
+                                        color: isDark ? "#cbd5e1" : "#94a3b8",
                                     }}
                                 >
                                     Due {task.dueDate}
@@ -710,7 +711,7 @@ function UpcomingTasks() {
                                     sx={{
                                         fontSize: "11px",
                                         fontWeight: 600,
-                                        color: "#64748b",
+                                        color: isDark ? "#cbd5e1" : "#64748b",
                                     }}
                                 >
                                     {task.progress}%
@@ -727,11 +728,11 @@ function UpcomingTasks() {
                                         "#f1f5f9",
 
                                     "& .MuiLinearProgress-bar":
-                                        {
-                                            borderRadius: 10,
-                                            backgroundColor:
-                                                "#7c3aed",
-                                        },
+                                    {
+                                        borderRadius: 10,
+                                        backgroundColor:
+                                            "#7c3aed",
+                                    },
                                 }}
                             />
                         </Box>
@@ -746,12 +747,12 @@ function UpcomingTasks() {
    RECENT ACTIVITY
 ========================================================= */
 
-function RecentActivity() {
+function RecentActivity({ isDark }) {
     return (
         <Box
             sx={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
+                backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                 borderRadius: "10px",
                 overflow: "hidden",
             }}
@@ -769,7 +770,7 @@ function RecentActivity() {
                         sx={{
                             fontSize: "15px",
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: isDark ? "#f8fafc" : "#1e293b",
                         }}
                     >
                         Recent Activity
@@ -778,7 +779,7 @@ function RecentActivity() {
                     <Typography
                         sx={{
                             fontSize: "11px",
-                            color: "#94a3b8",
+                            color: isDark ? "#cbd5e1" : "#94a3b8",
                             mt: 0.3,
                         }}
                     >
@@ -808,8 +809,7 @@ function RecentActivity() {
                             display: "flex",
                             alignItems: "flex-start",
                             gap: 1.2,
-                            borderBottom:
-                                "1px solid #f1f5f9",
+                            borderBottom: isDark ? "1px solid rgba(148, 163, 184, 0.15)" : "1px solid #f1f5f9",
 
                             "&:last-child": {
                                 borderBottom: "none",
@@ -835,7 +835,7 @@ function RecentActivity() {
                                 sx={{
                                     fontSize: "12px",
                                     lineHeight: 1.5,
-                                    color: "#475569",
+                                    color: isDark ? "#e2e8f0" : "#475569",
                                 }}
                             >
                                 <strong>
@@ -850,7 +850,7 @@ function RecentActivity() {
                             <Typography
                                 sx={{
                                     fontSize: "10.5px",
-                                    color: "#94a3b8",
+                                    color: isDark ? "#94a3b8" : "#94a3b8",
                                     mt: 0.3,
                                 }}
                             >
@@ -875,12 +875,12 @@ function RecentActivity() {
    NOTIFICATIONS
 ========================================================= */
 
-function NotificationsPanel() {
+function NotificationsPanel({ isDark }) {
     return (
         <Box
             sx={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
+                backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                 borderRadius: "10px",
                 overflow: "hidden",
             }}
@@ -905,7 +905,7 @@ function NotificationsPanel() {
                         sx={{
                             fontSize: "15px",
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: isDark ? "#f8fafc" : "#1e293b",
                         }}
                     >
                         Notifications
@@ -914,7 +914,7 @@ function NotificationsPanel() {
                     <Typography
                         sx={{
                             fontSize: "11px",
-                            color: "#94a3b8",
+                            color: isDark ? "#cbd5e1" : "#94a3b8",
                             mt: 0.3,
                         }}
                     >
@@ -954,8 +954,7 @@ function NotificationsPanel() {
                             py: 1.5,
                             display: "flex",
                             gap: 1.2,
-                            borderBottom:
-                                "1px solid #f1f5f9",
+                            borderBottom: isDark ? "1px solid rgba(148, 163, 184, 0.15)" : "1px solid #f1f5f9",
 
                             "&:last-child": {
                                 borderBottom: "none",
@@ -997,7 +996,7 @@ function NotificationsPanel() {
                                     sx={{
                                         fontSize: "12px",
                                         fontWeight: 600,
-                                        color: "#334155",
+                                        color: isDark ? "#e2e8f0" : "#334155",
                                         flex: 1,
                                     }}
                                 >
@@ -1024,7 +1023,7 @@ function NotificationsPanel() {
                             <Typography
                                 sx={{
                                     fontSize: "10.5px",
-                                    color: "#94a3b8",
+                                    color: isDark ? "#cbd5e1" : "#94a3b8",
                                     lineHeight: 1.5,
                                     mt: 0.4,
                                 }}
@@ -1044,6 +1043,8 @@ function NotificationsPanel() {
 ========================================================= */
 
 export default function Dashboard() {
+    const theme = useTheme();
+    const isDark = theme.palette.mode === 'dark';
     const totalTasks = tasks.length;
 
     const completedTasks = tasks.filter(
@@ -1057,8 +1058,8 @@ export default function Dashboard() {
     const completionRate =
         totalTasks > 0
             ? Math.round(
-                  (completedTasks / totalTasks) * 100
-              )
+                (completedTasks / totalTasks) * 100
+            )
             : 0;
 
     const teamMembers = 3;
@@ -1068,7 +1069,7 @@ export default function Dashboard() {
             sx={{
                 height: "100%",
                 overflowY: "auto",
-                backgroundColor: "#f8fafc",
+                backgroundColor: isDark ? "#020817" : "#f8fafc",
             }}
         >
             <Box
@@ -1111,7 +1112,7 @@ export default function Dashboard() {
                                     md: "23px",
                                 },
                                 fontWeight: 700,
-                                color: "#1e293b",
+                                color: isDark ? "#f8fafc" : "#1e293b",
                             }}
                         >
                             Good evening, John 👋
@@ -1120,7 +1121,7 @@ export default function Dashboard() {
                         <Typography
                             sx={{
                                 fontSize: "12.5px",
-                                color: "#64748b",
+                                color: isDark ? "#cbd5e1" : "#64748b",
                                 mt: 0.5,
                             }}
                         >
@@ -1134,9 +1135,8 @@ export default function Dashboard() {
                             display: "flex",
                             alignItems: "center",
                             gap: 1,
-                            backgroundColor:
-                                "#ffffff",
-                            border: "1px solid #e2e8f0",
+                            backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                            border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                             borderRadius: "8px",
                             px: 1.5,
                             py: 1,
@@ -1157,7 +1157,7 @@ export default function Dashboard() {
                             sx={{
                                 fontSize: "11px",
                                 fontWeight: 600,
-                                color: "#475569",
+                                color: isDark ? "#e2e8f0" : "#475569",
                             }}
                         >
                             Workspace active
@@ -1189,6 +1189,7 @@ export default function Dashboard() {
                         icon={AssignmentOutlinedIcon}
                         iconBackground="#ede9fe"
                         iconColor="#7c3aed"
+                        isDark={isDark}
                     />
 
                     <SummaryCard
@@ -1198,6 +1199,7 @@ export default function Dashboard() {
                         icon={CheckCircleOutlineIcon}
                         iconBackground="#dcfce7"
                         iconColor="#16a34a"
+                        isDark={isDark}
                     />
 
                     <SummaryCard
@@ -1207,6 +1209,7 @@ export default function Dashboard() {
                         icon={TrendingUpIcon}
                         iconBackground="#dbeafe"
                         iconColor="#2563eb"
+                        isDark={isDark}
                     />
 
                     <SummaryCard
@@ -1216,6 +1219,7 @@ export default function Dashboard() {
                         icon={GroupOutlinedIcon}
                         iconBackground="#fef3c7"
                         iconColor="#d97706"
+                        isDark={isDark}
                     />
 
                     <SummaryCard
@@ -1225,6 +1229,7 @@ export default function Dashboard() {
                         icon={TrendingUpIcon}
                         iconBackground="#f3e8ff"
                         iconColor="#9333ea"
+                        isDark={isDark}
                     />
                 </Box>
 
@@ -1247,9 +1252,8 @@ export default function Dashboard() {
 
                     <Box
                         sx={{
-                            backgroundColor:
-                                "#ffffff",
-                            border: "1px solid #e2e8f0",
+                            backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                            border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                             borderRadius: "10px",
                             p: 2,
                         }}
@@ -1270,7 +1274,7 @@ export default function Dashboard() {
                                         fontSize:
                                             "15px",
                                         fontWeight: 700,
-                                        color: "#1e293b",
+                                        color: isDark ? "#f8fafc" : "#1e293b",
                                     }}
                                 >
                                     Completed Tasks
@@ -1280,7 +1284,7 @@ export default function Dashboard() {
                                     sx={{
                                         fontSize:
                                             "11px",
-                                        color: "#94a3b8",
+                                        color: isDark ? "#cbd5e1" : "#94a3b8",
                                         mt: 0.3,
                                     }}
                                 >
@@ -1304,16 +1308,15 @@ export default function Dashboard() {
                             />
                         </Box>
 
-                        <MonthlyCompletedChart />
+                        <MonthlyCompletedChart isDark={isDark} />
                     </Box>
 
                     {/* Status chart */}
 
                     <Box
                         sx={{
-                            backgroundColor:
-                                "#ffffff",
-                            border: "1px solid #e2e8f0",
+                            backgroundColor: isDark ? "#0f172a" : "#ffffff",
+                            border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                             borderRadius: "10px",
                             p: 2,
                         }}
@@ -1322,7 +1325,7 @@ export default function Dashboard() {
                             sx={{
                                 fontSize: "15px",
                                 fontWeight: 700,
-                                color: "#1e293b",
+                                color: isDark ? "#f8fafc" : "#1e293b",
                             }}
                         >
                             Task Status
@@ -1331,14 +1334,14 @@ export default function Dashboard() {
                         <Typography
                             sx={{
                                 fontSize: "11px",
-                                color: "#94a3b8",
+                                color: isDark ? "#cbd5e1" : "#94a3b8",
                                 mt: 0.3,
                             }}
                         >
                             Current project distribution
                         </Typography>
 
-                        <TaskStatusChart />
+                        <TaskStatusChart isDark={isDark} />
                     </Box>
                 </Box>
 
@@ -1359,7 +1362,7 @@ export default function Dashboard() {
                     {/* LEFT */}
 
                     <Box>
-                        <UpcomingTasks />
+                        <UpcomingTasks isDark={isDark} />
                     </Box>
 
                     {/* RIGHT */}
@@ -1371,9 +1374,9 @@ export default function Dashboard() {
                             gap: 1.5,
                         }}
                     >
-                        <RecentActivity />
+                        <RecentActivity isDark={isDark} />
 
-                        <NotificationsPanel />
+                        <NotificationsPanel isDark={isDark} />
                     </Box>
                 </Box>
             </Box>
