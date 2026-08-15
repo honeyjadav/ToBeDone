@@ -1,5 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Box, Typography, IconButton, CircularProgress, Button, Chip, Menu, MenuItem } from '@mui/material';
+import {
+  Box,
+  Typography,
+  IconButton,
+  CircularProgress,
+  Button,
+  Chip,
+  Menu,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText,
+  Divider,
+  Snackbar,
+} from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
@@ -13,6 +32,9 @@ import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import HistoryIcon from '@mui/icons-material/History';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SendIcon from '@mui/icons-material/Send';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloseIcon from '@mui/icons-material/Close';
 import Tooltip from '@mui/material/Tooltip';
 import { useAuth } from '../hooks/useAuth';
 import APICallService from '../services/APICallService';
@@ -35,12 +57,19 @@ export default function Digest() {
   const [generating, setGenerating] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [error, setError] = useState(null);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [successOpen, setSuccessOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [period, setPeriod] = useState('24h');
   const [periodAnchor, setPeriodAnchor] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [copied, setCopied] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const [availableWebhooks, setAvailableWebhooks] = useState([]);
+  const [selectedWebhookId, setSelectedWebhookId] = useState('');
+  const [loadingWebhooks, setLoadingWebhooks] = useState(false);
 
   // digestHistory: each entry is one generated digest, most recent first.
   // No backend "history" endpoint exists yet — this is built client-side
@@ -66,6 +95,73 @@ export default function Digest() {
     } catch (err) {
       console.error('Failed to copy digest summary', err);
     }
+  };
+
+  const buildDigestWebhookPayload = (digest) => ({
+    period: digest?.period || period,
+    summary: buildPlainTextSummary(digest),
+    digest,
+  });
+
+  const fetchAvailableWebhooks = useCallback(async () => {
+    if (!workspaceId) return;
+    setLoadingWebhooks(true);
+    setError(null);
+    try {
+      const response = await APICallService.getWebhooks(workspaceId);
+      const normalized = Array.isArray(response?.data?.data) ? response.data.data : [];
+      const activeWebhooks = normalized.filter((webhook) => webhook?.active !== false);
+      setAvailableWebhooks(activeWebhooks);
+      setSelectedWebhookId((prev) => (activeWebhooks.some((webhook) => webhook.webhookId === prev) ? prev : activeWebhooks[0]?.webhookId || ''));
+    } catch (err) {
+      console.error('Failed to load webhooks for digest send:', err);
+      setAvailableWebhooks([]);
+      setSelectedWebhookId('');
+      setError(err?.response?.data?.message || 'Unable to load webhooks');
+    } finally {
+      setLoadingWebhooks(false);
+    }
+  }, [workspaceId]);
+
+  const handleOpenSendDialog = async () => {
+    if (!activeDigest || !workspaceId) return;
+    setSuccessOpen(false);
+    setError(null);
+    setSendDialogOpen(true);
+    await fetchAvailableWebhooks();
+  };
+
+  const handleSendSummary = async () => {
+    if (!activeDigest || !workspaceId || !selectedWebhookId) return;
+    try {
+      setSending(true);
+      setError(null);
+
+      const selectedWebhook = availableWebhooks.find(
+        (webhook) => (webhook.webhookId || webhook.id) === selectedWebhookId
+      );
+
+      await APICallService.sendDigestToWebhook(
+        workspaceId,
+        selectedWebhookId,
+        buildDigestWebhookPayload(activeDigest)
+      );
+
+      setSendDialogOpen(false);
+      setSelectedWebhookId('');
+      setSuccessMessage(`Digest sent successfully to ${selectedWebhook?.name || 'webhook'}.`);
+      setSuccessOpen(true);
+    } catch (err) {
+      console.error('Failed to send digest summary:', err);
+      setError(err?.response?.data?.message || 'Unable to send summary');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleCloseSuccess = (_event, reason) => {
+    if (reason === 'clickaway') return;
+    setSuccessOpen(false);
   };
 
   const fetchDigest = useCallback(async (selectedPeriod) => {
@@ -191,11 +287,155 @@ export default function Digest() {
         </Box>
       </Box>
 
+      {activeDigest && (
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5 }}>
+          <Button
+            onClick={handleOpenSendDialog}
+            disabled={sending}
+            startIcon={sending ? <CircularProgress size={14} sx={{ color: '#fff' }} /> : <SendIcon sx={{ fontSize: 16 }} />}
+            variant="contained"
+            sx={{
+              textTransform: 'none',
+              fontSize: '13px',
+              fontWeight: 600,
+              backgroundColor: '#7c3aed',
+              borderRadius: '8px',
+              height: '36px',
+              px: 2,
+              '&:hover': { backgroundColor: '#6d28d9' },
+              '&:disabled': { opacity: 0.6 },
+            }}
+          >
+            {sending ? 'Sending…' : 'Send Summary'}
+          </Button>
+
+          <Tooltip title={copied ? 'Copied!' : 'Copy summary'}>
+            <Button
+              onClick={handleCopySummary}
+              startIcon={<ContentCopyIcon sx={{ fontSize: 16 }} />}
+              sx={{
+                textTransform: 'none',
+                fontSize: '13px',
+                fontWeight: 600,
+                color: copied ? '#16a34a' : '#334155',
+                backgroundColor: '#ffffff',
+                border: '1px solid',
+                borderColor: copied ? '#bbf7d0' : '#e2e8f0',
+                borderRadius: '8px',
+                height: '36px',
+                px: 2,
+                '&:hover': { backgroundColor: copied ? '#f0fdf4' : '#f8fafc' },
+              }}
+            >
+              {copied ? 'Copied' : 'Copy Summary'}
+            </Button>
+          </Tooltip>
+        </Box>
+      )}
+
       {error && (
         <Box sx={{ mb: 2.5, p: 1.5, borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
           <Typography sx={{ fontSize: '12.5px', color: '#dc2626' }}>{error}</Typography>
         </Box>
       )}
+
+      {/* Success toast — matches the pill-style snackbar used on the Users page */}
+      <Snackbar
+        open={successOpen}
+        onClose={handleCloseSuccess}
+        autoHideDuration={4000}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 1.25,
+            backgroundColor: '#16a34a',
+            color: '#ffffff',
+            borderRadius: '10px',
+            px: 2.5,
+            py: 1.5,
+            boxShadow: '0 10px 30px rgba(15, 23, 42, 0.25)',
+          }}
+        >
+          <CheckCircleIcon sx={{ fontSize: 20 }} />
+          <Typography sx={{ fontSize: '14px', fontWeight: 600, whiteSpace: 'nowrap' }}>
+            {successMessage}
+          </Typography>
+          <IconButton size="small" onClick={handleCloseSuccess} sx={{ color: '#ffffff', ml: 0.5, p: 0.5 }}>
+            <CloseIcon sx={{ fontSize: 17 }} />
+          </IconButton>
+        </Box>
+      </Snackbar>
+
+      <Dialog
+        open={sendDialogOpen}
+        onClose={() => setSendDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: '16px',
+            backgroundColor: '#ffffff',
+            boxShadow: '0 16px 40px rgba(15, 23, 42, 0.12)',
+          },
+        }}
+      >
+        <DialogTitle sx={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', backgroundColor: '#ffffff' }}>
+          Send digest to a webhook
+        </DialogTitle>
+        <DialogContent sx={{ pt: 1, backgroundColor: '#ffffff' }}>
+          <Typography sx={{ fontSize: '13px', color: '#475569', mb: 1.5 }}>
+            Select the webhook channel that should receive the current AI summary.
+          </Typography>
+          {loadingWebhooks ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+              <CircularProgress size={22} sx={{ color: '#7c3aed' }} />
+            </Box>
+          ) : availableWebhooks.length === 0 ? (
+            <Box sx={{ p: 1.5, borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+              <Typography sx={{ fontSize: '13px', color: '#64748b' }}>
+                No active webhooks are available in this workspace yet.
+              </Typography>
+            </Box>
+          ) : (
+            <List sx={{ p: 0 }}>
+              {availableWebhooks.map((webhook, index) => (
+                <Box key={webhook.webhookId || webhook.id || index}>
+                  <ListItem disablePadding>
+                    <ListItemButton
+                      selected={selectedWebhookId === (webhook.webhookId || webhook.id)}
+                      onClick={() => setSelectedWebhookId(webhook.webhookId || webhook.id)}
+                      sx={{ borderRadius: '8px', px: 1.25, py: 0.75 }}
+                    >
+                      <ListItemText
+                        primary={webhook.name || 'Untitled webhook'}
+                        secondary={webhook.url || 'Webhook URL'}
+                        primaryTypographyProps={{ fontSize: '15px', fontWeight: 700, color: '#1e293b' }}
+                        secondaryTypographyProps={{ fontSize: '11.5px', color: '#64748b', mt: 0.25 }}
+                      />
+                    </ListItemButton>
+                  </ListItem>
+                  {index < availableWebhooks.length - 1 && <Divider />}
+                </Box>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2, backgroundColor: '#ffffff' }}>
+          <Button onClick={() => setSendDialogOpen(false)} sx={{ textTransform: 'none', color: '#475569' }}>Cancel</Button>
+          <Button
+            onClick={handleSendSummary}
+            variant="contained"
+            disabled={sending || !selectedWebhookId || loadingWebhooks || availableWebhooks.length === 0}
+            startIcon={sending ? <CircularProgress size={14} sx={{ color: '#fff' }} /> : <SendIcon sx={{ fontSize: 16 }} />}
+            sx={{ textTransform: 'none', backgroundColor: '#7c3aed', borderRadius: '8px', '&:hover': { backgroundColor: '#6d28d9' } }}
+          >
+            {sending ? 'Sending…' : 'Send'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {generating && digestHistory.length === 0 ? (
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 8 }}>
@@ -211,29 +451,6 @@ export default function Digest() {
         <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           {/* Grouped digest sections */}
           <Box sx={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-              <Tooltip title={copied ? 'Copied!' : 'Copy summary'}>
-                <Button
-                  onClick={handleCopySummary}
-                  startIcon={<ContentCopyIcon sx={{ fontSize: 15 }} />}
-                  sx={{
-                    textTransform: 'none',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    color: copied ? '#16a34a' : '#64748b',
-                    backgroundColor: copied ? '#f0fdf4' : '#f8fafc',
-                    border: '1px solid',
-                    borderColor: copied ? '#bbf7d0' : '#e2e8f0',
-                    borderRadius: '8px',
-                    height: '30px',
-                    '&:hover': { backgroundColor: copied ? '#f0fdf4' : '#f1f5f9' },
-                  }}
-                >
-                  {copied ? 'Copied' : 'Copy Summary'}
-                </Button>
-              </Tooltip>
-            </Box>
-
             {activeDigest.groups.length === 0 ? (
               <Box sx={{ border: '1px solid #e5e7eb', borderRadius: '10px', p: 3, backgroundColor: '#ffffff', textAlign: 'center' }}>
                 <Typography sx={{ fontSize: '13px', color: '#94a3b8' }}>No activity in this period.</Typography>

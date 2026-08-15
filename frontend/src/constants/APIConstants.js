@@ -42,6 +42,7 @@ export const APIs = {
   // Webhooks
   WEBHOOKS: (workspaceId) => `/workspaces/${workspaceId}/webhooks`,
   WEBHOOK_BY_ID: (workspaceId, webhookId) => `/workspaces/${workspaceId}/webhooks/${webhookId}`,
+  WEBHOOK_SEND: (workspaceId, webhookId) => `/workspaces/${workspaceId}/webhooks/${webhookId}/send`,
 
   // Digest / Activity
   DIGEST: (workspaceId) => `/workspaces/${workspaceId}/digest`,

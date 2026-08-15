@@ -5,6 +5,7 @@ import {
     createWebhook,
     updateWebhook,
     deleteWebhook,
+    sendDigestToWebhook,
 } from "../controllers/webhookController.js";
 import { protect } from "../middleware/auth.js";
 import validate from "../middleware/validate.js";
@@ -19,6 +20,7 @@ router.use(requireWorkspaceMember);
 router.get("/", getWebhooks);
 router.get("/:id", getWebhookById);
 router.post("/", validate(createWebhookSchema), createWebhook);
+router.post("/:id/send", sendDigestToWebhook);
 router.patch("/:id", validate(updateWebhookSchema), updateWebhook);
 router.delete("/:id", deleteWebhook);
 

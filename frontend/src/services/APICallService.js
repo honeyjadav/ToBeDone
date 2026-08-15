@@ -156,6 +156,10 @@ class APICallService {
     return api.get(APIs.WEBHOOK_BY_ID(workspaceId, webhookId));
   }
 
+  sendDigestToWebhook(workspaceId, webhookId, payload) {
+    return api.post(APIs.WEBHOOK_SEND(workspaceId, webhookId), payload);
+  }
+
   createWebhook(workspaceId, formData) {
     return api.post(APIs.WEBHOOKS(workspaceId), formData);
   }
