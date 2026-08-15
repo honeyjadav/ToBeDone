@@ -3,9 +3,10 @@ import Group from "../models/Group.js";
 import { logActivity } from "../controllers/activityLogController.js";
 
 export function registerChatHandlers(io, socket, workspacePresence) {
-  // ---- JOIN WORKSPACE ROOM ----
+  // ---- JOIN WORKSPACE ROOM (+ personal room for DM delivery) ----
   socket.on("workspace:join", async ({ workspaceId }) => {
     socket.join(workspaceId);
+    socket.join(`user:${socket.user.id}`);
     socket.data.workspaceId = workspaceId;
 
     workspacePresence[workspaceId] = workspacePresence[workspaceId] || {};
@@ -26,9 +27,17 @@ export function registerChatHandlers(io, socket, workspacePresence) {
   });
 
   // ---- JOIN / LEAVE A GROUP ROOM ----
+  // Members of the group can always join (to send + receive live).
+  // Non-members may ALSO join if the group is public — this only grants
+  // them live delivery of messages (read-only); it does NOT grant posting
+  // rights, which are checked separately in message:send below.
   socket.on("group:join", async ({ groupId }) => {
     const group = await Group.findById(groupId);
-    if (!group || !group.members.map(String).includes(socket.user.id)) {
+    if (!group) {
+      return socket.emit("message:error", { message: "Group not found" });
+    }
+    const isMember = group.members.map(String).includes(socket.user.id);
+    if (group.isPrivate && !isMember) {
       return socket.emit("message:error", { message: "Not authorized to join this group" });
     }
     socket.join(`group:${groupId}`);
@@ -38,31 +47,40 @@ export function registerChatHandlers(io, socket, workspacePresence) {
     socket.leave(`group:${groupId}`);
   });
 
-  // ---- SEND MESSAGE (channel OR group) ----
-  socket.on("message:send", async ({ workspaceId, channel, groupId, content, attachments }) => {
+  // ---- SEND MESSAGE (channel OR group OR 1:1 DM) ----
+  socket.on("message:send", async ({ workspaceId, channel, groupId, recipientId, content }) => {
     try {
       let groupDoc = null;
 
       if (groupId) {
         groupDoc = await Group.findById(groupId);
+        // Posting always requires current membership, regardless of
+        // isPrivate. A public group can be viewed by anyone in the
+        // workspace, but only members may send — this is the one place
+        // that's actually enforced, since the frontend UI just hides the
+        // composer as a convenience.
         if (!groupDoc || !groupDoc.members.map(String).includes(socket.user.id)) {
-          return socket.emit("message:error", { message: "Not authorized to post in this group" });
+          return socket.emit("message:error", { message: "You must be a member of this group to send messages" });
         }
       }
 
       const message = await Message.create({
         workspace: workspaceId,
-        channel: groupId ? undefined : channel || "general",
+        channel: groupId || recipientId ? undefined : channel || "general",
         group: groupId || null,
+        recipient: recipientId || null,
         sender: socket.user.id,
         content,
-        attachments: attachments || [],
       });
 
       const populated = await message.populate("sender", "name email");
 
       if (groupId) {
+        // Broadcasts to everyone currently in the room — which now
+        // includes public-group viewers who joined via group:join above.
         io.to(`group:${groupId}`).emit("message:new", populated);
+      } else if (recipientId) {
+        io.to(`user:${recipientId}`).to(`user:${socket.user.id}`).emit("message:new", populated);
       } else {
         io.to(workspaceId).emit("message:new", populated);
       }
@@ -73,41 +91,63 @@ export function registerChatHandlers(io, socket, workspacePresence) {
         action: "MESSAGE_SENT",
         targetType: "Message",
         targetId: message._id,
-        metadata: { channel: groupId ? null : channel, groupName: groupDoc?.name || null },
+        metadata: {
+          channel: groupId || recipientId ? null : channel,
+          groupName: groupDoc?.name || null,
+        },
       });
     } catch (err) {
       socket.emit("message:error", { message: err.message });
     }
   });
 
-  // ---- TYPING INDICATOR ----
-  socket.on("typing:start", ({ workspaceId, channel, groupId }) => {
+  // ---- UNSEND MESSAGE (soft delete, real-time) ----
+  socket.on("message:delete", async ({ messageId, groupId, recipientId, workspaceId }) => {
+    const message = await Message.findById(messageId);
+    if (!message) return;
+    if (message.sender.toString() !== socket.user.id) {
+      return socket.emit("message:error", { message: "You can only unsend your own messages" });
+    }
+
+    message.content = "This message was unsent";
+    message.deleted = true;
+    await message.save();
+
     const room = groupId ? `group:${groupId}` : workspaceId;
+    const target = recipientId
+      ? io.to(`user:${recipientId}`).to(`user:${socket.user.id}`)
+      : io.to(room);
+    target.emit("message:deleted", { messageId, content: message.content });
+  });
+
+  // ---- TYPING INDICATOR ----
+  socket.on("typing:start", ({ workspaceId, channel, groupId, recipientId }) => {
+    const room = groupId ? `group:${groupId}` : recipientId ? `user:${recipientId}` : workspaceId;
     socket.to(room).emit("typing:update", {
       userId: socket.user.id,
       name: socket.user.name,
       channel,
       groupId,
+      recipientId,
       typing: true,
     });
   });
 
-  socket.on("typing:stop", ({ workspaceId, channel, groupId }) => {
-    const room = groupId ? `group:${groupId}` : workspaceId;
+  socket.on("typing:stop", ({ workspaceId, channel, groupId, recipientId }) => {
+    const room = groupId ? `group:${groupId}` : recipientId ? `user:${recipientId}` : workspaceId;
     socket.to(room).emit("typing:update", {
       userId: socket.user.id,
       name: socket.user.name,
       channel,
       groupId,
+      recipientId,
       typing: false,
     });
   });
 
   // ---- READ RECEIPTS ----
   socket.on("message:read", async ({ messageId }) => {
-    await Message.findByIdAndUpdate(messageId, {
-      $addToSet: { readBy: socket.user.id },
-    });
+    await Message.findByIdAndUpdate(messageId, { $addToSet: { readBy: socket.user.id } });
     socket.to(socket.data.workspaceId).emit("message:read", {
       messageId,
       userId: socket.user.id,

@@ -2,50 +2,83 @@ import { createTheme } from '@mui/material/styles';
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
-    primary: {
-      main: '#7c3aed', // Vibrant Purple
-      light: '#a78bfa',
-      dark: '#6d28d9',
-      contrastText: '#fff',
-    },
-    secondary: {
-      main: '#06b6d4', // Cyan
-      light: '#22d3ee',
-      dark: '#0891b2',
-      contrastText: '#fff',
-    },
-    success: {
-      main: '#10b981',
-      light: '#6ee7b7',
-      dark: '#059669',
-    },
-    warning: {
-      main: '#f59e0b',
-      light: '#fbbf24',
-      dark: '#d97706',
-    },
-    error: {
-      main: '#ef4444',
-      light: '#f87171',
-      dark: '#dc2626',
-    },
-    info: {
-      main: '#06b6d4',
-      light: '#22d3ee',
-      dark: '#0891b2',
-    },
-    background: {
-      default: '#f8fafc',
-      paper: '#ffffff',
-    },
-    divider: 'rgba(0, 0, 0, 0.08)',
-    text: {
-      primary: '#1e293b',
-      secondary: '#64748b',
-      disabled: '#cbd5e1',
-    },
+  mode: 'light',
+
+  primary: {
+    main: '#7c3aed',
+    light: '#a78bfa',
+    dark: '#6d28d9',
+    contrastText: '#fff',
   },
+
+  secondary: {
+    main: '#06b6d4',
+    light: '#22d3ee',
+    dark: '#0891b2',
+    contrastText: '#fff',
+  },
+
+  success: {
+    main: '#10b981',
+    light: '#6ee7b7',
+    dark: '#059669',
+  },
+
+  warning: {
+    main: '#f59e0b',
+    light: '#fbbf24',
+    dark: '#d97706',
+  },
+
+  error: {
+    main: '#ef4444',
+    light: '#f87171',
+    dark: '#dc2626',
+  },
+
+  info: {
+    main: '#06b6d4',
+    light: '#22d3ee',
+    dark: '#0891b2',
+  },
+
+  background: {
+    default: '#f8fafc',
+    paper: '#ffffff',
+  },
+
+  divider: 'rgba(0, 0, 0, 0.08)',
+
+  text: {
+    primary: '#1e293b',
+    secondary: '#64748b',
+    disabled: '#cbd5e1',
+  },
+
+  // ONLY THIS PART IS CHANGED
+  chat: {
+    text: '#2E2342',
+    background: '#F7F3FC',
+    accent: '#8B5CF6',
+
+    surface: '#FFFFFF',
+    surfaceMuted: '#FAF7FE',
+
+    border: '#E8DFF2',
+
+    userBubble: '#8B5CF6',
+    userBubbleText: '#FFFFFF',
+
+    assistantBubble: '#FFFFFF',
+    assistantBubbleText: '#2E2342',
+
+    inputBackground: '#FFFFFF',
+
+    hover: '#F1EAF9',
+
+    online: '#22C55E',
+  },
+},
   typography: {
     fontFamily: '"Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", sans-serif',
     h1: {

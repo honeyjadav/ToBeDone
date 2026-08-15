@@ -36,7 +36,7 @@ const activityLogSchema = new mongoose.Schema(
     },
     targetType: {
       type: String,
-      enum: ["Task", "Message", "FileUpload", "Membership", "Board", "Group"],
+      enum: ["Task", "Message", "Membership", "Board", "Group"],
     },
     targetId: { type: mongoose.Schema.Types.ObjectId },
     metadata: { type: mongoose.Schema.Types.Mixed, default: {} },

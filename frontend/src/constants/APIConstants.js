@@ -42,6 +42,22 @@ export const APIs = {
   // Digest / Activity
   DIGEST: (workspaceId) => `/workspaces/${workspaceId}/digest`,
   ACTIVITY_FEED: (workspaceId) => `/workspaces/${workspaceId}/activity`,
+
+  // Groups
+  GROUPS: (workspaceId) => `/workspaces/${workspaceId}/groups`,
+  GROUP_BY_ID: (workspaceId, groupId) => `/workspaces/${workspaceId}/groups/${groupId}`,
+  GROUP_DELETE: (workspaceId, groupId) => `/workspaces/${workspaceId}/groups/${groupId}`, 
+  GROUP_MEMBERS: (workspaceId, groupId) => `/workspaces/${workspaceId}/groups/${groupId}/members`,
+  GROUP_MEMBER_REMOVE: (workspaceId, groupId, userId) =>
+    `/workspaces/${workspaceId}/groups/${groupId}/members/${userId}`,
+
+  // Conversations (sidebar list: groups + DM-able members)
+  CONVERSATIONS: (workspaceId) => `/workspaces/${workspaceId}/conversations`,
+
+  // Messages
+  MESSAGES: (workspaceId) => `/messages/${workspaceId}`,
+  MESSAGE_DELETE: (workspaceId, id) => `/messages/${workspaceId}/${id}`,
+  MESSAGE_MODERATE: (workspaceId, id) => `/messages/${workspaceId}/${id}/moderate`,
 };
 
 export const API_STATUS = {
@@ -55,4 +71,3 @@ export const API_STATUS = {
 };
 
 export const BEARERKEY = "Bearer ";
-

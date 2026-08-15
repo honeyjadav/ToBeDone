@@ -66,12 +66,12 @@ const taskSchema = new mongoose.Schema(
     dueDate: {
       type: Date,
     },
-    attachments: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "FileUpload",
-      },
-    ],
+    // attachments: [
+    //   {
+    //     type: mongoose.Schema.Types.ObjectId,
+    //     ref: "FileUpload",
+    //   },
+    // ],
     comments: [commentSchema],
     order: {
       type: Number,

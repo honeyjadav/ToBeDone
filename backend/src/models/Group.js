@@ -22,6 +22,12 @@ const groupSchema = new mongoose.Schema(
         ref: "User",
       },
     ],
+    formerMembers: [
+      {
+        user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+        removedAt: { type: Date, default: Date.now },
+      },
+    ],
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",

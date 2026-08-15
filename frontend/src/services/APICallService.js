@@ -158,6 +158,51 @@ class APICallService {
     return api.get(APIs.ACTIVITY_FEED(workspaceId));
   }
 
+   // ---- Groups ----
+  getGroups(workspaceId) {
+    return api.get(APIs.GROUPS(workspaceId));
+  }
+ 
+  createGroup(workspaceId, formData) {
+    return api.post(APIs.GROUPS(workspaceId), formData);
+  }
+ 
+  getGroupById(workspaceId, groupId) {
+    return api.get(APIs.GROUP_BY_ID(workspaceId, groupId));
+  }
+ 
+  deleteGroup(workspaceId, groupId) {
+    // NEW: creator-only, deletes the group and all its messages
+    return api.delete(APIs.GROUP_DELETE(workspaceId, groupId));
+  }
+ 
+  addGroupMember(workspaceId, groupId, userId) {
+    return api.post(APIs.GROUP_MEMBERS(workspaceId, groupId), { userId });
+  }
+ 
+  removeGroupMember(workspaceId, groupId, userId) {
+    return api.delete(APIs.GROUP_MEMBER_REMOVE(workspaceId, groupId, userId));
+  }
+
+   // ---- Conversations ----
+  getConversations(workspaceId) {
+    return api.get(APIs.CONVERSATIONS(workspaceId));
+  }
+  
+  // ---- Messages ----
+  // Pass one of { channel }, { groupId }, or { recipientId } in params
+  getMessages(workspaceId, params = {}) {
+    return api.get(APIs.MESSAGES(workspaceId), { params });
+  }
+
+  deleteMessage(workspaceId, id) {
+    return api.delete(APIs.MESSAGE_DELETE(workspaceId, id));
+  }
+
+  moderateMessage(workspaceId, id) {
+    return api.patch(APIs.MESSAGE_MODERATE(workspaceId, id));
+  }
+
 }
 
 export default new APICallService();
