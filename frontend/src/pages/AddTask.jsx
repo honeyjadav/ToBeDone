@@ -22,7 +22,7 @@ const TYPE_CONFIG = {
     'Test Case': { icon: ScienceIcon, color: '#037e42' },
     'User Story': { icon: AutoStoriesIcon, color: '#009ccc' },
 };
-const STATES = ['Backlog', 'In Progress', 'In Review', 'Done'];
+const STATES = ['To Do', 'In Progress', 'Done'];
 const PRIORITIES = ['High', 'Medium', 'Low'];
 const ASSIGNEES = ['JD', 'AK', 'RS'];
 

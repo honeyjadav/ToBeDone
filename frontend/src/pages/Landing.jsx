@@ -44,7 +44,7 @@ const features = [
     icon: '📊',
     title: 'Real-Time Dashboard',
     description: 'Get a bird\'s-eye view of your project progress and team productivity with live updates and insights.',
-    gradient: 'linear-gradient(135deg, #e8f0fe 0%, #f0f5ff 100%)'
+    gradient: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)' // Updated to light purple
   },
   {
     icon: '💬',
@@ -60,7 +60,7 @@ const features = [
   },
   {
     icon: '🤖',
-    title: 'AI Email Automation',
+    title: 'AI Digest & Automation',
     description: 'Let AI manage your inbox, draft responses, and organize emails automatically. Save hours every week.',
     gradient: 'linear-gradient(135deg, #f3e8fd 0%, #faf0ff 100%)'
   },
@@ -68,13 +68,13 @@ const features = [
     icon: '🔗',
     title: 'Workflow Integrations',
     description: 'Connect with your favorite tools via webhooks. Sync data and automate your entire workflow seamlessly.',
-    gradient: 'linear-gradient(135deg, #e8f0fe 0%, #f0f5ff 100%)'
+    gradient: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)' // Updated to light purple
   },
 ];
 
 const stats = [
-  { value: '1000+', label: 'Active Users' },
-  { value: '50K+', label: 'Tasks Created' },
+  { value: '6+', label: 'Core Modules' },
+  { value: '5+', label: 'Features' },
   { value: '100%', label: 'Free Forever' },
 ];
 
@@ -98,13 +98,35 @@ const roadmap = [
   { icon: '🤝', title: 'Client Collaboration', description: 'Share projects with external stakeholders' },
 ];
 
+// --- Logo Component ---
+const AppLogo = () => (
+  <Box
+    sx={{
+      width: 28,
+      height: 28,
+      borderRadius: '8px',
+      backgroundColor: '#6d28d9',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0
+    }}
+  >
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 11l3 3L22 4" />
+      <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+    </svg>
+  </Box>
+);
+
 export default function Landing() {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // The dotted background is now the root background for the entire page
   const dotGridBg = {
-    backgroundColor: '#fafcff',
+    backgroundColor: '#fafbfc',
     backgroundImage: 'radial-gradient(#d5e1f2 1.5px, transparent 1.5px)',
     backgroundSize: '28px 28px',
   };
@@ -117,7 +139,7 @@ export default function Landing() {
         position="fixed"
         elevation={0}
         sx={{
-          backgroundColor: 'rgba(255, 255, 255, 0.92)',
+          backgroundColor: 'rgba(250, 251, 252, 0.92)',
           backdropFilter: 'blur(12px)',
           borderBottom: '1px solid rgba(0, 0, 0, 0.06)',
           zIndex: 100
@@ -125,11 +147,7 @@ export default function Landing() {
       >
         <Toolbar sx={{ justifyContent: 'space-between', maxWidth: '1400px', width: '100%', mx: 'auto', px: { xs: 2, md: 3 } }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, cursor: 'pointer' }} onClick={() => navigate('/')}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '4px', width: 18 }}>
-              {['#1a73e8', '#000000', '#000000', '#1a73e8'].map((color, i) => (
-                <Box key={i} sx={{ width: 7, height: 7, borderRadius: '50%', backgroundColor: color }} />
-              ))}
-            </Box>
+            <AppLogo />
             <Typography sx={{ fontSize: '1.25rem', fontWeight: 700, color: '#000000', letterSpacing: '-0.5px' }}>
               ToBeDone
             </Typography>
@@ -137,34 +155,38 @@ export default function Landing() {
 
           <Stack direction="row" spacing={1.5}>
             <Button
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/register')}
               sx={{
                 color: '#555555',
                 textTransform: 'none',
                 fontWeight: 600,
                 fontSize: '0.9rem',
                 transition: 'all 0.2s',
-                '&:hover': { color: '#1a73e8', backgroundColor: 'transparent' },
+                '&:hover': { color: '#6d28d9', backgroundColor: 'transparent' },
               }}
             >
-              Sign in
+              Sign In
             </Button>
             <Button
-              onClick={() => navigate('/signup')}
+              onClick={() => navigate('/login')}
               variant="contained"
               disableElevation
               sx={{
-                backgroundColor: '#1a73e8',
+                backgroundColor: '#6d28d9',
                 color: '#ffffff',
                 textTransform: 'none',
                 fontWeight: 600,
                 borderRadius: '8px',
-                px: 2.5,
+                px: 3,
                 transition: 'all 0.2s',
-                '&:hover': { backgroundColor: '#155cb4', transform: 'translateY(-2px)', boxShadow: '0 8px 16px rgba(26, 115, 232, 0.2)' },
+                '&:hover': {
+                  backgroundColor: '#5b21b6',
+                  transform: 'translateY(-2px)',
+                  boxShadow: '0 8px 16px rgba(109, 40, 217, 0.2)'
+                },
               }}
             >
-              Get Started
+              Login
             </Button>
           </Stack>
         </Toolbar>
@@ -178,8 +200,8 @@ export default function Landing() {
               <Chip
                 label="✨ Free Forever • No Credit Card Required"
                 sx={{
-                  backgroundColor: '#f0f5ff',
-                  color: '#1a73e8',
+                  backgroundColor: '#f5f3ff',
+                  color: '#6d28d9',
                   fontWeight: 600,
                   height: 'auto',
                   py: 0.5,
@@ -189,28 +211,30 @@ export default function Landing() {
 
             <Typography
               variant="h1"
+              align="center"
               sx={{
-                fontSize: isMobile ? '2.8rem' : '5rem',
+                fontSize: isMobile ? '2.8rem' : '5.5rem',
                 fontWeight: 800,
                 color: '#000000',
-                lineHeight: 1.1,
+                lineHeight: 1.15,
                 letterSpacing: '-2px',
-                mb: 3,
-                maxWidth: '900px',
+                mb: 4,
+                maxWidth: '1000px',
                 mx: 'auto',
                 animation: `${fadeIn} 0.8s ease-out 0.1s both`
               }}
             >
-              Everything you need to{' '}
+              Everything you need to <br />
               <Typography component="span" variant="inherit" sx={{
-                background: 'linear-gradient(135deg, #1a73e8, #155cb4)',
+                background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
                 backgroundClip: 'text',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
               }}>
                 manage projects, collaborate,
               </Typography>
-              {' '}and organize your work.
+              <br />
+              and organize your work.
             </Typography>
 
             <Typography
@@ -228,55 +252,6 @@ export default function Landing() {
             >
               One free tool for task management, team collaboration, notes, chat, email automation with AI, and more. No limits. Ever.
             </Typography>
-
-            <Stack
-              direction={isMobile ? 'column' : 'row'}
-              spacing={2}
-              justifyContent="center"
-              alignItems="center"
-              sx={{ animation: `${fadeIn} 0.8s ease-out 0.3s both` }}
-            >
-              <Button
-                onClick={() => navigate('/signup')}
-                variant="contained"
-                disableElevation
-                sx={{
-                  backgroundColor: '#1a73e8',
-                  color: '#ffffff',
-                  padding: '16px 40px',
-                  fontSize: '1.1rem',
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  borderRadius: '12px',
-                  transition: 'all 0.3s',
-                  '&:hover': {
-                    backgroundColor: '#155cb4',
-                    transform: 'translateY(-3px)',
-                    boxShadow: '0 12px 24px rgba(26, 115, 232, 0.3)'
-                  },
-                  '&:active': { transform: 'translateY(-1px)' },
-                }}
-              >
-                Start For Free →
-              </Button>
-              <Button
-                onClick={() => navigate('/login')}
-                variant="outlined"
-                sx={{
-                  borderColor: '#d0d0d0',
-                  color: '#000000',
-                  padding: '16px 32px',
-                  fontSize: '1rem',
-                  fontWeight: 600,
-                  textTransform: 'none',
-                  borderRadius: '12px',
-                  transition: 'all 0.3s',
-                  '&:hover': { borderColor: '#1a73e8', color: '#1a73e8', backgroundColor: '#f9fbff' },
-                }}
-              >
-                View Demo
-              </Button>
-            </Stack>
 
             <Box
               sx={{
@@ -296,17 +271,17 @@ export default function Landing() {
                     p: 3,
                     borderRadius: '16px',
                     backgroundColor: '#ffffff',
-                    border: '1px solid rgba(26, 115, 232, 0.1)',
+                    border: '1px solid rgba(109, 40, 217, 0.1)',
                     textAlign: 'center',
                     boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)',
                     transition: 'all 0.3s',
                     '&:hover': {
                       transform: 'translateY(-4px)',
-                      boxShadow: '0 8px 24px rgba(26, 115, 232, 0.1)',
+                      boxShadow: '0 8px 24px rgba(109, 40, 217, 0.1)',
                     }
                   }}
                 >
-                  <Typography sx={{ fontSize: '2rem', fontWeight: 800, color: '#1a73e8', mb: 0.5 }}>
+                  <Typography sx={{ fontSize: '2rem', fontWeight: 800, color: '#6d28d9', mb: 0.5 }}>
                     {stat.value}
                   </Typography>
                   <Typography sx={{ fontSize: '0.9rem', color: '#666', fontWeight: 500 }}>
@@ -317,10 +292,10 @@ export default function Landing() {
             </Box>
           </Box>
         </Container>
-      </Box>
+      </Box >
 
       {/* ====== FEATURES SECTION ====== */}
-      <Box sx={{ py: 14, backgroundColor: 'rgba(240, 245, 255, 0.5)', borderTop: '1px solid #f0f0f0' }}>
+      <Box sx={{ py: 14, borderTop: '1px solid #f0f0f0' }}>
         <Container maxWidth="lg">
           <Box sx={{ mb: 8 }}>
             <Typography
@@ -366,13 +341,13 @@ export default function Landing() {
                   display: 'flex',
                   flexDirection: 'column',
                   borderRadius: '20px',
-                  border: '1.5px solid rgba(26, 115, 232, 0.08)',
+                  border: '1.5px solid rgba(109, 40, 217, 0.08)',
                   background: feature.gradient,
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-8px)',
-                    boxShadow: '0 24px 48px rgba(26, 115, 232, 0.12)',
-                    borderColor: 'rgba(26, 115, 232, 0.3)',
+                    boxShadow: '0 24px 48px rgba(109, 40, 217, 0.12)',
+                    borderColor: 'rgba(109, 40, 217, 0.3)',
                   },
                 }}
               >
@@ -404,10 +379,10 @@ export default function Landing() {
             ))}
           </Box>
         </Container>
-      </Box>
+      </Box >
 
       {/* ====== USE CASES SECTION ====== */}
-      <Box sx={{ py: 12, backgroundColor: '#ffffff', borderTop: '1px solid #f0f0f0' }}>
+      <Box sx={{ py: 12, borderTop: '1px solid #f0f0f0' }}>
         <Container maxWidth="lg">
           <Box sx={{ mb: 8 }}>
             <Typography
@@ -437,7 +412,7 @@ export default function Landing() {
                 sx={{
                   p: 4,
                   borderRadius: '20px',
-                  backgroundColor: '#f9fafb',
+                  backgroundColor: '#ffffff',
                   border: '1px solid #f0f0f0',
                   textAlign: 'center',
                   display: 'flex',
@@ -445,10 +420,9 @@ export default function Landing() {
                   alignItems: 'center',
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    backgroundColor: '#ffffff',
                     transform: 'translateY(-8px)',
-                    boxShadow: '0 16px 32px rgba(0, 0, 0, 0.08)',
-                    borderColor: 'rgba(26, 115, 232, 0.2)',
+                    boxShadow: '0 16px 32px rgba(109, 40, 217, 0.08)',
+                    borderColor: 'rgba(109, 40, 217, 0.2)',
                   }
                 }}
               >
@@ -465,10 +439,10 @@ export default function Landing() {
             ))}
           </Box>
         </Container>
-      </Box>
+      </Box >
 
       {/* ====== HIGHLIGHTS SECTION ====== */}
-      <Box sx={{ py: 12, backgroundColor: '#ffffff', borderTop: '1px solid #f0f0f0' }}>
+      <Box sx={{ py: 12, borderTop: '1px solid #f0f0f0' }}>
         <Container maxWidth="lg">
           <Box
             sx={{
@@ -487,8 +461,8 @@ export default function Landing() {
                     width: 64,
                     height: 64,
                     borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #f0f5ff 0%, #e8f0fe 100%)',
-                    border: '2px solid rgba(26, 115, 232, 0.2)',
+                    background: 'linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)',
+                    border: '2px solid rgba(109, 40, 217, 0.2)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -508,10 +482,10 @@ export default function Landing() {
             ))}
           </Box>
         </Container>
-      </Box>
+      </Box >
 
       {/* ====== ROADMAP SECTION ====== */}
-      <Box sx={{ py: 14, background: 'linear-gradient(135deg, #f9fafb 0%, #f0f5ff 100%)', borderTop: '1px solid #f0f0f0' }}>
+      <Box sx={{ py: 14, borderTop: '1px solid #f0f0f0' }}>
         <Container maxWidth="lg">
           <Box sx={{ mb: 8 }}>
             <Typography
@@ -554,7 +528,7 @@ export default function Landing() {
                   p: 4,
                   borderRadius: '16px',
                   backgroundColor: '#ffffff',
-                  border: '1px solid rgba(26, 115, 232, 0.1)',
+                  border: '1px solid rgba(109, 40, 217, 0.1)',
                   textAlign: 'center',
                   display: 'flex',
                   flexDirection: 'column',
@@ -562,7 +536,7 @@ export default function Landing() {
                   transition: 'all 0.3s ease',
                   '&:hover': {
                     transform: 'translateY(-4px)',
-                    boxShadow: '0 12px 24px rgba(26, 115, 232, 0.08)',
+                    boxShadow: '0 12px 24px rgba(109, 40, 217, 0.08)',
                   }
                 }}
               >
@@ -579,13 +553,13 @@ export default function Landing() {
             ))}
           </Box>
         </Container>
-      </Box>
+      </Box >
 
       {/* ====== FINAL CTA SECTION ====== */}
       <Box
         sx={{
           py: 12,
-          background: 'linear-gradient(135deg, #1a73e8 0%, #155cb4 100%)',
+          background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
           borderTop: '1px solid #f0f0f0',
           textAlign: 'center',
           position: 'relative',
@@ -638,44 +612,27 @@ export default function Landing() {
               sx={{ animation: `${fadeIn} 0.8s ease-out 0.2s both` }}
             >
               <Button
-                onClick={() => navigate('/signup')}
+                onClick={() => navigate('/login')}
                 variant="contained"
                 disableElevation
                 sx={{
                   backgroundColor: '#ffffff',
-                  color: '#1a73e8',
+                  color: '#6d28d9',
                   padding: '14px 40px',
                   fontSize: '1rem',
                   fontWeight: 700,
                   textTransform: 'none',
                   borderRadius: '10px',
                   transition: 'all 0.2s',
-                  '&:hover': { backgroundColor: '#f0f5ff', transform: 'translateY(-2px)' },
+                  '&:hover': { backgroundColor: '#f5f3ff', transform: 'translateY(-2px)' },
                 }}
               >
                 Get Started Free
               </Button>
-              <Button
-                onClick={() => navigate('/login')}
-                variant="outlined"
-                sx={{
-                  borderColor: '#ffffff',
-                  color: '#ffffff',
-                  padding: '14px 40px',
-                  fontSize: '1rem',
-                  fontWeight: 700,
-                  textTransform: 'none',
-                  borderRadius: '10px',
-                  transition: 'all 0.2s',
-                  '&:hover': { backgroundColor: 'rgba(255, 255, 255, 0.1)', borderColor: '#ffffff' },
-                }}
-              >
-                Sign In
-              </Button>
             </Stack>
           </Box>
         </Container>
-      </Box>
+      </Box >
 
       {/* ====== FOOTER ====== */}
       <Box sx={{ py: 6, backgroundColor: '#000000', color: '#ffffff', borderTop: '1px solid #222' }}>
@@ -691,11 +648,7 @@ export default function Landing() {
           >
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: { xs: 'center', md: 'flex-start' }, gap: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '3px', width: 14 }}>
-                  {['#1a73e8', '#ffffff', '#ffffff', '#1a73e8'].map((color, i) => (
-                    <Box key={i} sx={{ width: 5, height: 5, borderRadius: '50%', backgroundColor: color }} />
-                  ))}
-                </Box>
+                <AppLogo />
                 <Typography sx={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.3px' }}>
                   ToBeDone
                 </Typography>
@@ -714,7 +667,7 @@ export default function Landing() {
                   fontSize: '0.95rem',
                   fontWeight: 500,
                   transition: 'color 0.2s',
-                  '&:hover': { color: '#1a73e8' }
+                  '&:hover': { color: '#6d28d9' }
                 }}
               >
                 Contact
@@ -727,7 +680,7 @@ export default function Landing() {
                   fontSize: '0.95rem',
                   fontWeight: 500,
                   transition: 'color 0.2s',
-                  '&:hover': { color: '#1a73e8' }
+                  '&:hover': { color: '#6d28d9' }
                 }}
               >
                 Privacy
@@ -740,7 +693,7 @@ export default function Landing() {
                   fontSize: '0.95rem',
                   fontWeight: 500,
                   transition: 'color 0.2s',
-                  '&:hover': { color: '#1a73e8' }
+                  '&:hover': { color: '#6d28d9' }
                 }}
               >
                 Terms
@@ -748,8 +701,8 @@ export default function Landing() {
             </Stack>
           </Box>
         </Container>
-      </Box>
+      </Box >
 
-    </Box>
+    </Box >
   );
 }

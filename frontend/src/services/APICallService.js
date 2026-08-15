@@ -52,7 +52,7 @@ class APICallService {
   changePassword(formData) {
     return api.patch(APIs.CHANGE_PASSWORD, formData);
   }
-  
+
   // Logout
   logout() {
     return api.post(APIs.LOGOUT);
@@ -60,12 +60,12 @@ class APICallService {
 
   // Get logged-in user's profile
   getMe() {
-      return api.get(APIs.GET_ME);
+    return api.get(APIs.GET_ME);
   }
 
   updateProfile(name) {
     return api.patch(APIs.UPDATE_PROFILE, {
-        name,
+      name,
     });
   }
 
@@ -147,6 +147,31 @@ class APICallService {
     return api.delete(APIs.TASK_BY_ID(workspaceId, taskId));
   }
 
+  // ---- Webhooks ----
+  getWebhooks(workspaceId) {
+    return api.get(APIs.WEBHOOKS(workspaceId));
+  }
+
+  getWebhookById(workspaceId, webhookId) {
+    return api.get(APIs.WEBHOOK_BY_ID(workspaceId, webhookId));
+  }
+
+  sendDigestToWebhook(workspaceId, webhookId, payload) {
+    return api.post(APIs.WEBHOOK_SEND(workspaceId, webhookId), payload);
+  }
+
+  createWebhook(workspaceId, formData) {
+    return api.post(APIs.WEBHOOKS(workspaceId), formData);
+  }
+
+  updateWebhook(workspaceId, webhookId, formData) {
+    return api.patch(APIs.WEBHOOK_BY_ID(workspaceId, webhookId), formData);
+  }
+
+  deleteWebhook(workspaceId, webhookId) {
+    return api.delete(APIs.WEBHOOK_BY_ID(workspaceId, webhookId));
+  }
+
   // ---- Digest / Activity ----
 
   // period: "24h" | "week"
@@ -203,6 +228,10 @@ class APICallService {
     return api.patch(APIs.MESSAGE_MODERATE(workspaceId, id));
   }
 
+  // ---- Dashboard ----
+  getDashboard(workspaceId) {
+    return api.get(APIs.DASHBOARD(workspaceId));
+  }
 }
 
 export default new APICallService();

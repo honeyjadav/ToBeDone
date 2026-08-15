@@ -6,7 +6,7 @@ export const APIs = {
   LOGIN_VERIFY_OTP: "/auth/login/verify-otp",
   LOGIN_RESEND_OTP: "/auth/login/resend-otp",
   GET_ME: "/auth/me",
-  UPDATE_PROFILE: "/auth/me",
+  UPDATE_PROFILE: "/auth/profile",
 
   // Registration
   REGISTER: "/auth/register",
@@ -39,6 +39,11 @@ export const APIs = {
   INVITES: (workspaceId) => `/invites/${workspaceId}`,
   INVITE_ACCEPT: (token) => `/invites/accept/${token}`,
 
+  // Webhooks
+  WEBHOOKS: (workspaceId) => `/workspaces/${workspaceId}/webhooks`,
+  WEBHOOK_BY_ID: (workspaceId, webhookId) => `/workspaces/${workspaceId}/webhooks/${webhookId}`,
+  WEBHOOK_SEND: (workspaceId, webhookId) => `/workspaces/${workspaceId}/webhooks/${webhookId}/send`,
+
   // Digest / Activity
   DIGEST: (workspaceId) => `/workspaces/${workspaceId}/digest`,
   ACTIVITY_FEED: (workspaceId) => `/workspaces/${workspaceId}/activity`,
@@ -58,6 +63,9 @@ export const APIs = {
   MESSAGES: (workspaceId) => `/messages/${workspaceId}`,
   MESSAGE_DELETE: (workspaceId, id) => `/messages/${workspaceId}/${id}`,
   MESSAGE_MODERATE: (workspaceId, id) => `/messages/${workspaceId}/${id}/moderate`,
+  
+  // Dashboard
+  DASHBOARD: (workspaceId) => `/workspaces/${workspaceId}/dashboard`,
 };
 
 export const API_STATUS = {

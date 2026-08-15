@@ -52,5 +52,8 @@ activityLogSchema.index(
   { expireAfterSeconds: 60 * 60 * 24 * 30 },
 );
 
-const ActivityLog = mongoose.model("ActivityLog", activityLogSchema);
+const ActivityLog =
+  mongoose.models.ActivityLog ||
+  mongoose.model("ActivityLog", activityLogSchema);
+
 export default ActivityLog;

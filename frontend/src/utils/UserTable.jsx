@@ -26,6 +26,7 @@ export default function UserTable({
     selected,
     onToggleSelect,
     onToggleSelectAll,
+    onUserClick,
 }) {
     const allSelected =
         users.length > 0 &&
@@ -57,7 +58,6 @@ export default function UserTable({
                     flexShrink: 0,
                 }}
             >
-                {/* Select All */}
                 <Box
                     sx={{
                         width: "50px",
@@ -77,14 +77,7 @@ export default function UserTable({
                     />
                 </Box>
 
-                {/* ID */}
-                <Box
-                    sx={{
-                        width: "120px",
-                        px: 1.5,
-                        py: 1.25,
-                    }}
-                >
+                <Box sx={{ width: "120px", px: 1.5, py: 1.25 }}>
                     <Typography
                         sx={{
                             fontSize: "12px",
@@ -98,14 +91,7 @@ export default function UserTable({
                     </Typography>
                 </Box>
 
-                {/* Name */}
-                <Box
-                    sx={{
-                        width: "180px",
-                        px: 1.5,
-                        py: 1.25,
-                    }}
-                >
+                <Box sx={{ width: "180px", px: 1.5, py: 1.25 }}>
                     <Typography
                         sx={{
                             fontSize: "12px",
@@ -119,14 +105,7 @@ export default function UserTable({
                     </Typography>
                 </Box>
 
-                {/* Email */}
-                <Box
-                    sx={{
-                        flex: 1,
-                        px: 1.5,
-                        py: 1.25,
-                    }}
-                >
+                <Box sx={{ flex: 1, px: 1.5, py: 1.25 }}>
                     <Typography
                         sx={{
                             fontSize: "12px",
@@ -140,14 +119,7 @@ export default function UserTable({
                     </Typography>
                 </Box>
 
-                {/* Is Active */}
-                <Box
-                    sx={{
-                        width: "140px",
-                        px: 1.5,
-                        py: 1.25,
-                    }}
-                >
+                <Box sx={{ width: "140px", px: 1.5, py: 1.25 }}>
                     <Typography
                         sx={{
                             fontSize: "12px",
@@ -161,14 +133,7 @@ export default function UserTable({
                     </Typography>
                 </Box>
 
-                {/* Role */}
-                <Box
-                    sx={{
-                        width: "180px",
-                        px: 1.5,
-                        py: 1.25,
-                    }}
-                >
+                <Box sx={{ width: "180px", px: 1.5, py: 1.25 }}>
                     <Typography
                         sx={{
                             fontSize: "12px",
@@ -209,7 +174,8 @@ export default function UserTable({
                 ) : (
                     users.map((user) => {
                         const roleStyle =
-                            ROLE_CONFIG[user.role];
+                            ROLE_CONFIG[user.role] ||
+                            ROLE_CONFIG.Member;
 
                         const isChecked =
                             selected.includes(user.id);
@@ -217,6 +183,7 @@ export default function UserTable({
                         return (
                             <Box
                                 key={user.id}
+                                onClick={() => onUserClick?.(user)}
                                 sx={{
                                     display: "flex",
                                     alignItems: "center",
@@ -225,6 +192,8 @@ export default function UserTable({
                                     backgroundColor: isChecked
                                         ? "#f5f3ff"
                                         : "transparent",
+
+                                    cursor: "pointer",
 
                                     "&:hover": {
                                         backgroundColor: isChecked
@@ -238,7 +207,11 @@ export default function UserTable({
                                 }}
                             >
                                 {/* Checkbox */}
+
                                 <Box
+                                    onClick={(e) =>
+                                        e.stopPropagation()
+                                    }
                                     sx={{
                                         width: "50px",
                                         display: "flex",
@@ -255,6 +228,7 @@ export default function UserTable({
                                 </Box>
 
                                 {/* ID */}
+
                                 <Box
                                     sx={{
                                         width: "120px",
@@ -274,6 +248,7 @@ export default function UserTable({
                                 </Box>
 
                                 {/* Name */}
+
                                 <Box
                                     sx={{
                                         width: "180px",
@@ -296,6 +271,7 @@ export default function UserTable({
                                 </Box>
 
                                 {/* Email */}
+
                                 <Box
                                     sx={{
                                         flex: 1,
@@ -318,7 +294,7 @@ export default function UserTable({
                                         }}
                                     >
                                         {user.email
-                                            .charAt(0)
+                                            ?.charAt(0)
                                             .toUpperCase()}
                                     </Avatar>
 
@@ -336,6 +312,7 @@ export default function UserTable({
                                 </Box>
 
                                 {/* Is Active */}
+
                                 <Box
                                     sx={{
                                         width: "140px",
@@ -344,23 +321,30 @@ export default function UserTable({
                                     }}
                                 >
                                     <Chip
-                                        label={user.isActive ? "Active" : "Inactive"}
+                                        label={
+                                            user.isActive
+                                                ? "Active"
+                                                : "Inactive"
+                                        }
                                         size="small"
                                         sx={{
                                             height: "22px",
                                             fontSize: "11px",
                                             fontWeight: 600,
-                                            backgroundColor: user.isActive
-                                                ? "#dcfce7"
-                                                : "#f1f5f9",
-                                            color: user.isActive
-                                                ? "#16a34a"
-                                                : "#64748b",
+                                            backgroundColor:
+                                                user.isActive
+                                                    ? "#dcfce7"
+                                                    : "#f1f5f9",
+                                            color:
+                                                user.isActive
+                                                    ? "#16a34a"
+                                                    : "#64748b",
                                         }}
                                     />
                                 </Box>
 
                                 {/* Role */}
+
                                 <Box
                                     sx={{
                                         width: "180px",
