@@ -21,6 +21,8 @@ import {
 import taskRoutes from "./taskRoutes.js";
 import activityLogRoutes from "./activityLogRoutes.js";
 import groupRoutes from "./groupRoutes.js";
+import dashboardRoutes from "./dashboardRoutes.js"
+
 const router = express.Router();
 
 router.use(protect);
@@ -43,5 +45,7 @@ router.delete("/:workspaceId/members/:memberId", requireWorkspaceRole("Admin"), 
 router.use("/:workspaceId/tasks", taskRoutes);
 router.use("/:workspaceId", activityLogRoutes);
 router.use("/:workspaceId/groups", groupRoutes);
+
+router.use("/:workspaceId/dashboard", dashboardRoutes);
 
 export default router;

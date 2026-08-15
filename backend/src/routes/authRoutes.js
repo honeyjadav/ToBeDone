@@ -12,7 +12,10 @@ import {
   getMySessions,
   revokeSession,
   forgotPassword,
-  resetPassword
+  resetPassword,
+  getMe,
+  updateProfile,
+  changePassword
 } from "../controllers/authController.js";
 
 import { createNote, getWorkspaceNotes } from "../controllers/noteController.js";
@@ -41,6 +44,9 @@ router.get("/sessions", protect, getMySessions);
 router.delete("/sessions/:sessionId", protect, revokeSession);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+router.get("/me", protect, getMe);
+router.patch("/profile", protect, updateProfile);
+router.patch("/change-password", protect, changePassword);
 // --- 👉 2. ADD YOUR NEW NOTE ROUTES HERE ---
 // Notice we use `protect` here so only logged-in users can access them
 router.post("/create-note", protect, createNote);
