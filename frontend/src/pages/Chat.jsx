@@ -30,6 +30,7 @@ const C = {
   bubbleMe: '#5b56e0',
   bubbleThem: '#ffffff',
   danger: '#ef4444',
+  unread: '#22c55e',
 };
 
 const MESSAGE_LIMIT = 2000;
@@ -49,6 +50,13 @@ export default function Chat() {
   const [search, setSearch] = useState('');
   const [typingUser, setTypingUser] = useState(null);
   const [presence, setPresence] = useState([]);
+
+  // unread badges (WhatsApp-style): { [conversationId]: count }
+  // seeded from the server (real readBy-based counts), then updated
+  // optimistically in real time as messages arrive / are read.
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const selectedRef = useRef(null);
+  useEffect(() => { selectedRef.current = selected; }, [selected]);
 
   // sidebar resize (fixed: track delta from mousedown, not raw clientX)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
@@ -74,7 +82,6 @@ export default function Chat() {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   // delete-group confirmation
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(false);
-  
 
   const scrollRef = useRef(null);
   const typingTimeoutRef = useRef(null);
@@ -116,6 +123,20 @@ export default function Chat() {
           if (!match) return prev;
           return { ...prev, ...match, id: prev.id, removed: prev.removed };
         });
+
+        // Seed unread badges from the server's real (readBy-based) counts.
+        // Never stamp a badge onto whichever conversation is open right
+        // now — that one should stay visually at zero while you're in it.
+        setUnreadCounts((prev) => {
+          const next = { ...prev };
+          [...groupsWithType, ...directsWithType].forEach((c) => {
+            const id = c._id || c.id;
+            if (selectedRef.current?.id !== id) {
+              next[id] = c.unreadCount || 0;
+            }
+          });
+          return next;
+        });
       })
       .catch((err) => console.error('Failed to load conversations:', err));
   }, [workspaceId]);
@@ -148,7 +169,21 @@ export default function Chat() {
         (selected?.type === 'group' && msg.group === selected.id) ||
         (selected?.type === 'dm' && !msg.group &&
           (msg.sender._id === selected.id || msg.recipient === selected.id));
-      if (belongs) setMessages((prev) => [...prev, msg]);
+
+      if (belongs) {
+        setMessages((prev) => [...prev, msg]);
+        return;
+      }
+
+      // Message belongs to a conversation that isn't open right now —
+      // bump its WhatsApp-style unread badge. Skip our own messages and
+      // system messages (joins/leaves/removals aren't "unread content").
+      if (msg.isSystem) return;
+      const senderId = msg.sender?._id || msg.sender;
+      if (senderId === user?.id) return;
+      const targetId = msg.group || senderId;
+      if (!targetId) return;
+      setUnreadCounts((prev) => ({ ...prev, [targetId]: (prev[targetId] || 0) + 1 }));
     };
 
     const onDeleted = ({ messageId, content }) => {
@@ -199,6 +234,11 @@ export default function Chat() {
     };
 
     resetState();
+
+    // Opening a conversation clears its badge immediately (optimistic —
+    // the real per-message readBy writes happen below as messages come
+    // into view, keeping the server's own count in sync for next load).
+    setUnreadCounts((prev) => (prev[selected.id] ? { ...prev, [selected.id]: 0 } : prev));
 
     APICallService.getMessages(workspaceId, params)
       .then((res) => {
@@ -531,7 +571,14 @@ export default function Chat() {
               {filteredGroups.map((c) => {
                 const convId = c._id || c.id;
                 return (
-                  <ConversationRow key={`group-${convId}`} c={c} selected={selected} onClick={setSelected} isGroup />
+                  <ConversationRow
+                    key={`group-${convId}`}
+                    c={c}
+                    selected={selected}
+                    onClick={setSelected}
+                    isGroup
+                    unreadCount={unreadCounts[convId]}
+                  />
                 );
               })}
             </>
@@ -545,7 +592,14 @@ export default function Chat() {
               {filteredDirects.map((c) => {
                 const convId = c._id || c.id;
                 return (
-                  <ConversationRow key={`dm-${convId}`} c={c} selected={selected} onClick={setSelected} online={isOnline(convId)} />
+                  <ConversationRow
+                    key={`dm-${convId}`}
+                    c={c}
+                    selected={selected}
+                    onClick={setSelected}
+                    online={isOnline(convId)}
+                    unreadCount={unreadCounts[convId]}
+                  />
                 );
               })}
             </>
@@ -959,10 +1013,11 @@ const MessageRow = memo(function MessageRow({ m, isMe, isGroup, user, setConfirm
   );
 });
 
-function ConversationRow({ c, selected, onClick, isGroup, online }) {
+function ConversationRow({ c, selected, onClick, isGroup, online, unreadCount }) {
   const convId = c._id || c.id;
   const isActive = selected?.id === convId && selected?.type === c.type;
   const isReadOnly = isGroup && c.isMember === false;
+  const hasUnread = !!unreadCount;
 
   const handleClick = () => {
     const conversationData = {
@@ -992,7 +1047,7 @@ function ConversationRow({ c, selected, onClick, isGroup, online }) {
         )}
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 13.5, fontWeight: 600, color: '#1e1b3a' }} noWrap>
+        <Typography sx={{ fontSize: 13.5, fontWeight: hasUnread ? 700 : 600, color: '#1e1b3a' }} noWrap>
           {c.name || 'Unnamed'}
         </Typography>
         {isReadOnly && (
@@ -1001,6 +1056,15 @@ function ConversationRow({ c, selected, onClick, isGroup, online }) {
           </Typography>
         )}
       </Box>
+      {hasUnread && (
+        <Box sx={{
+          minWidth: 18, height: 18, borderRadius: '50%', bgcolor: C.unread,
+          color: '#fff', fontSize: 10.5, fontWeight: 700, lineHeight: 1,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.6, flexShrink: 0,
+        }}>
+          {unreadCount > 99 ? '99+' : unreadCount}
+        </Box>
+      )}
     </Box>
   );
 }
