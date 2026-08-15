@@ -22,6 +22,7 @@ import UserTable from "../utils/UserTable";
 import AddUser from "./AddUser";
 import APICallService from "../services/APICallService";
 import { LOCAL_STORAGE_KEYS } from "../constants/Constants";
+import { useAuth } from "../hooks/useAuth";
 
 const ROLES = ["Admin", "Manager", "Member"];
 
@@ -108,6 +109,10 @@ function FilterDropdown({ label, options, selected, onToggle }) {
 // --------------------------------------------------
 
 export default function Users() {
+  const { activeWorkspace } = useAuth();
+  const currentWorkspaceRole = activeWorkspace?.role || "";
+  const canAddUser = ["Admin", "Manager"].includes(currentWorkspaceRole);
+
   const [users, setUsers] = useState([]);
 
   const [search, setSearch] = useState("");
@@ -132,83 +137,83 @@ export default function Users() {
   });
 
   useEffect(() => {
-  fetchWorkspaceMembers();
-}, []);
+    fetchWorkspaceMembers();
+  }, []);
 
   const fetchWorkspaceMembers = async () => {
-  try {
-    const workspaceId = localStorage.getItem(
-      LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID
-    );
+    try {
+      const workspaceId = localStorage.getItem(
+        LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID
+      );
 
-    console.log("Workspace ID:", workspaceId);
+      console.log("Workspace ID:", workspaceId);
 
-    if (!workspaceId) {
+      if (!workspaceId) {
+        setSnackbar({
+          open: true,
+          message: "No active workspace selected.",
+          severity: "error",
+        });
+
+        return;
+      }
+
+      const response =
+        await APICallService.getWorkspaceMembers(workspaceId);
+
+      console.log("Workspace Members API Response:", response);
+
+      const payload = response?.data;
+
+      console.log("Payload:", payload);
+
+      if (!payload?.success) {
+        setSnackbar({
+          open: true,
+          message:
+            payload?.message ||
+            "Failed to fetch workspace members.",
+          severity: "error",
+        });
+
+        return;
+      }
+
+      const members = payload?.data || [];
+
+      console.log("Members:", members);
+
+      const formattedUsers = members.map((member) => ({
+        id: member.memberId,
+        name: member.name,
+        email: member.email,
+        role: member.role,
+        isActive: true,
+        archived: false,
+      }));
+
+      console.log("Formatted Users:", formattedUsers);
+
+      setUsers(formattedUsers);
+    } catch (error) {
+      console.error(
+        "Error fetching workspace members:",
+        error
+      );
+
+      const message =
+        error?.response?.data?.errors?.[0]?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to fetch workspace members.";
+
       setSnackbar({
         open: true,
-        message: "No active workspace selected.",
+        message,
         severity: "error",
       });
-
-      return;
     }
-
-    const response =
-      await APICallService.getWorkspaceMembers(workspaceId);
-
-    console.log("Workspace Members API Response:", response);
-
-    const payload = response?.data;
-
-    console.log("Payload:", payload);
-
-    if (!payload?.success) {
-      setSnackbar({
-        open: true,
-        message:
-          payload?.message ||
-          "Failed to fetch workspace members.",
-        severity: "error",
-      });
-
-      return;
-    }
-
-    const members = payload?.data || [];
-
-    console.log("Members:", members);
-
-    const formattedUsers = members.map((member) => ({
-      id: member.memberId,
-      name: member.name,
-      email: member.email,
-      role: member.role,
-      isActive: true,
-      archived: false,
-    }));
-
-    console.log("Formatted Users:", formattedUsers);
-
-    setUsers(formattedUsers);
-  } catch (error) {
-    console.error(
-      "Error fetching workspace members:",
-      error
-    );
-
-    const message =
-      error?.response?.data?.errors?.[0]?.message ||
-      error?.response?.data?.message ||
-      error?.message ||
-      "Failed to fetch workspace members.";
-
-    setSnackbar({
-      open: true,
-      message,
-      severity: "error",
-    });
-  }
-};
+  };
   // --------------------------------------------------
   // Role Filter
   // --------------------------------------------------
@@ -372,9 +377,9 @@ export default function Users() {
       prev.map((user) =>
         selected.includes(user.id)
           ? {
-              ...user,
-              archived: !showArchived,
-            }
+            ...user,
+            archived: !showArchived,
+          }
           : user,
       ),
     );
@@ -420,36 +425,38 @@ export default function Users() {
         }}
       >
         {/* Add User - LEFT SIDE */}
-        <Button
-          onClick={() => setAddUserOpen(true)}
-          startIcon={
-            <AddIcon
-              sx={{
-                fontSize: 18,
-              }}
-            />
-          }
-          variant="contained"
-          sx={{
-            textTransform: "none",
-            fontSize: "13.5px",
-            fontWeight: 600,
+        {canAddUser && (
+          <Button
+            onClick={() => setAddUserOpen(true)}
+            startIcon={
+              <AddIcon
+                sx={{
+                  fontSize: 18,
+                }}
+              />
+            }
+            variant="contained"
+            sx={{
+              textTransform: "none",
+              fontSize: "13.5px",
+              fontWeight: 600,
 
-            backgroundColor: "#7c3aed",
+              backgroundColor: "#7c3aed",
 
-            borderRadius: "8px",
+              borderRadius: "8px",
 
-            height: "36px",
+              height: "36px",
 
-            flexShrink: 0,
+              flexShrink: 0,
 
-            "&:hover": {
-              backgroundColor: "#6d28d9",
-            },
-          }}
-        >
-          Add User
-        </Button>
+              "&:hover": {
+                backgroundColor: "#6d28d9",
+              },
+            }}
+          >
+            Add User
+          </Button>
+        )}
 
         {/* Search */}
         <Box

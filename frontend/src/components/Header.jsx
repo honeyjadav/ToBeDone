@@ -4,9 +4,28 @@ import NotificationDropdown from "./NotificationDropdown";
 import { mockNotifications } from "../pages/Notifications";
 import APICallService from "../services/APICallService";
 
-export default function Header() {
+export default function Header({ darkMode = false }) {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const palette = darkMode
+    ? {
+      background: '#0f172a',
+      border: 'rgba(148, 163, 184, 0.2)',
+      text: '#e2e8f0',
+      muted: '#94a3b8',
+      search: '#0b1220',
+      iconBg: '#111827',
+      username: '#e2e8f0',
+    }
+    : {
+      background: '#ffffff',
+      border: '#e2e8f0',
+      text: '#1e293b',
+      muted: '#94a3b8',
+      search: '#f1f5f9',
+      iconBg: '#f1f5f9',
+      username: '#334155',
+    };
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -58,15 +77,15 @@ export default function Header() {
         left: 0,
         right: 0,
         zIndex: 100,
-        backgroundColor: "#ffffff",
-        borderBottom: "1px solid #e2e8f0",
+        backgroundColor: palette.background,
+        borderBottom: `1px solid ${palette.border}`,
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
         padding: "0 20px",
         height: "60px",
         gap: "16px",
-        boxShadow: "0 1px 3px rgba(0, 0, 0, 0.05)",
+        boxShadow: darkMode ? "0 1px 3px rgba(15, 23, 42, 0.4)" : "0 1px 3px rgba(0, 0, 0, 0.05)",
       }}
     >
       {/* Logo + Name */}
@@ -112,7 +131,7 @@ export default function Header() {
             margin: 0,
             fontSize: "18px",
             fontWeight: 700,
-            color: "#1e293b",
+            color: palette.text,
             letterSpacing: "-0.3px",
             whiteSpace: "nowrap",
           }}
@@ -129,7 +148,7 @@ export default function Header() {
           display: "flex",
           alignItems: "center",
           gap: "8px",
-          backgroundColor: "#f1f5f9",
+          backgroundColor: palette.search,
           borderRadius: "8px",
           padding: "0 12px",
           height: "36px",
@@ -159,7 +178,7 @@ export default function Header() {
             outline: "none",
             background: "transparent",
             fontSize: "13px",
-            color: "#334155",
+            color: darkMode ? '#e2e8f0' : '#334155',
             width: "100%",
           }}
         />
@@ -174,7 +193,7 @@ export default function Header() {
           flexShrink: 0,
         }}
       >
-        <button style={iconBtnStyle} aria-label="Messages">
+        <button style={{ ...iconBtnStyle, background: palette.iconBg }} aria-label="Messages">
           <svg width="17" height="17" viewBox="0 0 24 24" fill="none">
             <path d="M4 4h16v16H4z" stroke="none" />
             <path
@@ -203,7 +222,7 @@ export default function Header() {
           style={{
             width: "1px",
             height: "24px",
-            background: "#e2e8f0",
+            background: darkMode ? 'rgba(148, 163, 184, 0.2)' : '#e2e8f0',
           }}
         />
 
@@ -242,7 +261,7 @@ export default function Header() {
           <span
             className="username-display"
             style={{
-              color: "#334155",
+              color: palette.username,
               fontSize: "13.5px",
               fontWeight: 600,
               whiteSpace: "nowrap",
