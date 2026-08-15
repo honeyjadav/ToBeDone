@@ -106,9 +106,32 @@ export default function WorkspaceSwitcher({
   collapsed = false,
   isOpen,
   onToggle,
+  darkMode = false,
 }) {
   const [anchorEl, setAnchorEl] = useState(null);
   const [query, setQuery] = useState('');
+
+  const theme = darkMode
+    ? {
+      surface: '#0f172a',
+      panel: '#111827',
+      soft: '#1e293b',
+      border: 'rgba(148, 163, 184, 0.18)',
+      text: '#e2e8f0',
+      muted: '#94a3b8',
+      hover: '#1e293b',
+      input: '#0b1220',
+    }
+    : {
+      surface: '#f8fafc',
+      panel: '#ffffff',
+      soft: '#f8fafc',
+      border: '#e2e8f0',
+      text: '#1e293b',
+      muted: '#94a3b8',
+      hover: '#f1f5f9',
+      input: '#f8fafc',
+    };
 
   const active = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0];
   const hasWorkspaces = workspaces.length > 0;
@@ -128,7 +151,7 @@ export default function WorkspaceSwitcher({
     <IconButton
       onClick={onToggle}
       size="small"
-      sx={{ border: '1px solid #e5e7eb', borderRadius: '7px', width: 28, height: 28, color: '#64748b', flexShrink: 0 }}
+      sx={{ border: `1px solid ${theme.border}`, borderRadius: '7px', width: 28, height: 28, color: theme.muted, flexShrink: 0, backgroundColor: darkMode ? '#0f172a' : '#ffffff' }}
     >
       {isOpen ? <ChevronLeftIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
     </IconButton>
@@ -150,16 +173,16 @@ export default function WorkspaceSwitcher({
               minWidth: 0,
               borderRadius: '8px',
               cursor: 'pointer',
-              border: '1px solid #e2e8f0',
-              backgroundColor: '#f8fafc',
-              '&:hover': { backgroundColor: '#f1f5f9' },
+              border: `1px solid ${theme.border}`,
+              backgroundColor: darkMode ? '#0f172a' : '#f8fafc',
+              '&:hover': { backgroundColor: darkMode ? '#1e293b' : '#f1f5f9' },
             }}
           >
             <WorkspaceAvatar workspace={active} />
             {!collapsed && (
               <>
                 <Typography
-                  sx={{ fontSize: '13px', fontWeight: 700, color: '#1e293b', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+                  sx={{ fontSize: '13px', fontWeight: 700, color: theme.text, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
                 >
                   {active.name}
                 </Typography>
@@ -189,22 +212,22 @@ export default function WorkspaceSwitcher({
           MenuListProps={{ sx: { py: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } }}
         >
           <Typography
-            sx={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', px: 2, pt: 1, pb: workspaces.length > SEARCH_THRESHOLD ? 0.5 : 1, flexShrink: 0 }}
+            sx={{ fontSize: '11px', fontWeight: 700, color: theme.muted, textTransform: 'uppercase', px: 2, pt: 1, pb: workspaces.length > SEARCH_THRESHOLD ? 0.5 : 1, flexShrink: 0 }}
           >
             Your workspaces
           </Typography>
 
           {workspaces.length > SEARCH_THRESHOLD && (
             <Box sx={{ px: 1.5, pb: 1, flexShrink: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1, py: 0.5, borderRadius: '7px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc' }}>
-                <SearchIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1, py: 0.5, borderRadius: '7px', border: `1px solid ${theme.border}`, backgroundColor: darkMode ? '#0b1220' : '#f8fafc' }}>
+                <SearchIcon sx={{ fontSize: 16, color: theme.muted }} />
                 <InputBase
                   autoFocus
                   placeholder="Search workspaces..."
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={(e) => e.stopPropagation()}
-                  sx={{ fontSize: '13px', flex: 1 }}
+                  sx={{ fontSize: '13px', flex: 1, color: theme.text }}
                 />
               </Box>
             </Box>
@@ -221,7 +244,7 @@ export default function WorkspaceSwitcher({
             }}
           >
             {filtered.length === 0 ? (
-              <Typography sx={{ fontSize: '13px', color: '#94a3b8', textAlign: 'center', py: 2 }}>
+              <Typography sx={{ fontSize: '13px', color: theme.muted, textAlign: 'center', py: 2 }}>
                 No workspaces match "{query}"
               </Typography>
             ) : (

@@ -27,6 +27,7 @@ import UserTable from "../utils/UserTable";
 import AddUser from "./AddUser";
 import APICallService from "../services/APICallService";
 import { LOCAL_STORAGE_KEYS } from "../constants/Constants";
+import { useAuth } from "../hooks/useAuth";
 
 const ROLES = ["Admin", "Manager", "Member"];
 
@@ -109,6 +110,10 @@ function FilterDropdown({ label, options, selected, onToggle }) {
 // --------------------------------------------------
 
 export default function Users() {
+  const { activeWorkspace } = useAuth();
+  const currentWorkspaceRole = activeWorkspace?.role || "";
+  const canAddUser = ["Admin", "Manager"].includes(currentWorkspaceRole);
+
   const [users, setUsers] = useState([]);
 
   const [search, setSearch] = useState("");
@@ -149,7 +154,7 @@ export default function Users() {
         LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID,
       );
 
-      console.log("Workspace ID:", workspaceId);
+    console.log("Workspace ID:", workspaceId);
 
       if (!workspaceId) {
         setSnackbar({
@@ -208,7 +213,7 @@ export default function Users() {
     } catch (error) {
       console.error(
         "Error fetching workspace members:",
-        error,
+        error
       );
 
       const message =
@@ -592,34 +597,39 @@ export default function Users() {
           flexShrink: 0,
         }}
       >
-        {/* Add User */}
+        {/* Add User - LEFT SIDE */}
+        {canAddUser && (
+          <Button
+            onClick={() => setAddUserOpen(true)}
+            startIcon={
+              <AddIcon
+                sx={{
+                  fontSize: 18,
+                }}
+              />
+            }
+            variant="contained"
+            sx={{
+              textTransform: "none",
+              fontSize: "13.5px",
+              fontWeight: 600,
 
-        <Button
-          onClick={() => setAddUserOpen(true)}
-          startIcon={
-            <AddIcon
-              sx={{
-                fontSize: 18,
-              }}
-            />
-          }
-          variant="contained"
-          sx={{
-            textTransform: "none",
-            fontSize: "13.5px",
-            fontWeight: 600,
-            backgroundColor: "#7c3aed",
-            borderRadius: "8px",
-            height: "36px",
-            flexShrink: 0,
+              backgroundColor: "#7c3aed",
 
-            "&:hover": {
-              backgroundColor: "#6d28d9",
-            },
-          }}
-        >
-          Add User
-        </Button>
+              borderRadius: "8px",
+
+              height: "36px",
+
+              flexShrink: 0,
+
+              "&:hover": {
+                backgroundColor: "#6d28d9",
+              },
+            }}
+          >
+            Add User
+          </Button>
+        )}
 
         {/* Search */}
 

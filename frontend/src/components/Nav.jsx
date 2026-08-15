@@ -66,23 +66,46 @@ const links = [
   },
 ];
 
-export default function Nav({ isOpen, setIsOpen }) {
+export default function Nav({ isOpen, setIsOpen, darkMode = false }) {
   const location = useLocation();
   const navigate = useNavigate();
   const width = isOpen ? EXPANDED_WIDTH : COLLAPSED_WIDTH;
 
   const { workspaces, activeWorkspace, selectWorkspace, logout } = useAuth();
+  const palette = darkMode
+    ? {
+      paper: '#0f172a',
+      panel: '#111827',
+      border: 'rgba(148, 163, 184, 0.18)',
+      text: '#e2e8f0',
+      muted: '#94a3b8',
+      hover: '#1e293b',
+      activeBackground: '#312e81',
+      activeText: '#c4b5fd',
+      itemBackground: '#111827',
+    }
+    : {
+      paper: '#ffffff',
+      panel: '#f8fafc',
+      border: '#e5e7eb',
+      text: '#1e293b',
+      muted: '#64748b',
+      hover: '#f8fafc',
+      activeBackground: '#f3f0fe',
+      activeText: '#7c3aed',
+      itemBackground: '#ffffff',
+    };
 
   const handleSwitchWorkspace = async (workspaceId) => {
-  try {
-    await selectWorkspace(workspaceId);
+    try {
+      await selectWorkspace(workspaceId);
 
-    // Reload the CURRENT page
-    window.location.reload();
-  } catch (err) {
-    console.error("Failed to switch workspace:", err);
-  }
-};
+      // Reload the CURRENT page
+      window.location.reload();
+    } catch (err) {
+      console.error("Failed to switch workspace:", err);
+    }
+  };
 
   const navItemSx = (isActive) => ({
     borderRadius: "7px",
@@ -92,10 +115,10 @@ export default function Nav({ isOpen, setIsOpen }) {
     px: isOpen ? "10px" : "0px",
     minHeight: "auto",
     justifyContent: isOpen ? "flex-start" : "center",
-    color: isActive ? "#7c3aed" : "#475569",
-    backgroundColor: isActive ? "#f3f0fe" : "transparent",
+    color: isActive ? palette.activeText : palette.muted,
+    backgroundColor: isActive ? palette.activeBackground : "transparent",
     "&:hover": {
-      backgroundColor: isActive ? "#f3f0fe" : "#f8fafc",
+      backgroundColor: isActive ? palette.activeBackground : palette.hover,
     },
   });
 
@@ -106,7 +129,7 @@ export default function Nav({ isOpen, setIsOpen }) {
           sx={{
             minWidth: 0,
             mr: isOpen ? 1.25 : 0,
-            color: isActive ? "#7c3aed" : item.danger ? "#dc2626" : "#94a3b8",
+            color: isActive ? palette.activeText : item.danger ? "#dc2626" : palette.muted,
             justifyContent: "center",
           }}
         >
@@ -144,7 +167,8 @@ export default function Nav({ isOpen, setIsOpen }) {
         "& .MuiDrawer-paper": {
           width,
           boxSizing: "border-box",
-          borderRight: "1px solid #e5e7eb",
+          borderRight: `1px solid ${palette.border}`,
+          backgroundColor: palette.paper,
           position: "fixed",
           top: `${HEADER_HEIGHT}px`,
           left: 0,
@@ -178,6 +202,7 @@ export default function Nav({ isOpen, setIsOpen }) {
             collapsed={!isOpen}
             isOpen={isOpen}
             onToggle={() => setIsOpen(!isOpen)}
+            darkMode={darkMode}
           />
 
           {isOpen && (
@@ -185,7 +210,7 @@ export default function Nav({ isOpen, setIsOpen }) {
               sx={{
                 fontSize: "11px",
                 fontWeight: 600,
-                color: "#94a3b8",
+                color: palette.muted,
                 px: 2,
                 mb: 1,
                 textTransform: "uppercase",

@@ -9,6 +9,7 @@ import {
   LinearProgress,
   Divider,
 } from "@mui/material";
+import { useTheme } from "@mui/material/styles";
 
 import AssignmentOutlinedIcon from "@mui/icons-material/AssignmentOutlined";
 import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
@@ -52,55 +53,21 @@ const notifications = [
 ];
 
 /* =========================================================
-   STATUS COLORS
+   STATUS / PRIORITY COLORS
 ========================================================= */
 
 const statusColors = {
-  "To Do": {
-    background: "#f1f5f9",
-    color: "#64748b",
-  },
-
-  "In Progress": {
-    background: "#eff6ff",
-    color: "#2563eb",
-  },
-
-  Done: {
-    background: "#ecfdf5",
-    color: "#16a34a",
-  },
-
-  Backlog: {
-    background: "#f1f5f9",
-    color: "#64748b",
-  },
-
-  "In Review": {
-    background: "#fffbeb",
-    color: "#d97706",
-  },
+  "To Do": { background: "#f1f5f9", color: "#64748b" },
+  Backlog: { background: "#f1f5f9", color: "#64748b" },
+  "In Progress": { background: "#eff6ff", color: "#2563eb" },
+  "In Review": { background: "#fffbeb", color: "#d97706" },
+  Done: { background: "#ecfdf5", color: "#16a34a" },
 };
 
-/* =========================================================
-   PRIORITY COLORS
-========================================================= */
-
 const priorityColors = {
-  High: {
-    background: "#fee2e2",
-    color: "#dc2626",
-  },
-
-  Medium: {
-    background: "#fef3c7",
-    color: "#d97706",
-  },
-
-  Low: {
-    background: "#dcfce7",
-    color: "#16a34a",
-  },
+  High: { background: "#fee2e2", color: "#dc2626" },
+  Medium: { background: "#fef3c7", color: "#d97706" },
+  Low: { background: "#dcfce7", color: "#16a34a" },
 };
 
 /* =========================================================
@@ -114,12 +81,13 @@ function SummaryCard({
   icon: Icon,
   iconBackground,
   iconColor,
+  isDark,
 }) {
   return (
     <Box
       sx={{
-        backgroundColor: "#ffffff",
-        border: "1px solid #e2e8f0",
+        backgroundColor: isDark ? "#0f172a" : "#ffffff",
+        border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
         borderRadius: "10px",
         p: 2,
         minWidth: 0,
@@ -138,7 +106,7 @@ function SummaryCard({
           <Typography
             sx={{
               fontSize: "12px",
-              color: "#64748b",
+              color: isDark ? "#cbd5e1" : "#64748b",
               fontWeight: 600,
               mb: 0.75,
             }}
@@ -151,7 +119,7 @@ function SummaryCard({
               fontSize: "25px",
               lineHeight: 1.2,
               fontWeight: 700,
-              color: "#1e293b",
+              color: isDark ? "#f8fafc" : "#1e293b",
             }}
           >
             {value}
@@ -192,26 +160,17 @@ function SummaryCard({
    MONTHLY COMPLETED TASKS
 ========================================================= */
 
-function MonthlyCompletedChart({ data = [] }) {
+function MonthlyCompletedChart({ data = [], isDark }) {
   const chartData =
-    data.length > 0
-      ? data
-      : [
-          {
-            month: "No Data",
-            value: 0,
-          },
-        ];
+    data.length > 0 ? data : [{ month: "No Data", value: 0 }];
 
   const maxValue = Math.max(...chartData.map((item) => item.value), 1);
 
+  const gridColor = isDark ? "rgba(148, 163, 184, 0.18)" : "#e2e8f0";
+  const labelColor = "#94a3b8";
+
   return (
-    <Box
-      sx={{
-        width: "100%",
-        overflow: "hidden",
-      }}
-    >
+    <Box sx={{ width: "100%", overflow: "hidden" }}>
       <svg
         viewBox="0 0 650 260"
         width="100%"
@@ -219,7 +178,6 @@ function MonthlyCompletedChart({ data = [] }) {
         preserveAspectRatio="none"
       >
         {/* Horizontal grid lines */}
-
         {[0, 1, 2, 3, 4].map((line) => {
           const y = 35 + line * 45;
 
@@ -230,14 +188,13 @@ function MonthlyCompletedChart({ data = [] }) {
               y1={y}
               x2="625"
               y2={y}
-              stroke="#e2e8f0"
+              stroke={gridColor}
               strokeWidth="1"
             />
           );
         })}
 
         {/* Y axis labels */}
-
         {[
           maxValue,
           Math.round(maxValue * 0.75),
@@ -250,14 +207,13 @@ function MonthlyCompletedChart({ data = [] }) {
             x="8"
             y={40 + index * 45}
             fontSize="11"
-            fill="#94a3b8"
+            fill={labelColor}
           >
             {value}
           </text>
         ))}
 
         {/* Bars */}
-
         {chartData.map((item, index) => {
           const barHeight = (item.value / maxValue) * 180;
 
@@ -283,7 +239,7 @@ function MonthlyCompletedChart({ data = [] }) {
                 textAnchor="middle"
                 fontSize="11"
                 fontWeight="600"
-                fill="#475569"
+                fill={isDark ? "#e2e8f0" : "#475569"}
               >
                 {item.value}
               </text>
@@ -293,7 +249,7 @@ function MonthlyCompletedChart({ data = [] }) {
                 y="240"
                 textAnchor="middle"
                 fontSize="11"
-                fill="#94a3b8"
+                fill={labelColor}
               >
                 {item.month}
               </text>
@@ -309,7 +265,7 @@ function MonthlyCompletedChart({ data = [] }) {
    TASK STATUS CHART
 ========================================================= */
 
-function TaskStatusChart({ statusBreakdown = [] }) {
+function TaskStatusChart({ statusBreakdown = [], isDark }) {
   const total = statusBreakdown.reduce(
     (sum, item) => sum + Number(item.value || 0),
     0,
@@ -317,7 +273,9 @@ function TaskStatusChart({ statusBreakdown = [] }) {
 
   const statusChartColors = {
     "To Do": "#94a3b8",
+    Backlog: "#94a3b8",
     "In Progress": "#3b82f6",
+    "In Review": "#f59e0b",
     Done: "#22c55e",
   };
 
@@ -354,23 +312,19 @@ function TaskStatusChart({ statusBreakdown = [] }) {
           viewBox="0 0 190 190"
           width="190"
           height="190"
-          style={{
-            transform: "rotate(-90deg)",
-          }}
+          style={{ transform: "rotate(-90deg)" }}
         >
           {/* Background circle */}
-
           <circle
             cx="95"
             cy="95"
             r="72"
             fill="none"
-            stroke="#f1f5f9"
+            stroke={isDark ? "rgba(148, 163, 184, 0.12)" : "#f1f5f9"}
             strokeWidth="22"
           />
 
           {/* Status circles */}
-
           {statusData.map((item) => {
             const percentage = total > 0 ? item.value / total : 0;
 
@@ -397,7 +351,6 @@ function TaskStatusChart({ statusBreakdown = [] }) {
         </svg>
 
         {/* Center */}
-
         <Box
           sx={{
             position: "absolute",
@@ -412,7 +365,7 @@ function TaskStatusChart({ statusBreakdown = [] }) {
             sx={{
               fontSize: "27px",
               fontWeight: 700,
-              color: "#1e293b",
+              color: isDark ? "#f8fafc" : "#1e293b",
             }}
           >
             {total}
@@ -421,7 +374,7 @@ function TaskStatusChart({ statusBreakdown = [] }) {
           <Typography
             sx={{
               fontSize: "11px",
-              color: "#94a3b8",
+              color: isDark ? "#cbd5e1" : "#94a3b8",
             }}
           >
             Total Tasks
@@ -430,7 +383,6 @@ function TaskStatusChart({ statusBreakdown = [] }) {
       </Box>
 
       {/* Legend */}
-
       <Box sx={{ minWidth: 160 }}>
         {statusData.map((item) => (
           <Box
@@ -456,7 +408,7 @@ function TaskStatusChart({ statusBreakdown = [] }) {
               sx={{
                 flex: 1,
                 fontSize: "12px",
-                color: "#475569",
+                color: isDark ? "#e2e8f0" : "#475569",
               }}
             >
               {item.label}
@@ -466,7 +418,7 @@ function TaskStatusChart({ statusBreakdown = [] }) {
               sx={{
                 fontSize: "12px",
                 fontWeight: 700,
-                color: "#1e293b",
+                color: isDark ? "#f8fafc" : "#1e293b",
               }}
             >
               {item.value}
@@ -482,12 +434,12 @@ function TaskStatusChart({ statusBreakdown = [] }) {
    UPCOMING TASKS
 ========================================================= */
 
-function UpcomingTasks({ tasks = [] }) {
+function UpcomingTasks({ tasks = [], isDark }) {
   return (
     <Box
       sx={{
-        backgroundColor: "#ffffff",
-        border: "1px solid #e2e8f0",
+        backgroundColor: isDark ? "#0f172a" : "#ffffff",
+        border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
         borderRadius: "10px",
         overflow: "hidden",
       }}
@@ -505,7 +457,7 @@ function UpcomingTasks({ tasks = [] }) {
             sx={{
               fontSize: "15px",
               fontWeight: 700,
-              color: "#1e293b",
+              color: isDark ? "#f8fafc" : "#1e293b",
             }}
           >
             Upcoming Tasks
@@ -514,7 +466,7 @@ function UpcomingTasks({ tasks = [] }) {
           <Typography
             sx={{
               fontSize: "11px",
-              color: "#94a3b8",
+              color: isDark ? "#cbd5e1" : "#94a3b8",
               mt: 0.3,
             }}
           >
@@ -522,29 +474,14 @@ function UpcomingTasks({ tasks = [] }) {
           </Typography>
         </Box>
 
-        <ScheduleOutlinedIcon
-          sx={{
-            fontSize: 20,
-            color: "#7c3aed",
-          }}
-        />
+        <ScheduleOutlinedIcon sx={{ fontSize: 20, color: "#7c3aed" }} />
       </Box>
 
       <Divider />
 
       {tasks.length === 0 ? (
-        <Box
-          sx={{
-            p: 3,
-            textAlign: "center",
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: "12px",
-              color: "#94a3b8",
-            }}
-          >
+        <Box sx={{ p: 3, textAlign: "center" }}>
+          <Typography sx={{ fontSize: "12px", color: "#94a3b8" }}>
             No upcoming tasks
           </Typography>
         </Box>
@@ -563,7 +500,9 @@ function UpcomingTasks({ tasks = [] }) {
                 sx={{
                   px: 2,
                   py: 1.5,
-                  borderBottom: "1px solid #f1f5f9",
+                  borderBottom: isDark
+                    ? "1px solid rgba(148, 163, 184, 0.15)"
+                    : "1px solid #f1f5f9",
 
                   "&:last-child": {
                     borderBottom: "none",
@@ -571,7 +510,6 @@ function UpcomingTasks({ tasks = [] }) {
                 }}
               >
                 {/* Title + Priority */}
-
                 <Box
                   sx={{
                     display: "flex",
@@ -584,7 +522,7 @@ function UpcomingTasks({ tasks = [] }) {
                     sx={{
                       fontSize: "13px",
                       fontWeight: 600,
-                      color: "#334155",
+                      color: isDark ? "#e2e8f0" : "#334155",
                       flex: 1,
                       minWidth: 0,
                       overflow: "hidden",
@@ -608,111 +546,122 @@ function UpcomingTasks({ tasks = [] }) {
                   />
                 </Box>
 
-                {/* Status + Due date */}
-
-               <Box
-    sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        gap: 1,
-        mt: 1,
-    }}
->
-    {/* LEFT — Avatar + Name */}
-
-    <Box
-        sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 0.7,
-            minWidth: 0,
-            flex: 1,
-        }}
-    >
-        {task.assignees?.length > 0 ? (
-            <>
-                <Avatar
-                    sx={{
-                        width: 24,
-                        height: 24,
-                        fontSize: "9px",
-                        fontWeight: 700,
-                        backgroundColor: "#ede9fe",
-                        color: "#7c3aed",
-                        flexShrink: 0,
-                    }}
+                {/* Assignee + Status/Due date */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    mt: 1,
+                  }}
                 >
-                    {task.assignees[0].initials}
-                </Avatar>
-
-                <Typography
+                  {/* LEFT — Avatar + Name */}
+                  <Box
                     sx={{
-                        fontSize: "11px",
-                        fontWeight: 500,
-                        color: "#475569",
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 0.7,
+                      minWidth: 0,
+                      flex: 1,
+                    }}
+                  >
+                    {task.assignees?.length > 0 ? (
+                      <>
+                        <Avatar
+                          sx={{
+                            width: 24,
+                            height: 24,
+                            fontSize: "9px",
+                            fontWeight: 700,
+                            backgroundColor: "#ede9fe",
+                            color: "#7c3aed",
+                            flexShrink: 0,
+                          }}
+                        >
+                          {task.assignees[0].initials}
+                        </Avatar>
+
+                        <Typography
+                          sx={{
+                            fontSize: "11px",
+                            fontWeight: 500,
+                            color: isDark ? "#cbd5e1" : "#475569",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {task.assignees[0].name}
+                        </Typography>
+                      </>
+                    ) : (
+                      <Typography sx={{ fontSize: "11px", color: "#94a3b8" }}>
+                        Unassigned
+                      </Typography>
+                    )}
+                  </Box>
+
+                  {/* RIGHT — Status + Due Date */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Chip
+                      label={task.status}
+                      size="small"
+                      sx={{
+                        height: "20px",
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        backgroundColor: statusStyle.background,
+                        color: statusStyle.color,
+                      }}
+                    />
+
+                    <Typography
+                      sx={{
+                        fontSize: "10.5px",
+                        color: isDark ? "#cbd5e1" : "#94a3b8",
                         whiteSpace: "nowrap",
-                    }}
-                >
-                    {task.assignees[0].name}
-                </Typography>
-            </>
-        ) : (
-            <Typography
-                sx={{
-                    fontSize: "11px",
-                    color: "#94a3b8",
-                }}
-            >
-                Unassigned
-            </Typography>
-        )}
-    </Box>
+                      }}
+                    >
+                      Due{" "}
+                      {task.dueDate
+                        ? new Date(task.dueDate).toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })
+                        : "No date"}
+                    </Typography>
+                  </Box>
+                </Box>
 
-    {/* RIGHT — Status + Due Date */}
+                {/* Progress bar (if provided by API) */}
+                {typeof task.progress === "number" && (
+                  <Box sx={{ mt: 1 }}>
+                    <LinearProgress
+                      variant="determinate"
+                      value={task.progress}
+                      sx={{
+                        height: 5,
+                        borderRadius: 10,
+                        backgroundColor: isDark
+                          ? "rgba(148, 163, 184, 0.15)"
+                          : "#f1f5f9",
 
-    <Box
-        sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            flexShrink: 0,
-        }}
-    >
-        <Chip
-            label={task.status}
-            size="small"
-            sx={{
-                height: "20px",
-                fontSize: "10px",
-                fontWeight: 600,
-                backgroundColor: statusStyle.background,
-                color: statusStyle.color,
-            }}
-        />
-
-        <Typography
-            sx={{
-                fontSize: "10.5px",
-                color: "#94a3b8",
-                whiteSpace: "nowrap",
-            }}
-        >
-            Due{" "}
-            {task.dueDate
-                ? new Date(task.dueDate).toLocaleDateString(
-                      "en-US",
-                      {
-                          month: "short",
-                          day: "numeric",
-                      }
-                  )
-                : "No date"}
-        </Typography>
-    </Box>
-</Box>
+                        "& .MuiLinearProgress-bar": {
+                          borderRadius: 10,
+                          backgroundColor: "#7c3aed",
+                        },
+                      }}
+                    />
+                  </Box>
+                )}
               </Box>
             );
           })}
@@ -726,12 +675,12 @@ function UpcomingTasks({ tasks = [] }) {
    RECENT ACTIVITY
 ========================================================= */
 
-function RecentActivity({ activities = [] }) {
+function RecentActivity({ activities = [], isDark }) {
   return (
     <Box
       sx={{
-        backgroundColor: "#ffffff",
-        border: "1px solid #e2e8f0",
+        backgroundColor: isDark ? "#0f172a" : "#ffffff",
+        border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
         borderRadius: "10px",
         overflow: "hidden",
       }}
@@ -750,7 +699,7 @@ function RecentActivity({ activities = [] }) {
             sx={{
               fontSize: "15px",
               fontWeight: 700,
-              color: "#1e293b",
+              color: isDark ? "#f8fafc" : "#1e293b",
             }}
           >
             Recent Activity
@@ -759,7 +708,7 @@ function RecentActivity({ activities = [] }) {
           <Typography
             sx={{
               fontSize: "11px",
-              color: "#94a3b8",
+              color: isDark ? "#cbd5e1" : "#94a3b8",
               mt: 0.3,
             }}
           >
@@ -767,30 +716,15 @@ function RecentActivity({ activities = [] }) {
           </Typography>
         </Box>
 
-        <AccessTimeOutlinedIcon
-          sx={{
-            fontSize: 19,
-            color: "#7c3aed",
-          }}
-        />
+        <AccessTimeOutlinedIcon sx={{ fontSize: 19, color: "#7c3aed" }} />
       </Box>
 
       <Divider />
 
       {/* Activities */}
       {activities.length === 0 ? (
-        <Box
-          sx={{
-            p: 3,
-            textAlign: "center",
-          }}
-        >
-          <Typography
-            sx={{
-              fontSize: "12px",
-              color: "#94a3b8",
-            }}
-          >
+        <Box sx={{ p: 3, textAlign: "center" }}>
+          <Typography sx={{ fontSize: "12px", color: "#94a3b8" }}>
             No recent activity
           </Typography>
         </Box>
@@ -820,7 +754,9 @@ function RecentActivity({ activities = [] }) {
                 display: "flex",
                 alignItems: "flex-start",
                 gap: 1.2,
-                borderBottom: "1px solid #f1f5f9",
+                borderBottom: isDark
+                  ? "1px solid rgba(148, 163, 184, 0.15)"
+                  : "1px solid #f1f5f9",
 
                 "&:last-child": {
                   borderBottom: "none",
@@ -850,24 +786,19 @@ function RecentActivity({ activities = [] }) {
               </Avatar>
 
               {/* Content */}
-              <Box
-                sx={{
-                  flex: 1,
-                  minWidth: 0,
-                }}
-              >
+              <Box sx={{ flex: 1, minWidth: 0 }}>
                 {/* Activity Message */}
                 <Typography
                   sx={{
                     fontSize: "12px",
                     lineHeight: 1.5,
-                    color: "#475569",
+                    color: isDark ? "#e2e8f0" : "#475569",
                   }}
                 >
                   {/* Actor */}
                   <strong
                     style={{
-                      color: "#334155",
+                      color: isDark ? "#f8fafc" : "#334155",
                       fontWeight: 700,
                     }}
                   >
@@ -881,7 +812,7 @@ function RecentActivity({ activities = [] }) {
                       {" "}
                       <strong
                         style={{
-                          color: "#334155",
+                          color: isDark ? "#f8fafc" : "#334155",
                           fontWeight: 700,
                         }}
                       >
@@ -922,29 +853,19 @@ function RecentActivity({ activities = [] }) {
    NOTIFICATIONS
 ========================================================= */
 
-function NotificationsPanel() {
+function NotificationsPanel({ isDark }) {
   return (
     <Box
       sx={{
-        backgroundColor: "#ffffff",
-        border: "1px solid #e2e8f0",
+        backgroundColor: isDark ? "#0f172a" : "#ffffff",
+        border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
         borderRadius: "10px",
         overflow: "hidden",
       }}
     >
-      <Box
-        sx={{
-          p: 2,
-          display: "flex",
-          alignItems: "center",
-          gap: 1,
-        }}
-      >
+      <Box sx={{ p: 2, display: "flex", alignItems: "center", gap: 1 }}>
         <NotificationsNoneOutlinedIcon
-          sx={{
-            fontSize: 20,
-            color: "#7c3aed",
-          }}
+          sx={{ fontSize: 20, color: "#7c3aed" }}
         />
 
         <Box>
@@ -952,7 +873,7 @@ function NotificationsPanel() {
             sx={{
               fontSize: "15px",
               fontWeight: 700,
-              color: "#1e293b",
+              color: isDark ? "#f8fafc" : "#1e293b",
             }}
           >
             Notifications
@@ -961,7 +882,7 @@ function NotificationsPanel() {
           <Typography
             sx={{
               fontSize: "11px",
-              color: "#94a3b8",
+              color: isDark ? "#cbd5e1" : "#94a3b8",
               mt: 0.3,
             }}
           >
@@ -976,20 +897,9 @@ function NotificationsPanel() {
         const Icon = notification.icon;
 
         const colors = {
-          High: {
-            background: "#fee2e2",
-            color: "#dc2626",
-          },
-
-          Medium: {
-            background: "#fef3c7",
-            color: "#d97706",
-          },
-
-          Low: {
-            background: "#dcfce7",
-            color: "#16a34a",
-          },
+          High: { background: "#fee2e2", color: "#dc2626" },
+          Medium: { background: "#fef3c7", color: "#d97706" },
+          Low: { background: "#dcfce7", color: "#16a34a" },
         };
 
         const style = colors[notification.priority];
@@ -1002,7 +912,9 @@ function NotificationsPanel() {
               py: 1.5,
               display: "flex",
               gap: 1.2,
-              borderBottom: "1px solid #f1f5f9",
+              borderBottom: isDark
+                ? "1px solid rgba(148, 163, 184, 0.15)"
+                : "1px solid #f1f5f9",
 
               "&:last-child": {
                 borderBottom: "none",
@@ -1022,31 +934,16 @@ function NotificationsPanel() {
                 flexShrink: 0,
               }}
             >
-              <Icon
-                sx={{
-                  fontSize: 17,
-                }}
-              />
+              <Icon sx={{ fontSize: 17 }} />
             </Box>
 
-            <Box
-              sx={{
-                flex: 1,
-                minWidth: 0,
-              }}
-            >
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.8,
-                }}
-              >
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
                 <Typography
                   sx={{
                     fontSize: "12px",
                     fontWeight: 600,
-                    color: "#334155",
+                    color: isDark ? "#e2e8f0" : "#334155",
                     flex: 1,
                   }}
                 >
@@ -1069,7 +966,7 @@ function NotificationsPanel() {
               <Typography
                 sx={{
                   fontSize: "10.5px",
-                  color: "#94a3b8",
+                  color: isDark ? "#cbd5e1" : "#94a3b8",
                   lineHeight: 1.5,
                   mt: 0.4,
                 }}
@@ -1089,6 +986,9 @@ function NotificationsPanel() {
 ========================================================= */
 
 export default function Dashboard() {
+  const theme = useTheme();
+  const isDark = theme.palette.mode === "dark";
+
   const [dashboardData, setDashboardData] = useState(null);
 
   const [loading, setLoading] = useState(true);
@@ -1144,7 +1044,9 @@ export default function Dashboard() {
       } catch (error) {
         console.error("Dashboard API Error:", error);
 
-        setError(error.response?.data?.message || "Unable to load dashboard.");
+        setError(
+          error.response?.data?.message || "Unable to load dashboard.",
+        );
       } finally {
         setLoading(false);
       }
@@ -1166,16 +1068,10 @@ export default function Dashboard() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#f8fafc",
+          backgroundColor: isDark ? "#020817" : "#f8fafc",
         }}
       >
-        <CircularProgress
-          size={32}
-          thickness={4}
-          sx={{
-            color: "#7c3aed",
-          }}
-        />
+        <CircularProgress size={32} thickness={4} sx={{ color: "#7c3aed" }} />
       </Box>
     );
   }
@@ -1193,13 +1089,13 @@ export default function Dashboard() {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          backgroundColor: "#f8fafc",
+          backgroundColor: isDark ? "#020817" : "#f8fafc",
           p: 3,
         }}
       >
         <Box
           sx={{
-            backgroundColor: "#ffffff",
+            backgroundColor: isDark ? "#0f172a" : "#ffffff",
             border: "1px solid #fecaca",
             borderRadius: "10px",
             p: 3,
@@ -1218,12 +1114,7 @@ export default function Dashboard() {
             Unable to load dashboard
           </Typography>
 
-          <Typography
-            sx={{
-              fontSize: "12px",
-              color: "#64748b",
-            }}
-          >
+          <Typography sx={{ fontSize: "12px", color: "#64748b" }}>
             {error}
           </Typography>
         </Box>
@@ -1268,16 +1159,12 @@ export default function Dashboard() {
       sx={{
         height: "100%",
         overflowY: "auto",
-        backgroundColor: "#f8fafc",
+        backgroundColor: isDark ? "#020817" : "#f8fafc",
       }}
     >
       <Box
         sx={{
-          p: {
-            xs: 2,
-            sm: 2.5,
-            md: 3,
-          },
+          p: { xs: 2, sm: 2.5, md: 3 },
           maxWidth: "1600px",
           margin: "0 auto",
         }}
@@ -1289,28 +1176,19 @@ export default function Dashboard() {
         <Box
           sx={{
             display: "flex",
-            alignItems: {
-              xs: "flex-start",
-              sm: "center",
-            },
+            alignItems: { xs: "flex-start", sm: "center" },
             justifyContent: "space-between",
             gap: 2,
             mb: 2.5,
-            flexDirection: {
-              xs: "column",
-              sm: "row",
-            },
+            flexDirection: { xs: "column", sm: "row" },
           }}
         >
           <Box>
             <Typography
               sx={{
-                fontSize: {
-                  xs: "20px",
-                  md: "23px",
-                },
+                fontSize: { xs: "20px", md: "23px" },
                 fontWeight: 700,
-                color: "#1e293b",
+                color: isDark ? "#f8fafc" : "#1e293b",
               }}
             >
               {getGreeting()}, {userName} 👋
@@ -1319,7 +1197,7 @@ export default function Dashboard() {
             <Typography
               sx={{
                 fontSize: "12.5px",
-                color: "#64748b",
+                color: isDark ? "#cbd5e1" : "#64748b",
                 mt: 0.5,
               }}
             >
@@ -1332,8 +1210,8 @@ export default function Dashboard() {
               display: "flex",
               alignItems: "center",
               gap: 1,
-              backgroundColor: "#ffffff",
-              border: "1px solid #e2e8f0",
+              backgroundColor: isDark ? "#0f172a" : "#ffffff",
+              border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
               borderRadius: "8px",
               px: 1.5,
               py: 1,
@@ -1352,7 +1230,7 @@ export default function Dashboard() {
               sx={{
                 fontSize: "11px",
                 fontWeight: 600,
-                color: "#475569",
+                color: isDark ? "#e2e8f0" : "#475569",
               }}
             >
               Workspace active
@@ -1384,6 +1262,7 @@ export default function Dashboard() {
             icon={AssignmentOutlinedIcon}
             iconBackground="#ede9fe"
             iconColor="#7c3aed"
+            isDark={isDark}
           />
 
           <SummaryCard
@@ -1393,6 +1272,7 @@ export default function Dashboard() {
             icon={CheckCircleOutlineIcon}
             iconBackground="#dcfce7"
             iconColor="#16a34a"
+            isDark={isDark}
           />
 
           <SummaryCard
@@ -1402,6 +1282,7 @@ export default function Dashboard() {
             icon={TrendingUpIcon}
             iconBackground="#dbeafe"
             iconColor="#2563eb"
+            isDark={isDark}
           />
 
           <SummaryCard
@@ -1411,6 +1292,7 @@ export default function Dashboard() {
             icon={GroupOutlinedIcon}
             iconBackground="#fef3c7"
             iconColor="#d97706"
+            isDark={isDark}
           />
 
           <SummaryCard
@@ -1420,6 +1302,7 @@ export default function Dashboard() {
             icon={TrendingUpIcon}
             iconBackground="#f3e8ff"
             iconColor="#9333ea"
+            isDark={isDark}
           />
         </Box>
 
@@ -1430,10 +1313,7 @@ export default function Dashboard() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              lg: "1.6fr 1fr",
-            },
+            gridTemplateColumns: { xs: "1fr", lg: "1.6fr 1fr" },
             gap: 1.5,
             mb: 1.5,
           }}
@@ -1442,8 +1322,8 @@ export default function Dashboard() {
 
           <Box
             sx={{
-              backgroundColor: "#ffffff",
-              border: "1px solid #e2e8f0",
+              backgroundColor: isDark ? "#0f172a" : "#ffffff",
+              border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
               borderRadius: "10px",
               p: 2,
             }}
@@ -1461,7 +1341,7 @@ export default function Dashboard() {
                   sx={{
                     fontSize: "15px",
                     fontWeight: 700,
-                    color: "#1e293b",
+                    color: isDark ? "#f8fafc" : "#1e293b",
                   }}
                 >
                   Completed Tasks
@@ -1470,7 +1350,7 @@ export default function Dashboard() {
                 <Typography
                   sx={{
                     fontSize: "11px",
-                    color: "#94a3b8",
+                    color: isDark ? "#cbd5e1" : "#94a3b8",
                     mt: 0.3,
                   }}
                 >
@@ -1491,15 +1371,15 @@ export default function Dashboard() {
               />
             </Box>
 
-            <MonthlyCompletedChart data={monthlyCompleted} />
+            <MonthlyCompletedChart data={monthlyCompleted} isDark={isDark} />
           </Box>
 
           {/* Status Chart */}
 
           <Box
             sx={{
-              backgroundColor: "#ffffff",
-              border: "1px solid #e2e8f0",
+              backgroundColor: isDark ? "#0f172a" : "#ffffff",
+              border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
               borderRadius: "10px",
               p: 2,
             }}
@@ -1508,7 +1388,7 @@ export default function Dashboard() {
               sx={{
                 fontSize: "15px",
                 fontWeight: 700,
-                color: "#1e293b",
+                color: isDark ? "#f8fafc" : "#1e293b",
               }}
             >
               Task Status
@@ -1517,14 +1397,17 @@ export default function Dashboard() {
             <Typography
               sx={{
                 fontSize: "11px",
-                color: "#94a3b8",
+                color: isDark ? "#cbd5e1" : "#94a3b8",
                 mt: 0.3,
               }}
             >
               Current project distribution
             </Typography>
 
-            <TaskStatusChart statusBreakdown={statusBreakdown} />
+            <TaskStatusChart
+              statusBreakdown={statusBreakdown}
+              isDark={isDark}
+            />
           </Box>
         </Box>
 
@@ -1535,31 +1418,22 @@ export default function Dashboard() {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: {
-              xs: "1fr",
-              lg: "1.5fr 1fr",
-            },
+            gridTemplateColumns: { xs: "1fr", lg: "1.5fr 1fr" },
             gap: 1.5,
           }}
         >
           {/* LEFT */}
 
           <Box>
-            <UpcomingTasks tasks={upcomingTasks} />
+            <UpcomingTasks tasks={upcomingTasks} isDark={isDark} />
           </Box>
 
           {/* RIGHT */}
 
-          <Box
-            sx={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 1.5,
-            }}
-          >
-            <RecentActivity activities={recentActivity} />
+          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
+            <RecentActivity activities={recentActivity} isDark={isDark} />
 
-            <NotificationsPanel />
+            <NotificationsPanel isDark={isDark} />
           </Box>
         </Box>
       </Box>

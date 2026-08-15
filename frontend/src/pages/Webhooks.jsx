@@ -1,36 +1,96 @@
 
-import { useState } from 'react';
-import { Box, Typography, Button, IconButton } from '@mui/material';
+import { useEffect, useMemo, useState } from 'react';
+import {
+    Box,
+    Typography,
+    Button,
+    IconButton,
+    CircularProgress,
+    Alert,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions,
+} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 
 import Drawer from '../components/Drawer';
-import WebhookTable from '../components/webhooks/WebhookTable';
-import WebhookForm from '../components/webhooks/WebhookForm';
+import WebhookTable from '../components/Webhooks/WebhookTable';
+import WebhookForm from '../components/Webhooks/WebhookForm';
+import APICallService from '../services/APICallService';
+import { useAuth } from '../hooks/useAuth';
 
-const initialWebhooks = [
-    { id: 'WH-101', name: 'Slack Notifications', url: 'https://hooks.slack.com/services/xxx', event: 'task.created', headers: [], active: true },
-    { id: 'WH-102', name: 'CI Pipeline Trigger', url: 'https://ci.example.com/hooks/build', event: 'task.updated', headers: [{ key: 'Authorization', value: 'Bearer xxx' }], active: true },
-    { id: 'WH-103', name: 'Analytics Sync', url: 'https://analytics.example.com/ingest', event: 'note.created', headers: [], active: false },
-];
+const EMPTY_DRAFT = { id: '', name: '', url: '', event: '', headers: [], active: true };
 
-let idCounter = 104;
-
-const EMPTY_DRAFT = { name: '', url: '', event: '', headers: [], active: true };
+const normalizeWebhook = (payload) => {
+    const item = payload || {};
+    const id = item.webhookId || item.id || item._id || '';
+    return {
+        id,
+        name: item.name || '',
+        url: item.url || '',
+        event: item.event || '',
+        headers: Array.isArray(item.headers) ? item.headers : [],
+        active: item.active !== false,
+    };
+};
 
 export default function Webhooks() {
-    const [webhooks, setWebhooks] = useState(initialWebhooks);
+    const { activeWorkspace } = useAuth();
+    const workspaceId = activeWorkspace?.workspaceId;
+
+    const [webhooks, setWebhooks] = useState([]);
     const [search, setSearch] = useState('');
     const [selected, setSelected] = useState([]);
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [draft, setDraft] = useState(EMPTY_DRAFT);
+    const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState('');
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null);
+    const [deleteSelectedConfirm, setDeleteSelectedConfirm] = useState(false);
 
     const isEdit = Boolean(draft.id);
 
-    const filteredWebhooks = webhooks.filter(
-        (w) => w.name.toLowerCase().includes(search.toLowerCase()) || w.id.toLowerCase().includes(search.toLowerCase())
-    );
+    const fetchWebhooks = async () => {
+        if (!workspaceId) return;
+
+        setLoading(true);
+        setError('');
+
+        try {
+            const response = await APICallService.getWebhooks(workspaceId);
+            const payload = response?.data?.data || [];
+            setWebhooks((Array.isArray(payload) ? payload : []).map(normalizeWebhook));
+        } catch (err) {
+            console.error('Failed to load webhooks:', err);
+            setError(err?.response?.data?.message || 'Unable to load webhooks');
+            setWebhooks([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchWebhooks();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [workspaceId]);
+
+    const filteredWebhooks = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        if (!term) return webhooks;
+
+        return webhooks.filter((w) => {
+            return (
+                (w.name || '').toLowerCase().includes(term) ||
+                (w.id || '').toLowerCase().includes(term) ||
+                (w.event || '').toLowerCase().includes(term)
+            );
+        });
+    }, [search, webhooks]);
 
     const toggleSelect = (id) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -39,59 +99,147 @@ export default function Webhooks() {
         setSelected(allSelected ? selected.filter((id) => !ids.includes(id)) : [...new Set([...selected, ...ids])]);
     };
 
-    const toggleActive = (id) => setWebhooks((prev) => prev.map((w) => (w.id === id ? { ...w, active: !w.active } : w)));
+    const toggleActive = async (id) => {
+        if (!workspaceId) return;
+
+        const current = webhooks.find((w) => w.id === id);
+        if (!current) return;
+
+        try {
+            const response = await APICallService.updateWebhook(workspaceId, id, { active: !current.active });
+            const updated = normalizeWebhook(response?.data?.data || { ...current, active: !current.active });
+            setWebhooks((prev) => prev.map((w) => (w.id === id ? updated : w)));
+        } catch (err) {
+            console.error('Failed to update webhook status:', err);
+            setError(err?.response?.data?.message || 'Unable to update webhook status');
+        }
+    };
 
     const openAddDrawer = () => {
         setDraft(EMPTY_DRAFT);
         setDrawerOpen(true);
+        setError('');
     };
 
     const openEditDrawer = (webhook) => {
-        setDraft(webhook);
+        setDraft(normalizeWebhook(webhook));
         setDrawerOpen(true);
+        setError('');
     };
 
     const closeDrawer = () => setDrawerOpen(false);
 
     const updateDraft = (field, value) => setDraft((prev) => ({ ...prev, [field]: value }));
 
-    const handleSaveWebhook = () => {
-        if (!draft.name.trim() || !draft.url.trim()) return;
-        if (draft.id) {
-            setWebhooks((prev) => prev.map((w) => (w.id === draft.id ? draft : w)));
-        } else {
-            const newWebhook = { ...draft, id: `WH-${idCounter++}` };
-            setWebhooks((prev) => [...prev, newWebhook]);
+    const handleSaveWebhook = async () => {
+        if (!workspaceId) return;
+        if (!draft.name?.trim() || !draft.url?.trim() || !draft.event?.trim()) {
+            setError('Name, URL and event are required');
+            return;
         }
-        setDrawerOpen(false);
+
+        try {
+            setSaving(true);
+            setError('');
+
+            const payload = {
+                name: draft.name.trim(),
+                url: draft.url.trim(),
+                event: draft.event.trim(),
+                headers: Array.isArray(draft.headers) ? draft.headers : [],
+                active: draft.active !== false,
+            };
+
+            if (draft.id) {
+                const response = await APICallService.updateWebhook(workspaceId, draft.id, payload);
+                const updated = normalizeWebhook(response?.data?.data || { ...draft, ...payload });
+                setWebhooks((prev) => prev.map((w) => (w.id === draft.id ? updated : w)));
+            } else {
+                const response = await APICallService.createWebhook(workspaceId, payload);
+                const created = normalizeWebhook(response?.data?.data || { ...payload, id: Date.now().toString() });
+                setWebhooks((prev) => [created, ...prev]);
+            }
+
+            setDrawerOpen(false);
+            setDraft(EMPTY_DRAFT);
+        } catch (err) {
+            console.error('Failed to save webhook:', err);
+            setError(err?.response?.data?.message || 'Unable to save webhook');
+        } finally {
+            setSaving(false);
+        }
     };
 
-    const handleDeleteWebhook = (id) => {
-        setWebhooks((prev) => prev.filter((w) => w.id !== id));
-        setSelected((prev) => prev.filter((x) => x !== id));
-        setDrawerOpen(false);
+    const handleDeleteWebhook = async (id) => {
+        if (!workspaceId || !id) return;
+
+        try {
+            setSaving(true);
+            await APICallService.deleteWebhook(workspaceId, id);
+            setWebhooks((prev) => prev.filter((w) => w.id !== id));
+            setSelected((prev) => prev.filter((x) => x !== id));
+            setDrawerOpen(false);
+            setDraft(EMPTY_DRAFT);
+        } catch (err) {
+            console.error('Failed to delete webhook:', err);
+            setError(err?.response?.data?.message || 'Unable to delete webhook');
+        } finally {
+            setSaving(false);
+            setDeleteConfirmId(null);
+        }
     };
 
-    const handleDeleteSelected = () => {
-        setWebhooks((prev) => prev.filter((w) => !selected.includes(w.id)));
-        setSelected([]);
+    const handleDeleteSelected = async () => {
+        if (!workspaceId || !selected.length) return;
+
+        try {
+            setSaving(true);
+            await Promise.all(selected.map((id) => APICallService.deleteWebhook(workspaceId, id)));
+            setWebhooks((prev) => prev.filter((w) => !selected.includes(w.id)));
+            setSelected([]);
+            setDeleteSelectedConfirm(false);
+        } catch (err) {
+            console.error('Failed to delete selected webhooks:', err);
+            setError(err?.response?.data?.message || 'Unable to delete selected webhooks');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    const confirmDeleteWebhook = () => {
+        if (!deleteConfirmId) return;
+        handleDeleteWebhook(deleteConfirmId);
+    };
+
+    const requestDeleteWebhook = (id) => {
+        setDeleteConfirmId(id);
+    };
+
+    const requestDeleteSelected = () => {
+        if (!selected.length) return;
+        setDeleteSelectedConfirm(true);
     };
 
     const hasSelection = selected.length > 0;
 
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3, minHeight: 0 }}>
-            {/* Title */}
             <Typography sx={{ fontSize: '22px', fontWeight: 700, color: '#1e293b', mb: 2, flexShrink: 0 }}>
                 Webhooks
             </Typography>
 
-            {/* Action bar */}
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+                    {error}
+                </Alert>
+            )}
+
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2, flexWrap: 'wrap', flexShrink: 0 }}>
                 <Button
                     onClick={openAddDrawer}
                     startIcon={<AddIcon sx={{ fontSize: 18 }} />}
                     variant="contained"
+                    disabled={!workspaceId || saving}
                     sx={{
                         textTransform: 'none',
                         fontSize: '13.5px',
@@ -100,7 +248,9 @@ export default function Webhooks() {
                         borderRadius: '8px',
                         height: '36px',
                         flexShrink: 0,
+                        mr: 0.75,
                         '&:hover': { backgroundColor: '#6d28d9' },
+                        '&:disabled': { opacity: 0.6 },
                     }}
                 >
                     Add Webhook
@@ -119,8 +269,8 @@ export default function Webhooks() {
                 <Box sx={{ flex: 1 }} />
 
                 <Button
-                    onClick={handleDeleteSelected}
-                    disabled={!hasSelection}
+                    onClick={requestDeleteSelected}
+                    disabled={!hasSelection || saving || !workspaceId}
                     startIcon={<DeleteOutlineIcon sx={{ fontSize: 17 }} />}
                     sx={{
                         textTransform: 'none',
@@ -141,29 +291,35 @@ export default function Webhooks() {
                 </Button>
             </Box>
 
-            {/* Table */}
-            <Box sx={{ flex: 1, minHeight: 0 }}>
-                <WebhookTable
-                    webhooks={filteredWebhooks}
-                    selected={selected}
-                    onToggleSelect={toggleSelect}
-                    onToggleSelectAll={toggleSelectAll}
-                    onRowClick={openEditDrawer}
-                    onToggleActive={toggleActive}
-                />
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                {loading ? (
+                    <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <CircularProgress size={28} sx={{ color: '#7c3aed' }} />
+                    </Box>
+                ) : (
+                    <Box sx={{ flex: 1, minHeight: 0, width: '100%' }}>
+                        <WebhookTable
+                            webhooks={filteredWebhooks}
+                            selected={selected}
+                            onToggleSelect={toggleSelect}
+                            onToggleSelectAll={toggleSelectAll}
+                            onRowClick={openEditDrawer}
+                            onToggleActive={toggleActive}
+                        />
+                    </Box>
+                )}
             </Box>
 
-            {/* Generic Drawer holding the webhook form */}
             <Drawer
                 open={drawerOpen}
                 title={isEdit ? 'Edit Webhook' : 'Add Webhook'}
                 onClose={closeDrawer}
                 guideLink="https://example.com/docs/webhooks"
-                primaryAction={{ label: isEdit ? 'Save' : 'Add Webhook', onClick: handleSaveWebhook }}
+                primaryAction={{ label: isEdit ? 'Save' : 'Add Webhook', onClick: handleSaveWebhook, disabled: saving }}
                 secondaryAction={{ label: 'Discard', onClick: closeDrawer }}
                 extraFooterActions={
                     isEdit && (
-                        <IconButton onClick={() => handleDeleteWebhook(draft.id)} size="small" title="Delete" sx={{ color: '#dc2626' }}>
+                        <IconButton onClick={() => requestDeleteWebhook(draft.id)} size="small" title="Delete" sx={{ color: '#dc2626' }} disabled={saving}>
                             <DeleteOutlineIcon sx={{ fontSize: 19 }} />
                         </IconButton>
                     )
@@ -171,6 +327,52 @@ export default function Webhooks() {
             >
                 <WebhookForm draft={draft} onChange={updateDraft} />
             </Drawer>
+
+            <Dialog
+                open={!!deleteConfirmId}
+                onClose={() => setDeleteConfirmId(null)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: '12px', p: 1, width: 320 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, color: '#1e293b', fontSize: '1rem', pb: 1 }}>Delete Webhook</DialogTitle>
+                <DialogContent sx={{ pb: 1.5 }}>
+                    <DialogContentText sx={{ color: '#475569', fontSize: '0.875rem', m: 0 }}>
+                        Are you sure you want to delete this webhook? This action cannot be undone.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions sx={{ px: 2, pb: 1.5, pt: 0 }}>
+                    <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: '#64748b', fontWeight: 600, minWidth: 'auto', px: 1.5 }}>
+                        Cancel
+                    </Button>
+                    <Button onClick={confirmDeleteWebhook} variant="contained" color="error" sx={{ fontWeight: 600, borderRadius: '8px', textTransform: 'none', minWidth: 'auto', px: 1.5 }}>
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog
+                open={deleteSelectedConfirm}
+                onClose={() => setDeleteSelectedConfirm(false)}
+                maxWidth="xs"
+                fullWidth
+                PaperProps={{ sx: { borderRadius: '12px', p: 1, width: 320 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 700, color: '#1e293b', fontSize: '1rem', pb: 1 }}>Delete Selected</DialogTitle>
+                <DialogContent sx={{ pb: 1.5 }}>
+                    <DialogContentText sx={{ color: '#475569', fontSize: '0.875rem', m: 0 }}>
+                        Are you sure you want to delete {selected.length} selected webhook{selected.length > 1 ? 's' : ''}? This action cannot be undone.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions sx={{ px: 2, pb: 1.5, pt: 0 }}>
+                    <Button onClick={() => setDeleteSelectedConfirm(false)} sx={{ color: '#64748b', fontWeight: 600, minWidth: 'auto', px: 1.5 }}>
+                        Cancel
+                    </Button>
+                    <Button onClick={handleDeleteSelected} variant="contained" color="error" sx={{ fontWeight: 600, borderRadius: '8px', textTransform: 'none', minWidth: 'auto', px: 1.5 }}>
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

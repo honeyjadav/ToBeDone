@@ -39,6 +39,11 @@ export const APIs = {
   INVITES: (workspaceId) => `/invites/${workspaceId}`,
   INVITE_ACCEPT: (token) => `/invites/accept/${token}`,
 
+  // Webhooks
+  WEBHOOKS: (workspaceId) => `/workspaces/${workspaceId}/webhooks`,
+  WEBHOOK_BY_ID: (workspaceId, webhookId) => `/workspaces/${workspaceId}/webhooks/${webhookId}`,
+  WEBHOOK_SEND: (workspaceId, webhookId) => `/workspaces/${workspaceId}/webhooks/${webhookId}/send`,
+
   // Digest / Activity
   DIGEST: (workspaceId) => `/workspaces/${workspaceId}/digest`,
   ACTIVITY_FEED: (workspaceId) => `/workspaces/${workspaceId}/activity`,
