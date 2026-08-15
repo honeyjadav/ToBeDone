@@ -16,122 +16,164 @@ import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
 const ROLES = ["Admin", "Manager", "Member"];
 
-export default function AddUser({ open, onClose, onAdd }) {
+// Shared label element so every field's title is styled identically (matches AddTask)
+const FieldLabel = ({ children }) => (
+    <Typography sx={{ fontSize: "12px", fontWeight: 700, color: "#334155", mb: 0.75 }}>
+        {children}
+    </Typography>
+);
+
+export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, }) {
+    const isEditMode = Boolean(user);
+
     const [email, setEmail] = useState("");
     const [role, setRole] = useState("");
-    const [emailTouched, setEmailTouched] = useState(false);
-    const [roleTouched, setRoleTouched] = useState(false);
+    const [emailError, setEmailError] = useState("");
+    const [roleError, setRoleError] = useState("");
     const [submitting, setSubmitting] = useState(false);
+    const [submitError, setSubmitError] = useState("");
+    const [emailTouched, setEmailTouched] = useState(false);
 
-    // Reset everything when drawer opens/closes
     useEffect(() => {
         if (open) {
-            // Drawer is opening - reset all state
-            setEmail("");
-            setRole("");
-            setEmailTouched(false);
-            setRoleTouched(false);
-            setSubmitting(false);
-        }
-    }, [open]);
+            if (user) {
+                // Update mode
+                setEmail(user.email || "");
+                setRole(user.role || "");
+            } else {
+                // Add mode
+                setEmail("");
+                setRole("");
+            }
 
-    // Email validation function
-    const getEmailError = () => {
-        if (!emailTouched) return "";
-        
-        if (!email.trim()) {
+            setEmailError("");
+            setRoleError("");
+            setSubmitError("");
+            setEmailTouched(false);
+        }
+    }, [open, user]);
+
+    const validateEmail = (value) => {
+        if (!value.trim()) {
             return "Email is required";
         }
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email.trim())) {
+        const emailRegex =
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+        if (!emailRegex.test(value.trim())) {
             return "Please enter a valid email address";
         }
 
         return "";
     };
 
-    // Role validation function
-    const getRoleError = () => {
-        if (!roleTouched) return "";
-        if (!role) return "Role is required";
-        return "";
-    };
+    const validateForm = () => {
+        const emailValidation = validateEmail(email);
 
-    const emailError = getEmailError();
-    const roleError = getRoleError();
+        let valid = true;
 
-    // Handle email input change
-    const handleEmailChange = (e) => {
-        setEmail(e.target.value);
-    };
-
-    // Handle email blur
-    const handleEmailBlur = () => {
-        setEmailTouched(true);
-    };
-
-    // Handle role change
-    const handleRoleChange = (e) => {
-        setRole(e.target.value);
-    };
-
-    // Handle role blur
-    const handleRoleBlur = () => {
-        setRoleTouched(true);
-    };
-
-    // Validate before submit
-    const validateBeforeSubmit = () => {
-        if (!email.trim()) {
-            setEmailTouched(true);
-            return false;
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email.trim())) {
-            setEmailTouched(true);
-            return false;
+        if (emailValidation) {
+            setEmailError(emailValidation);
+            valid = false;
+        } else {
+            setEmailError("");
         }
 
         if (!role) {
-            setRoleTouched(true);
-            return false;
+            setRoleError("Role is required");
+            valid = false;
+        } else {
+            setRoleError("");
         }
 
-        return true;
+        return valid;
     };
 
-    // Handle submit
+    const handleEmailChange = (e) => {
+        const value = e.target.value;
+
+        setEmail(value);
+        setSubmitError("");
+        setEmailTouched(true);
+
+        if (value.trim()) {
+            setEmailError(validateEmail(value));
+        } else {
+            setEmailError("");
+        }
+    };
+
+    const handleRoleChange = (e) => {
+        setRole(e.target.value);
+        setRoleError("");
+        setSubmitError("");
+    };
+
     const handleSubmit = async () => {
-        if (!validateBeforeSubmit()) {
+        setEmailTouched(true);
+
+        if (!validateForm()) {
             return;
         }
 
         setSubmitting(true);
+        setSubmitError("");
 
         try {
-            const result = await onAdd({
-                email: email.trim(),
-                role,
-            });
+            let result;
+
+            if (isEditMode) {
+                // Update ONLY role
+                result = await onUpdate({
+                    memberId: user.id,
+                    role,
+                });
+            } else {
+                // Add user
+                result = await onAdd({
+                    email: email.trim(),
+                    role,
+                });
+            }
 
             if (result?.success) {
                 onClose();
+            } else {
+                setSubmitError(
+                    result?.message ||
+                        (isEditMode
+                            ? "Unable to update user."
+                            : "Unable to send invite.")
+                );
             }
         } catch (error) {
-            console.error("Error adding user:", error);
-        } finally {
+            setSubmitError(
+                error?.message ||
+                    (isEditMode
+                        ? "Unable to update user."
+                        : "Unable to send invite.")
+            );
+        }finally{
             setSubmitting(false);
         }
     };
 
-    // Handle clear
     const handleClear = () => {
+        if (isEditMode) {
+            // Restore original role
+            setRole(user?.role || "");
+            setRoleError("");
+            setSubmitError("");
+            return;
+        }
+
         setEmail("");
         setRole("");
+        setEmailError("");
+        setRoleError("");
+        setSubmitError("");
         setEmailTouched(false);
-        setRoleTouched(false);
     };
 
     return (
@@ -144,7 +186,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                     sx: {
                         width: {
                             xs: "100%",
-                            sm: "420px",
+                            sm: "460px",
                         },
                         display: "flex",
                         flexDirection: "column",
@@ -157,7 +199,7 @@ export default function AddUser({ open, onClose, onAdd }) {
             <Box
                 sx={{
                     height: "70px",
-                    px: 2,
+                    px: 2.5,
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
@@ -165,155 +207,107 @@ export default function AddUser({ open, onClose, onAdd }) {
                     flexShrink: 0,
                 }}
             >
-                <Box
-                    sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1.25,
-                    }}
-                >
-                    <IconButton
-                        size="small"
-                        sx={{
-                            color: "#64748b",
-                            p: 0.5,
-                        }}
-                    >
-                        <ChevronRightIcon
-                            sx={{
-                                fontSize: 20,
-                            }}
-                        />
+                <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
+                    <IconButton size="small" sx={{ color: "#64748b", p: 0.5 }}>
+                        <ChevronRightIcon sx={{ fontSize: 20 }} />
                     </IconButton>
 
                     <Typography
                         sx={{
                             fontSize: "15px",
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: "#1e293b"
                         }}
                     >
-                        Add User
+                        {isEditMode ? "Update User" : "Add User"}
                     </Typography>
                 </Box>
 
-                <IconButton
-                    size="small"
-                    onClick={onClose}
-                    sx={{
-                        color: "#64748b",
-                    }}
-                >
-                    <CloseIcon
-                        sx={{
-                            fontSize: 19,
-                        }}
-                    />
+                <IconButton size="small" onClick={onClose} sx={{ color: "#64748b" }}>
+                    <CloseIcon sx={{ fontSize: 19 }} />
                 </IconButton>
             </Box>
 
-            {/* Content */}
-            <Box
-                sx={{
-                    flex: 1,
-                    overflowY: "auto",
-                    p: 2.5,
-                }}
-            >
-                {/* Email Field */}
-                <Box sx={{ mb: 2.5 }}>
-                    <Typography
-                        sx={{
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            color: "#334155",
-                            mb: 0.75,
-                        }}
-                    >
-                        Email
-                    </Typography>
+            {/* Body */}
+            <Box sx={{ flex: 1, overflowY: "auto", p: 2.5 }}>
+                <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
+                    <Box>
+                        <FieldLabel>Email</FieldLabel>
+                        <TextField
+                            autoFocus={!isEditMode}
+                            type="email"
+                            placeholder="Enter user email"
+                            value={email}
+                            onChange={handleEmailChange}
+                            disabled={isEditMode}
+                            onBlur={() => {
+                                if (!emailTouched) return;
 
-                    <TextField
-                        autoFocus
-                        type="email"
-                        placeholder="Enter user email"
-                        value={email}
-                        onChange={handleEmailChange}
-                        onBlur={handleEmailBlur}
-                        fullWidth
-                        size="small"
-                        error={Boolean(emailError)}
-                        helperText={emailError}
-                        sx={{
-                            "& .MuiOutlinedInput-root": {
-                                borderRadius: "8px",
-                                fontSize: "13px",
-                            },
-                            "& .MuiFormHelperText-root": {
-                                marginLeft: 0,
-                                fontSize: "12px",
-                            },
-                        }}
-                    />
-                </Box>
-
-                {/* Role Field */}
-                <Box sx={{ mb: 2.5 }}>
-                    <Typography
-                        sx={{
-                            fontSize: "12px",
-                            fontWeight: 600,
-                            color: "#334155",
-                            mb: 0.75,
-                        }}
-                    >
-                        Role
-                    </Typography>
-
-                    <FormControl
-                        fullWidth
-                        size="small"
-                        error={Boolean(roleError)}
-                    >
-                        <Select
-                            displayEmpty
-                            value={role}
-                            onChange={handleRoleChange}
-                            onBlur={handleRoleBlur}
-                            sx={{
-                                borderRadius: "8px",
-                                fontSize: "13px",
+                                if (email.trim()) {
+                                    setEmailError(validateEmail(email));
+                                } else {
+                                    setEmailError("Email is required");
+                                }
                             }}
-                            renderValue={(selected) =>
-                                selected || "Select role"
-                            }
-                        >
-                            {ROLES.map((r) => (
-                                <MenuItem
-                                    key={r}
-                                    value={r}
+                            fullWidth
+                            size="small"
+                            error={Boolean(emailError)}
+                            helperText={emailError}
+                            sx={{
+                                "& .MuiOutlinedInput-root": {
+                                    borderRadius: "10px",
+                                    fontSize: "13px",
+                                },
+                                "& .MuiFormHelperText-root": {
+                                    marginLeft: 0,
+                                    fontSize: "12px",
+                                },
+                            }}
+                        />
+                    </Box>
+
+                    <Box>
+                        <FieldLabel>Role</FieldLabel>
+                        <FormControl fullWidth size="small" error={Boolean(roleError)}>
+                            <Select
+                                displayEmpty
+                                value={role}
+                                onChange={handleRoleChange}
+                                sx={{ borderRadius: "10px", fontSize: "13px" }}
+                                renderValue={(selected) => selected || "Select role"}
+                            >
+                                {ROLES.map((r) => (
+                                    <MenuItem key={r} value={r} sx={{ fontSize: "13px" }}>
+                                        {r}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+
+                            {roleError && (
+                                <Typography
                                     sx={{
-                                        fontSize: "13px",
+                                        color: "#d32f2f",
+                                        fontSize: "12px",
+                                        mt: 0.5,
+                                        ml: 1.75,
                                     }}
                                 >
-                                    {r}
-                                </MenuItem>
-                            ))}
-                        </Select>
+                                    {roleError}
+                                </Typography>
+                            )}
+                        </FormControl>
+                    </Box>
 
-                        {roleError && (
-                            <Typography
-                                sx={{
-                                    color: "#d32f2f",
-                                    fontSize: "12px",
-                                    mt: 0.5,
-                                    ml: 1.75,
-                                }}
-                            >
-                                {roleError}
-                            </Typography>
-                        )}
-                    </FormControl>
+                    {/* {submitError && (
+                        <Typography
+                            sx={{
+                                color: "#dc2626",
+                                fontSize: "0.85rem",
+                            }}
+                        >
+                            {submitError}
+                        </Typography>
+                    )} */}
                 </Box>
             </Box>
 
@@ -341,7 +335,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                         fontSize: "13px",
                         fontWeight: 600,
                         backgroundColor: "#7c3aed",
-                        borderRadius: "8px",
+                        borderRadius: "10px",
                         boxShadow: "none",
 
                         "&:hover": {
@@ -355,7 +349,7 @@ export default function AddUser({ open, onClose, onAdd }) {
                         },
                     }}
                 >
-                    {submitting ? "Sending..." : "Add User"}
+                    {submitting? isEditMode? "Updating...": "Sending...": isEditMode? "Update User": "Add User"}
                 </Button>
 
                 <Button
@@ -367,14 +361,14 @@ export default function AddUser({ open, onClose, onAdd }) {
                         fontSize: "13px",
                         fontWeight: 500,
                         color: "#64748b",
-                        borderRadius: "8px",
+                        borderRadius: "10px",
 
                         "&:hover": {
                             backgroundColor: "#f8fafc",
                         },
                     }}
                 >
-                    Clear
+                    {isEditMode ? "Reset" : "Clear"}
                 </Button>
             </Box>
         </Drawer>

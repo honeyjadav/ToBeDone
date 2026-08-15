@@ -158,6 +158,10 @@ class APICallService {
     return api.get(APIs.ACTIVITY_FEED(workspaceId));
   }
 
+  // ---- Dashboard ----
+  getDashboard(workspaceId) {
+    return api.get(APIs.DASHBOARD(workspaceId));
+  }
 }
 
 export default new APICallService();

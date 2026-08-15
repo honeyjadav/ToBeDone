@@ -6,7 +6,7 @@ export const APIs = {
   LOGIN_VERIFY_OTP: "/auth/login/verify-otp",
   LOGIN_RESEND_OTP: "/auth/login/resend-otp",
   GET_ME: "/auth/me",
-  UPDATE_PROFILE: "/auth/me",
+  UPDATE_PROFILE: "/auth/profile",
 
   // Registration
   REGISTER: "/auth/register",
@@ -42,6 +42,9 @@ export const APIs = {
   // Digest / Activity
   DIGEST: (workspaceId) => `/workspaces/${workspaceId}/digest`,
   ACTIVITY_FEED: (workspaceId) => `/workspaces/${workspaceId}/activity`,
+  
+  // Dashboard
+  DASHBOARD: (workspaceId) => `/workspaces/${workspaceId}/dashboard`,
 };
 
 export const API_STATUS = {
