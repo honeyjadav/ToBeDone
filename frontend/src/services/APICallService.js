@@ -98,7 +98,9 @@ class APICallService {
 
   // Update a member's role (Admin only)
   updateMemberRole(workspaceId, memberId, role) {
-    return api.patch(APIs.WORKSPACE_MEMBER_ROLE(workspaceId, memberId), { role });
+    return api.patch(APIs.WORKSPACE_MEMBER_ROLE(workspaceId, memberId), {
+      role,
+    });
   }
 
   // Remove a member (Admin only)
@@ -173,47 +175,49 @@ class APICallService {
   }
 
   // ---- Digest / Activity ----
-
-  // period: "24h" | "week"
-  getDigest(workspaceId, period = "24h") {
-    return api.get(`${APIs.DIGEST(workspaceId)}?period=${period}`);
+  getDigest(workspaceId, windowHours = 24) {
+    return api.get(`${APIs.DIGEST(workspaceId)}?windowHours=${windowHours}`);
   }
 
+  getDigestHistory(workspaceId, limit = 20) {
+    return api.get(`${APIs.DIGEST(workspaceId)}/history?limit=${limit}`);
+  }
+ 
   getActivityFeed(workspaceId) {
     return api.get(APIs.ACTIVITY_FEED(workspaceId));
   }
 
-   // ---- Groups ----
+  // ---- Groups ----
   getGroups(workspaceId) {
     return api.get(APIs.GROUPS(workspaceId));
   }
- 
+
   createGroup(workspaceId, formData) {
     return api.post(APIs.GROUPS(workspaceId), formData);
   }
- 
+
   getGroupById(workspaceId, groupId) {
     return api.get(APIs.GROUP_BY_ID(workspaceId, groupId));
   }
- 
+
   deleteGroup(workspaceId, groupId) {
     // NEW: creator-only, deletes the group and all its messages
     return api.delete(APIs.GROUP_DELETE(workspaceId, groupId));
   }
- 
+
   addGroupMember(workspaceId, groupId, userId) {
     return api.post(APIs.GROUP_MEMBERS(workspaceId, groupId), { userId });
   }
- 
+
   removeGroupMember(workspaceId, groupId, userId) {
     return api.delete(APIs.GROUP_MEMBER_REMOVE(workspaceId, groupId, userId));
   }
 
-   // ---- Conversations ----
+  // ---- Conversations ----
   getConversations(workspaceId) {
     return api.get(APIs.CONVERSATIONS(workspaceId));
   }
-  
+
   // ---- Messages ----
   // Pass one of { channel }, { groupId }, or { recipientId } in params
   getMessages(workspaceId, params = {}) {
