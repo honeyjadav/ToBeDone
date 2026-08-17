@@ -85,17 +85,6 @@ export function registerChatHandlers(io, socket, workspacePresence) {
         io.to(workspaceId).emit("message:new", populated);
       }
 
-      logActivity({
-        workspace: workspaceId,
-        user: socket.user.id,
-        action: "MESSAGE_SENT",
-        targetType: "Message",
-        targetId: message._id,
-        metadata: {
-          channel: groupId || recipientId ? null : channel,
-          groupName: groupDoc?.name || null,
-        },
-      });
     } catch (err) {
       socket.emit("message:error", { message: err.message });
     }

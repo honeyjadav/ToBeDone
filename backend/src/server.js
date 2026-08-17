@@ -3,6 +3,7 @@ import app from "./app.js";
 import connectDB from "./config/db.js";
 import { initSocket } from "./sockets/index.js";
 import config from "./config/index.js";
+import "./jobs/digestCron.js"; 
 
 const server = http.createServer(app);
 
