@@ -6,8 +6,8 @@ import {
   CircularProgress,
   Button,
   Chip,
-  Menu,
-  MenuItem,
+  Slider,
+  Popover,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -19,12 +19,7 @@ import {
   Divider,
   Snackbar,
 } from '@mui/material';
-import RefreshIcon from '@mui/icons-material/Refresh';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
-import TaskAltIcon from '@mui/icons-material/TaskAlt';
-import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
-import EventOutlinedIcon from '@mui/icons-material/EventOutlined';
-import StickyNote2OutlinedIcon from '@mui/icons-material/StickyNote2Outlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import AssignmentTurnedInOutlinedIcon from '@mui/icons-material/AssignmentTurnedInOutlined';
 import ForumOutlinedIcon from '@mui/icons-material/ForumOutlined';
@@ -35,14 +30,29 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SendIcon from '@mui/icons-material/Send';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CloseIcon from '@mui/icons-material/Close';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Tooltip from '@mui/material/Tooltip';
 import { useAuth } from '../hooks/useAuth';
 import APICallService from '../services/APICallService';
 
-const PERIODS = [
-  { label: 'Last 24h', value: '24h' },
-  { label: 'This Week', value: 'week' },
+const MIN_WINDOW_HOURS = 24;
+const MAX_WINDOW_HOURS = 24 * 7;
+const WINDOW_STEP = 24;
+
+const WINDOW_MARKS = [
+  { value: 24, label: '1d' },
+  { value: 72, label: '3d' },
+  { value: 120, label: '5d' },
+  { value: 168, label: '7d' },
 ];
+
+const formatWindowLabel = (hours) => {
+  if (hours % 24 === 0) {
+    const days = hours / 24;
+    return days === 1 ? '1 Day' : `${days} Days`;
+  }
+  return `${hours}h`;
+};
 
 const SOURCE_CONFIG = {
   Task: { icon: AssignmentTurnedInOutlinedIcon, color: '#7c3aed', bg: '#f3f0fe' },
@@ -60,8 +70,9 @@ export default function Digest() {
   const [successMessage, setSuccessMessage] = useState('');
   const [successOpen, setSuccessOpen] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
-  const [period, setPeriod] = useState('24h');
-  const [periodAnchor, setPeriodAnchor] = useState(null);
+  const [windowHours, setWindowHours] = useState(MIN_WINDOW_HOURS);
+  const [pendingWindowHours, setPendingWindowHours] = useState(MIN_WINDOW_HOURS); // slider drag value
+  const [windowAnchor, setWindowAnchor] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [copied, setCopied] = useState(false);
@@ -70,20 +81,19 @@ export default function Digest() {
   const [availableWebhooks, setAvailableWebhooks] = useState([]);
   const [selectedWebhookId, setSelectedWebhookId] = useState('');
   const [loadingWebhooks, setLoadingWebhooks] = useState(false);
+  const [noActivityYet, setNoActivityYet] = useState(false);
 
-  // digestHistory: each entry is one generated digest, most recent first.
-  // No backend "history" endpoint exists yet — this is built client-side
-  // as digests get generated during this session.
+  // digestHistory: each entry is one persisted, non-overlapping digest, most recent first.
   const [digestHistory, setDigestHistory] = useState([]);
 
-  const periodLabel = PERIODS.find((p) => p.value === period)?.label || 'Last 24h';
   const activeDigest = digestHistory[selectedIndex] || null;
 
   const buildPlainTextSummary = (digest) => {
-    const sections = digest.groups
-      .map((g) => `${g.title}:\n${g.items.map((i) => `- ${i}`).join('\n')}`)
+    const groups = Array.isArray(digest?.groups) ? digest.groups : [];
+    const sections = groups
+      .map((g) => `${g.title}:\n${(g.items || []).map((i) => `- ${i}`).join('\n')}`)
       .join('\n\n');
-    return `${sections}\n\nSuggested Focus:\n${digest.focus}`;
+    return `${sections}\n\nSuggested Focus:\n${digest?.focus || 'No focus identified.'}`;
   };
 
   const handleCopySummary = async () => {
@@ -98,7 +108,7 @@ export default function Digest() {
   };
 
   const buildDigestWebhookPayload = (digest) => ({
-    period: digest?.period || period,
+    windowHours,
     summary: buildPlainTextSummary(digest),
     digest,
   });
@@ -164,45 +174,61 @@ export default function Digest() {
     setSuccessOpen(false);
   };
 
-  const fetchDigest = useCallback(async (selectedPeriod) => {
+  // Pull persisted digest history from the DB.
+  const fetchDigestHistory = useCallback(async () => {
+    if (!workspaceId) return;
+    setLoadingHistory(true);
+    try {
+      const response = await APICallService.getDigestHistory(workspaceId);
+      const items = Array.isArray(response?.data?.data) ? response.data.data : [];
+      setDigestHistory(items);
+      setSelectedIndex(0);
+      setNoActivityYet(items.length === 0);
+    } catch (err) {
+      console.error('Failed to load digest history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  }, [workspaceId]);
+
+  const fetchDigest = useCallback(async (hours) => {
     if (!workspaceId) return;
     setGenerating(true);
     setError(null);
     try {
-      const response = await APICallService.getDigest(workspaceId, selectedPeriod);
+      const response = await APICallService.getDigest(workspaceId, hours);
       const payload = response?.data;
 
       if (!payload?.success) {
         throw new Error(payload?.message || 'Failed to generate digest');
       }
 
-      const digest = payload.data; // { label, period, groups, focus }
-      setDigestHistory((prev) => [digest, ...prev]);
-      setSelectedIndex(0);
-      setLastUpdated('Just now');
+      await fetchDigestHistory();
+      setNoActivityYet(!payload.data);
+      setLastUpdated(payload.data ? 'Just now' : null);
     } catch (err) {
       console.error('Failed to fetch digest:', err);
       setError(err?.response?.data?.message || err.message || 'Failed to generate digest');
     } finally {
       setGenerating(false);
     }
-  }, [workspaceId]);
+  }, [workspaceId, fetchDigestHistory]);
 
-  // Generate an initial digest as soon as we have a workspace
   useEffect(() => {
-    if (workspaceId && digestHistory.length === 0) {
-      fetchDigest(period);
+    if (workspaceId) {
+      fetchDigest(windowHours);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceId]);
 
   const handleRegenerateSummary = () => {
-    fetchDigest(period);
+    fetchDigest(windowHours);
   };
 
-  const handlePeriodChange = (value) => {
-    setPeriod(value);
-    setPeriodAnchor(null);
+  const handleWindowCommit = (_e, value) => {
+    setWindowHours(value);
+    setPendingWindowHours(value);
+    setWindowAnchor(null);
     fetchDigest(value);
   };
 
@@ -221,7 +247,7 @@ export default function Digest() {
   }
 
   return (
-    <Box sx={{ p: 3, maxWidth: '100%' }}>
+    <Box sx={{ p: 3, maxWidth: '100%', height: '100%', overflowY: 'auto' }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2.5, flexWrap: 'wrap', gap: 1.5 }}>
         <Box>
@@ -235,9 +261,12 @@ export default function Digest() {
         </Box>
 
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-          {/* Period selector */}
+          {/* Lookback window selector (24h - 7d) */}
           <Button
-            onClick={(e) => setPeriodAnchor(e.currentTarget)}
+            onClick={(e) => {
+              setPendingWindowHours(windowHours);
+              setWindowAnchor(e.currentTarget);
+            }}
             endIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />}
             sx={{
               textTransform: 'none',
@@ -251,22 +280,35 @@ export default function Digest() {
               height: '36px',
             }}
           >
-            {periodLabel}
+            Lookback: {formatWindowLabel(windowHours)}
           </Button>
-          <Menu anchorEl={periodAnchor} open={Boolean(periodAnchor)} onClose={() => setPeriodAnchor(null)}>
-            {PERIODS.map((p) => (
-              <MenuItem
-                key={p.value}
-                selected={p.value === period}
-                onClick={() => handlePeriodChange(p.value)}
-                sx={{ fontSize: '13px' }}
-              >
-                {p.label}
-              </MenuItem>
-            ))}
-          </Menu>
+          <Popover
+            open={Boolean(windowAnchor)}
+            anchorEl={windowAnchor}
+            onClose={() => setWindowAnchor(null)}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+          >
+            <Box sx={{ px: 3, pt: 3, pb: 2, width: 260 }}>
+              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', mb: 1 }}>
+                Summarize activity from the last {formatWindowLabel(pendingWindowHours)}
+              </Typography>
+              <Slider
+                value={pendingWindowHours}
+                min={MIN_WINDOW_HOURS}
+                max={MAX_WINDOW_HOURS}
+                step={WINDOW_STEP}
+                marks={WINDOW_MARKS}
+                onChange={(_e, value) => setPendingWindowHours(value)}
+                onChangeCommitted={handleWindowCommit}
+                sx={{ color: '#7c3aed' }}
+              />
+              <Typography sx={{ fontSize: '11px', color: '#94a3b8', mt: 1 }}>
+                Minimum 1 day, maximum 7 days.
+              </Typography>
+            </Box>
+          </Popover>
 
-          {/* Regenerate AI summary */}
           <Button
             onClick={handleRegenerateSummary}
             disabled={generating}
@@ -280,6 +322,7 @@ export default function Digest() {
               borderRadius: '8px',
               height: '36px',
               '&:hover': { backgroundColor: '#6d28d9' },
+              '&.Mui-disabled': { backgroundColor: '#e2e8f0', color: '#94a3b8' },
             }}
           >
             {generating ? 'Generating…' : 'Regenerate Summary'}
@@ -339,7 +382,7 @@ export default function Digest() {
         </Box>
       )}
 
-      {/* Success toast — matches the pill-style snackbar used on the Users page */}
+      {/* Success toast */}
       <Snackbar
         open={successOpen}
         onClose={handleCloseSuccess}
@@ -400,7 +443,7 @@ export default function Digest() {
               </Typography>
             </Box>
           ) : (
-            <List sx={{ p: 0 }}>
+            <List sx={{ p: 0, maxHeight: 320, overflowY: 'auto' }}>
               {availableWebhooks.map((webhook, index) => (
                 <Box key={webhook.webhookId || webhook.id || index}>
                   <ListItem disablePadding>
@@ -441,17 +484,38 @@ export default function Digest() {
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 8 }}>
           <CircularProgress size={28} sx={{ color: '#7c3aed' }} />
         </Box>
+      ) : noActivityYet && !activeDigest ? (
+        <Box sx={{ py: 8, textAlign: 'center' }}>
+          <InfoOutlinedIcon sx={{ fontSize: 26, color: '#94a3b8', mb: 1 }} />
+          <Typography sx={{ fontSize: '13.5px', color: '#64748b', fontWeight: 600 }}>
+            No activity to summarize yet
+          </Typography>
+          <Typography sx={{ fontSize: '12.5px', color: '#94a3b8', mt: 0.5 }}>
+            Once there's some activity in this workspace, a digest will appear here automatically.
+          </Typography>
+        </Box>
       ) : !activeDigest ? (
         <Box sx={{ py: 8, textAlign: 'center' }}>
           <Typography sx={{ fontSize: '13px', color: '#94a3b8' }}>
-            No digest yet — click "Regenerate Summary" to generate one.
+            No digest yet.
           </Typography>
         </Box>
       ) : (
         <Box sx={{ display: 'flex', gap: 2.5, alignItems: 'flex-start', flexWrap: 'wrap' }}>
           {/* Grouped digest sections */}
-          <Box sx={{ flex: 1, minWidth: '320px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {activeDigest.groups.length === 0 ? (
+          <Box
+            sx={{
+              flex: 1,
+              minWidth: '320px',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 2,
+              maxHeight: 'calc(100vh - 260px)',
+              overflowY: 'auto',
+              pr: 0.5,
+            }}
+          >
+            {(!Array.isArray(activeDigest.groups) || activeDigest.groups.length === 0) ? (
               <Box sx={{ border: '1px solid #e5e7eb', borderRadius: '10px', p: 3, backgroundColor: '#ffffff', textAlign: 'center' }}>
                 <Typography sx={{ fontSize: '13px', color: '#94a3b8' }}>No activity in this period.</Typography>
               </Box>
@@ -509,36 +573,49 @@ export default function Digest() {
                 Suggested Focus
               </Typography>
               <Typography sx={{ fontSize: '14.5px', lineHeight: 1.6 }}>
-                {activeDigest.focus}
+                {activeDigest.focus || 'No focus identified for this period.'}
               </Typography>
             </Box>
           </Box>
 
-          {/* Digest history sidebar (session-only, no backend history endpoint) */}
-          <Box sx={{ width: '260px', flexShrink: 0, border: '1px solid #e5e7eb', borderRadius: '10px', backgroundColor: '#ffffff', overflow: 'hidden' }}>
+          {/* Digest history sidebar — persisted, distinct, non-overlapping entries */}
+          <Box
+            sx={{
+              width: '260px',
+              flexShrink: 0,
+              border: '1px solid #e5e7eb',
+              borderRadius: '10px',
+              backgroundColor: '#ffffff',
+              overflow: 'hidden',
+              maxHeight: 'calc(100vh - 260px)',
+              display: 'flex',
+              flexDirection: 'column',
+            }}
+          >
             <Box
               onClick={() => setHistoryOpen((v) => !v)}
-              sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.75, cursor: 'pointer', borderBottom: historyOpen ? '1px solid #e5e7eb' : 'none' }}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.75, cursor: 'pointer', borderBottom: historyOpen ? '1px solid #e5e7eb' : 'none', flexShrink: 0 }}
             >
               <HistoryIcon sx={{ fontSize: 17, color: '#64748b' }} />
               <Typography sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1e293b' }}>Digest History</Typography>
               <Box sx={{ flex: 1 }} />
+              {loadingHistory && <CircularProgress size={13} sx={{ color: '#94a3b8' }} />}
               <ChevronRightIcon
                 sx={{ fontSize: 18, color: '#94a3b8', transform: historyOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }}
               />
             </Box>
             {historyOpen && (
-              <Box sx={{ display: 'flex', flexDirection: 'column' }}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
                 {digestHistory.length === 0 ? (
                   <Box sx={{ px: 2, py: 2 }}>
-                    <Typography sx={{ fontSize: '12px', color: '#94a3b8' }}>No digests yet this session.</Typography>
+                    <Typography sx={{ fontSize: '12px', color: '#94a3b8' }}>No digests yet.</Typography>
                   </Box>
                 ) : (
                   digestHistory.map((h, i) => {
                     const isSelected = i === selectedIndex;
                     return (
                       <Box
-                        key={i}
+                        key={h._id || i}
                         onClick={() => selectHistoryItem(i)}
                         sx={{
                           px: 2,
@@ -553,7 +630,9 @@ export default function Digest() {
                         <Typography sx={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#7c3aed' : '#1e293b' }}>
                           {h.label}
                         </Typography>
-                        <Typography sx={{ fontSize: '11.5px', color: '#94a3b8', mt: '2px' }}>{h.period}</Typography>
+                        <Typography sx={{ fontSize: '11.5px', color: '#94a3b8', mt: '2px' }}>
+                          {formatWindowLabel(h.windowHours)} window · {h.activityCount ?? 0} update{(h.activityCount ?? 0) === 1 ? '' : 's'}
+                        </Typography>
                       </Box>
                     );
                   })

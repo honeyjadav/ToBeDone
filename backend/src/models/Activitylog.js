@@ -23,7 +23,6 @@ const activityLogSchema = new mongoose.Schema(
         "TASK_COMMENTED",
         "TASK_DUE_SOON",
         "TASK_OVERDUE",
-        "MESSAGE_SENT",
         "FILE_UPLOADED",
         "MEMBER_JOINED",
         "MEMBER_REMOVED",
