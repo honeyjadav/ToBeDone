@@ -1,5 +1,9 @@
 import Task from "../models/Task.js";
 import { logActivity } from "./activityLogController.js";
+import Notification from "../models/Notification.js";
+// import { getIO } from "../sockets/index.js";
+// import { notificationSocket } from "../sockets/notificationSocket.js";
+import { notifyUsers } from "../utils/notify.js";
 
 // @desc    Get all tasks in a workspace
 // @route   GET /api/workspaces/:workspaceId/tasks
@@ -89,7 +93,7 @@ export const createTask = async (req, res, next) => {
 
     const task = await Task.create(taskData);
 
-    logActivity({
+    const activity = await logActivity({
       workspace: workspaceId,
       user: userId,
       action: "TASK_CREATED",
@@ -97,6 +101,18 @@ export const createTask = async (req, res, next) => {
       targetId: task._id,
       metadata: { title: task.title },
     });
+
+    // Notify anyone assigned who isn't the creator themselves
+    if (task.assignedTo?.length > 0) {
+      await notifyUsers({
+        userIds: task.assignedTo,
+        actorId: userId,
+        workspace: workspaceId,
+        title: "New task assigned to you",
+        summary: `${req.user.name} assigned you "${task.title}"`,
+        sourceActivityIds: activity ? [activity._id] : [],
+      });
+    }
 
     res.status(201).json({
       success: true,
@@ -116,8 +132,9 @@ export const createTask = async (req, res, next) => {
 export const updateTask = async (req, res, next) => {
   try {
     const task = req.resource;
-    const { title, description, status, priority, dueDate, type } = req.body;
+    const { title, description, status, priority, dueDate, type, assignedTo } = req.body;
     const oldStatus = task.status;
+    const oldAssignedTo = task.assignedTo.map(String); // snapshot before changes
 
     if (title !== undefined) task.title = title;
     if (type !== undefined) task.type = type;
@@ -125,6 +142,13 @@ export const updateTask = async (req, res, next) => {
     if (status !== undefined) task.status = status;
     if (priority !== undefined) task.priority = priority;
     if (dueDate !== undefined) task.dueDate = dueDate;
+
+    let assigneesChanged = false;
+    if (assignedTo !== undefined) {
+      const newAssignedTo = Array.isArray(assignedTo) ? assignedTo : [assignedTo];
+      task.assignedTo = newAssignedTo;
+      assigneesChanged = true;
+    }
 
     await task.save();
 
@@ -146,6 +170,35 @@ export const updateTask = async (req, res, next) => {
         targetId: task._id,
         metadata: { title: task.title },
       });
+    }
+
+    // ============================================================
+    // NOTIFY NEWLY ASSIGNED USERS
+    // ============================================================
+    if (assigneesChanged) {
+      const newAssignees = task.assignedTo
+        .map(String)
+        .filter((uid) => !oldAssignedTo.includes(uid)); // only people who weren't already assigned
+
+      if (newAssignees.length > 0) {
+        const assignActivity = await logActivity({
+          workspace: task.workspace,
+          user: req.user.id,
+          action: "TASK_ASSIGNED",
+          targetType: "Task",
+          targetId: task._id,
+          metadata: { title: task.title, assignedTo: task.assignedTo },
+        });
+
+        await notifyUsers({
+          userIds: newAssignees,
+          actorId: req.user.id,
+          workspace: task.workspace,
+          title: "New task assigned to you",
+          summary: `${req.user.name} assigned you "${task.title}"`,
+          sourceActivityIds: assignActivity ? [assignActivity._id] : [],
+        });
+      }
     }
 
     res.status(200).json({

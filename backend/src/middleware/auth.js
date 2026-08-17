@@ -39,7 +39,10 @@ export const protect = async (req, res, next) => {
       return next(new Error("User no longer exists"));
     }
 
-    req.user = { id: user._id.toString() };
+    req.user = {
+      id: user._id.toString(),
+      name: user.name,
+    };
     next();
   } catch (dbErr) {
     // This is a database error (e.g. connection issue) — surface as 500

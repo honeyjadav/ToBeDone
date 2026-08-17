@@ -22,6 +22,7 @@ import taskRoutes from "./taskRoutes.js";
 import activityLogRoutes from "./activityLogRoutes.js";
 import groupRoutes from "./groupRoutes.js";
 import dashboardRoutes from "./dashboardRoutes.js"
+import notificationRoutes from "./notificationRoutes.js";
 
 import { getConversations } from "../controllers/conversationController.js";
 const router = express.Router();
@@ -50,4 +51,6 @@ router.use("/:workspaceId/groups", groupRoutes);
 router.use("/:workspaceId/dashboard", dashboardRoutes);
 router.get("/:workspaceId/conversations", protect, requireWorkspaceMember, getConversations);
 
+
+router.use("/:workspaceId/notifications",notificationRoutes);
 export default router;
