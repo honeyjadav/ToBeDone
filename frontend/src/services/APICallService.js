@@ -232,6 +232,38 @@ class APICallService {
   getDashboard(workspaceId) {
     return api.get(APIs.DASHBOARD(workspaceId));
   }
+
+  // ---- Notifications ----
+
+  getNotifications(workspaceId) {
+    const notificationFactory = APIs?.NOTIFICATIONS;
+    const url = typeof notificationFactory === "function"
+      ? notificationFactory(workspaceId)
+      : (typeof notificationFactory === "string"
+        ? notificationFactory
+        : `/workspaces/${workspaceId}/notifications`);
+
+    return api.get(url);
+  }
+
+  markNotificationRead(workspaceId, notificationId) {
+    const notificationReadFactory = APIs?.NOTIFICATION_READ;
+    const url = typeof notificationReadFactory === "function"
+      ? notificationReadFactory(workspaceId, notificationId)
+      : `/workspaces/${workspaceId}/notifications/${notificationId}/read`;
+
+    return api.patch(url);
+  }
+
+  markAllNotificationsRead(workspaceId) {
+    const readAllFactory = APIs?.NOTIFICATIONS_READ_ALL;
+    const url = typeof readAllFactory === "function"
+      ? readAllFactory(workspaceId)
+      : `/workspaces/${workspaceId}/notifications/read-all`;
+
+    return api.patch(url);
+  }
+
 }
 
 export default new APICallService();

@@ -34,7 +34,8 @@ export default function NotificationDropdown({ notifications = [], onMarkRead, o
     const unreadCount = notifications.filter((n) => !n.isRead).length;
 
     const handleItemClick = (n) => {
-        if (!n.isRead) onMarkRead(n.id);
+        const notificationId = n.notificationId || n._id || n.id;
+        if (!n.isRead) onMarkRead(notificationId);
         onOpenNotification?.(n);
         setAnchorEl(null);
     };
@@ -113,9 +114,10 @@ export default function NotificationDropdown({ notifications = [], onMarkRead, o
                         {notifications.map((n) => {
                             const cfg = TYPE_CONFIG[n.type] || TYPE_CONFIG.DIRECT;
                             const Icon = cfg.icon;
+                            const notificationId = n.notificationId || n._id || n.id;
                             return (
                                 <Box
-                                    key={n.id}
+                                    key={notificationId}
                                     onClick={() => handleItemClick(n)}
                                     sx={{
                                         display: 'flex',
@@ -157,7 +159,7 @@ export default function NotificationDropdown({ notifications = [], onMarkRead, o
                 <Box sx={{ px: 1, py: 1, flexShrink: 0 }}>
                     <Button
                         fullWidth
-                        onClick={() => { setAnchorEl(null); navigate('/notifications'); }}
+                        onClick={() => { setAnchorEl(null); navigate('/dashboard/notifications'); }}
                         sx={{ textTransform: 'none', fontSize: '12.5px', fontWeight: 600, color: '#475569' }}
                     >
                         View all notifications
