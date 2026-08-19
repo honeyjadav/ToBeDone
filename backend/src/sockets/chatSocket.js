@@ -1,6 +1,11 @@
 import Message from "../models/Message.js";
 import Group from "../models/Group.js";
 import { logActivity } from "../controllers/activityLogController.js";
+import {notifyUsers} from "../utils/notify.js"
+
+function truncate(content, maxLength = 100) {
+  return content.length > maxLength ? content.substring(0, maxLength) + "..." : content;
+}
 
 export function registerChatHandlers(io, socket, workspacePresence) {
   // ---- JOIN WORKSPACE ROOM (+ personal room for DM delivery) ----
@@ -8,6 +13,7 @@ export function registerChatHandlers(io, socket, workspacePresence) {
     socket.join(workspaceId);
     socket.join(`user:${socket.user.id}`);
     socket.data.workspaceId = workspaceId;
+    socket.data.activeChatRoom = null; // ✅ Track active chat
 
     workspacePresence[workspaceId] = workspacePresence[workspaceId] || {};
     workspacePresence[workspaceId][socket.id] = {
@@ -25,12 +31,28 @@ export function registerChatHandlers(io, socket, workspacePresence) {
       Object.values(workspacePresence[workspaceId])
     );
   });
+  
+  // ---- TRACK ACTIVE CHAT ROOM ----
+  // Call this when opening a 1:1 DM
+  socket.on("chat:open", ({ recipientId, groupId }) => {
+    if (recipientId) {
+      socket.data.activeChatRoom = `dm:${[socket.user.id, recipientId].sort().join("_")}`;
+      socket.join(socket.data.activeChatRoom);
+    } else if (groupId) {
+      socket.data.activeChatRoom = `group:${groupId}`;
+      socket.join(socket.data.activeChatRoom);
+    }
+  });
 
+  // Call this when closing a DM
+  socket.on("chat:close", () => {
+    if (socket.data.activeChatRoom) {
+      socket.leave(socket.data.activeChatRoom);
+      socket.data.activeChatRoom = null;
+    }
+  });
+  
   // ---- JOIN / LEAVE A GROUP ROOM ----
-  // Members of the group can always join (to send + receive live).
-  // Non-members may ALSO join if the group is public — this only grants
-  // them live delivery of messages (read-only); it does NOT grant posting
-  // rights, which are checked separately in message:send below.
   socket.on("group:join", async ({ groupId }) => {
     const group = await Group.findById(groupId);
     if (!group) {
@@ -48,47 +70,266 @@ export function registerChatHandlers(io, socket, workspacePresence) {
   });
 
   // ---- SEND MESSAGE (channel OR group OR 1:1 DM) ----
-  socket.on("message:send", async ({ workspaceId, channel, groupId, recipientId, content }) => {
+socket.on(
+  "message:send",
+  async ({
+    workspaceId,
+    channel,
+    groupId,
+    recipientId,
+    content,
+  }) => {
     try {
       let groupDoc = null;
 
+      // ============================================================
+      // VALIDATE GROUP
+      // ============================================================
+
       if (groupId) {
         groupDoc = await Group.findById(groupId);
-        // Posting always requires current membership, regardless of
-        // isPrivate. A public group can be viewed by anyone in the
-        // workspace, but only members may send — this is the one place
-        // that's actually enforced, since the frontend UI just hides the
-        // composer as a convenience.
-        if (!groupDoc || !groupDoc.members.map(String).includes(socket.user.id)) {
-          return socket.emit("message:error", { message: "You must be a member of this group to send messages" });
+
+        if (
+          !groupDoc ||
+          !groupDoc.members
+            .map(String)
+            .includes(socket.user.id.toString())
+        ) {
+          return socket.emit("message:error", {
+            message:
+              "You must be a member of this group to send messages",
+          });
         }
       }
 
+      // ============================================================
+      // CREATE MESSAGE
+      // ============================================================
+
       const message = await Message.create({
         workspace: workspaceId,
-        channel: groupId || recipientId ? undefined : channel || "general",
+
+        channel:
+          groupId || recipientId
+            ? undefined
+            : channel || "general",
+
         group: groupId || null,
         recipient: recipientId || null,
         sender: socket.user.id,
         content,
       });
 
-      const populated = await message.populate("sender", "name email");
+      console.log("========== MESSAGE CREATED ==========");
+      console.log("Message ID:", message._id);
+      console.log("Workspace:", workspaceId);
+      console.log("Group:", groupId || null);
+      console.log("Recipient:", recipientId || null);
+      console.log("Sender:", socket.user.id);
+      console.log("====================================");
+
+      // ============================================================
+      // POPULATE SENDER
+      // ============================================================
+
+      const populated = await message.populate(
+        "sender",
+        "name email"
+      );
+
+      // ============================================================
+      // REAL-TIME MESSAGE DELIVERY
+      // ============================================================
 
       if (groupId) {
-        // Broadcasts to everyone currently in the room — which now
-        // includes public-group viewers who joined via group:join above.
-        io.to(`group:${groupId}`).emit("message:new", populated);
+        // Group message
+
+        io.to(`group:${groupId}`).emit(
+          "message:new",
+          populated
+        );
       } else if (recipientId) {
-        io.to(`user:${recipientId}`).to(`user:${socket.user.id}`).emit("message:new", populated);
+        // Personal / DM message
+
+        io
+          .to(`user:${recipientId}`)
+          .to(`user:${socket.user.id}`)
+          .emit("message:new", populated);
       } else {
-        io.to(workspaceId).emit("message:new", populated);
+        // Workspace / channel message
+
+        io.to(workspaceId).emit(
+          "message:new",
+          populated
+        );
+      }
+
+      // ============================================================
+      // MESSAGE PREVIEW
+      // ============================================================
+
+      const preview = truncate(content);
+
+      // ============================================================
+      // PERSONAL / DIRECT MESSAGE NOTIFICATION
+      // ============================================================
+
+      if (recipientId) {
+        const dmRoomId =
+          `dm:${[
+            socket.user.id,
+            recipientId,
+          ]
+            .sort()
+            .join("_")}`;
+
+        const dmSockets =
+          await io
+            .in(dmRoomId)
+            .fetchSockets();
+
+        const isRecipientViewingDM =
+          dmSockets.some(
+            (s) =>
+              s.user.id.toString() ===
+              recipientId.toString()
+          );
+
+        console.log(
+          "========== DM NOTIFICATION =========="
+        );
+
+        console.log("Message ID:", message._id);
+        console.log("DM Room:", dmRoomId);
+        console.log("Recipient:", recipientId);
+        console.log(
+          "Recipient viewing:",
+          isRecipientViewingDM
+        );
+
+        console.log(
+          "====================================="
+        );
+
+        // Don't create notification if
+        // recipient is already viewing this DM
+        if (!isRecipientViewingDM) {
+          await notifyUsers({
+  userIds: [recipientId],
+  actorId: socket.user.id,
+  workspace: workspaceId,
+  title: `New message from ${socket.user.name}`,
+  summary: preview,
+
+  chatData: {
+    type: "DM",
+    userId: socket.user.id.toString(),
+    messageId: message._id.toString(),
+  },
+});
+
+          console.log(
+            "✅ Personal message notification created"
+          );
+        }
+      }
+
+      // ============================================================
+      // GROUP MESSAGE NOTIFICATION
+      // ============================================================
+
+      else if (groupId && groupDoc) {
+        const groupRoomId =
+          `group:${groupId}`;
+
+        const groupSockets =
+          await io
+            .in(groupRoomId)
+            .fetchSockets();
+
+        const activeUserIds =
+          new Set(
+            groupSockets.map((s) =>
+              s.user.id.toString()
+            )
+          );
+
+        // Find members who are NOT
+        // currently viewing this group
+        const usersToNotify =
+          groupDoc.members.filter(
+            (memberId) =>
+              !activeUserIds.has(
+                memberId.toString()
+              ) &&
+              memberId.toString() !==
+                socket.user.id.toString()
+          );
+
+        console.log(
+          "========== GROUP NOTIFICATION =========="
+        );
+
+        console.log("Message ID:", message._id);
+        console.log("Group ID:", groupId);
+        console.log("Group Name:", groupDoc.name);
+
+        console.log(
+          "Users to notify:",
+          usersToNotify.map(String)
+        );
+
+        console.log(
+          "========================================="
+        );
+
+        if (usersToNotify.length > 0) {
+          await notifyUsers({
+          userIds: usersToNotify,
+          actorId: socket.user.id,
+          workspace: workspaceId,
+          title: `New message in ${groupDoc.name}`,
+          summary: `${socket.user.name} sent: "${preview}"`,
+
+          chatData: {
+            type: "GROUP",
+            groupId: groupId.toString(),
+            messageId: message._id.toString(),
+          },
+        });
+
+          console.log(
+            `✅ Group notification created for ${usersToNotify.length} user(s)`
+          );
+        }
+      }
+
+      // ============================================================
+      // NORMAL CHANNEL MESSAGE
+      // ============================================================
+
+      else {
+        console.log(
+          "[CHAT] Channel message - no notification created"
+        );
       }
 
     } catch (err) {
-      socket.emit("message:error", { message: err.message });
+      console.error(
+        "Message send error:",
+        err
+      );
+
+      socket.emit(
+        "message:error",
+        {
+          message: err.message,
+        }
+      );
     }
-  });
+  }
+);
+
 
   // ---- UNSEND MESSAGE (soft delete, real-time) ----
   socket.on("message:delete", async ({ messageId, groupId, recipientId, workspaceId }) => {

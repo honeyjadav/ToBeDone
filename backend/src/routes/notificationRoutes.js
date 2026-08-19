@@ -3,6 +3,7 @@ import {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  clearReadNotifications
 } from "../controllers/notificationController.js";
 import { requireWorkspaceMember } from "../middleware/workspaceAuth.js";
 
@@ -24,6 +25,12 @@ router.patch(
   "/read-all",
   requireWorkspaceMember,
   markAllNotificationsRead
+);
+
+router.delete(
+  "/read",
+  requireWorkspaceMember,
+  clearReadNotifications
 );
 
 export default router;

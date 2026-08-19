@@ -68,7 +68,7 @@ export const register = async (req, res, next) => {
       isEmailVerified: false,
     });
 
-    await createAndSendOtp(user);
+    createAndSendOtp(user);
 
     res.status(201).json({
       success: true,
@@ -117,17 +117,17 @@ export const verifyOtp = async (req, res, next) => {
     user.otpExpires = undefined;
     await user.save();
 
-    const { accessToken, refreshToken } = await createSession(user._id, req);
-    setRefreshTokenCookie(res, refreshToken);
+    // const { accessToken, refreshToken } = await createSession(user._id, req);
+    // setRefreshTokenCookie(res, refreshToken);
 
-    await sendEmail({
-      to: user.email,
-      subject: "Successfully signed in to ToBeDone",
-      html: loginSuccessEmailTemplate({
-        name: user.name,
-        loginTime: new Date().toISOString(),
-      }),
-    });
+    // await sendEmail({
+    //   to: user.email,
+    //   subject: "Successfully signed in to ToBeDone",
+    //   html: loginSuccessEmailTemplate({
+    //     name: user.name,
+    //     loginTime: new Date().toISOString(),
+    //   }),
+    // });
 
     res.status(200).json({
       success: true,
@@ -165,7 +165,7 @@ export const resendOtp = async (req, res, next) => {
       throw new Error("Email is already verified");
     }
 
-    await createAndSendOtp(user);
+    createAndSendOtp(user);
 
     res.status(200).json({
       success: true,
@@ -207,7 +207,7 @@ export const login = async (req, res, next) => {
     }
 
     // ✅ Reuse same otp field — send login OTP instead of tokens
-    await createAndSendOtp(user);
+     createAndSendOtp(user);
 
     res.status(200).json({
       success: true,
@@ -270,15 +270,6 @@ export const loginVerifyOtp = async (req, res, next) => {
       role: m.role,
     }));
 
-    await sendEmail({
-      to: user.email,
-      subject: "Successfully signed in to ToBeDone",
-      html: loginSuccessEmailTemplate({
-        name: user.name,
-        loginTime: new Date().toISOString(),
-      }),
-    });
-
     res.status(200).json({
       success: true,
       message: "Login successful",
@@ -316,7 +307,7 @@ export const resendLoginOtp = async (req, res, next) => {
     }
 
     // ✅ reuse exact same createAndSendOtp function
-    await createAndSendOtp(user);
+    createAndSendOtp(user);
 
     res.status(200).json({
       success: true,
@@ -490,7 +481,7 @@ export const forgotPassword = async (req, res, next) => {
 
       const resetLink = `${process.env.CLIENT_URL}/reset-password?token=${resetToken}`;
 
-      await sendEmail({
+      sendEmail({
         to: user.email,
         subject: "Reset your password — ToBeDone",
         html: resetPasswordEmailTemplate({
