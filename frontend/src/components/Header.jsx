@@ -192,15 +192,112 @@ export default function Header({ darkMode = false }) {
   }, [workspaceId]);
 
   // --------------------------------------------------
-  // MARK ONE NOTIFICATION AS READ
-  // --------------------------------------------------
+// SOCKET.IO
+// --------------------------------------------------
 
-  const handleMarkRead = async (notificationId) => {
-    if (!workspaceId || !notificationId) {
+useEffect(() => {
+  if (!workspaceId) {
+    return;
+  }
+
+  const socket = connectSocket();
+
+  if (!socket) {
+    console.warn(
+      "Socket not connected because access token was not found."
+    );
+    return;
+  }
+
+  // ------------------------------------------
+  // JOIN WORKSPACE
+  // ------------------------------------------
+
+  const joinWorkspace = () => {
+    socket.emit("workspace:join", {
+      workspaceId,
+    });
+  };
+
+  // ------------------------------------------
+  // NEW NOTIFICATION
+  // ------------------------------------------
+
+  const handleNewNotification = (notification) => {
+    console.log(
+      "🔔 New notification received:",
+      notification
+    );
+
+    // Ignore notifications from another workspace
+    if (
+      notification?.workspace &&
+      String(notification.workspace) !== String(workspaceId)
+    ) {
       return;
     }
 
-    // Optimistic UI update
+    const notificationId =
+      notification?.notificationId ||
+      notification?._id ||
+      notification?.id;
+
+    if (!notificationId) {
+      return;
+    }
+
+    setNotifications((prev) => {
+      const alreadyExists = prev.some(
+        (item) =>
+          String(
+            item.notificationId ||
+              item._id ||
+              item.id
+          ) === String(notificationId)
+      );
+
+      if (alreadyExists) {
+        return prev;
+      }
+
+      return [
+        {
+          ...notification,
+          notificationId,
+        },
+        ...prev,
+      ];
+    });
+
+    // Show toast
+    setToastNotification({
+      ...notification,
+      notificationId,
+    });
+  };
+
+  // ------------------------------------------
+  // ONE NOTIFICATION MARKED AS READ
+  // ------------------------------------------
+
+  const handleNotificationRead = (data) => {
+    console.log(
+      "🔵 Notification marked as read:",
+      data
+    );
+
+    if (!data?.notificationId) {
+      return;
+    }
+
+    // Ignore another workspace
+    if (
+      data.workspace &&
+      String(data.workspace) !== String(workspaceId)
+    ) {
+      return;
+    }
+
     setNotifications((prev) =>
       prev.map((notification) => {
         const id =
@@ -208,97 +305,364 @@ export default function Header({ darkMode = false }) {
           notification._id ||
           notification.id;
 
-        return String(id) === String(notificationId)
-          ? {
-              ...notification,
-              isRead: true,
-            }
-          : notification;
+        if (
+          String(id) ===
+          String(data.notificationId)
+        ) {
+          return {
+            ...notification,
+            isRead: true,
+            readAt:
+              data.readAt ||
+              new Date().toISOString(),
+          };
+        }
+
+        return notification;
       })
     );
-
-    try {
-      await APICallService.markNotificationRead(
-        workspaceId,
-        notificationId
-      );
-    } catch (error) {
-      console.error(
-        "Failed to mark notification as read:",
-        error
-      );
-
-      // Reload actual state from backend
-      fetchNotifications();
-    }
   };
+
+  // ------------------------------------------
+  // ALL NOTIFICATIONS MARKED AS READ
+  // ------------------------------------------
+
+  const handleNotificationsReadAll = (data) => {
+    console.log(
+      "🟢 All notifications marked as read:",
+      data
+    );
+
+    if (
+      data?.workspaceId &&
+      String(data.workspaceId) !== String(workspaceId)
+    ) {
+      return;
+    }
+
+    setNotifications((prev) =>
+      prev.map((notification) => ({
+        ...notification,
+        isRead: true,
+        readAt:
+          notification.readAt ||
+          new Date().toISOString(),
+      }))
+    );
+  };
+
+  // ------------------------------------------
+  // READ NOTIFICATIONS CLEARED
+  // ------------------------------------------
+
+  const handleNotificationsClearRead = (data) => {
+  if (
+    data?.workspaceId &&
+    String(data.workspaceId) !==
+      String(workspaceId)
+  ) {
+    return;
+  }
+
+  setNotifications((prev) =>
+    prev.filter(
+      (notification) =>
+        !notification.isRead
+    )
+  );
+};
+
+  // ------------------------------------------
+  // SOCKET EVENTS
+  // ------------------------------------------
+
+  socket.on(
+    "connect",
+    joinWorkspace
+  );
+
+  socket.on(
+    "notification:new",
+    handleNewNotification
+  );
+
+  socket.on(
+    "notification:read",
+    handleNotificationRead
+  );
+
+  socket.on(
+    "notifications:read-all",
+    handleNotificationsReadAll
+  );
+
+  socket.on(
+    "notifications:clear-read",
+    handleNotificationsClearRead
+  );
+
+  // If already connected
+  if (socket.connected) {
+    joinWorkspace();
+  }
+
+  // ------------------------------------------
+  // CLEANUP
+  // ------------------------------------------
+
+  return () => {
+    socket.off(
+      "connect",
+      joinWorkspace
+    );
+
+    socket.off(
+      "notification:new",
+      handleNewNotification
+    );
+
+    socket.off(
+      "notification:read",
+      handleNotificationRead
+    );
+
+    socket.off(
+      "notifications:read-all",
+      handleNotificationsReadAll
+    );
+
+    socket.off(
+      "notifications:clear-read",
+      handleNotificationsClearRead
+    );
+  };
+}, [workspaceId]);
+  // --------------------------------------------------
+  // MARK ONE NOTIFICATION AS READ
+  // --------------------------------------------------
+
+  const handleMarkRead = async (notificationId) => {
+  if (!workspaceId || !notificationId) {
+    return;
+  }
+
+  // Optimistic update
+  setNotifications((prev) =>
+    prev.map((notification) => {
+      const id =
+        notification.notificationId ||
+        notification._id ||
+        notification.id;
+
+      return String(id) === String(notificationId)
+        ? {
+            ...notification,
+            isRead: true,
+            readAt: new Date().toISOString(),
+          }
+        : notification;
+    })
+  );
+
+  try {
+    await APICallService.markNotificationRead(
+      workspaceId,
+      notificationId
+    );
+  } catch (error) {
+    console.error(
+      "Failed to mark notification as read:",
+      error
+    );
+
+    // Get actual backend state
+    fetchNotifications();
+  }
+};
 
   // --------------------------------------------------
   // MARK ALL AS READ
   // --------------------------------------------------
 
   const handleMarkAllRead = async () => {
-    if (!workspaceId) {
-      return;
-    }
+  if (!workspaceId) {
+    return;
+  }
 
-    const previousNotifications = notifications;
+  const previousNotifications = notifications;
 
-    // Optimistic update
-    setNotifications((prev) =>
-      prev.map((notification) => ({
-        ...notification,
-        isRead: true,
-      }))
+  // Optimistic update
+  setNotifications((prev) =>
+    prev.map((notification) => ({
+      ...notification,
+      isRead: true,
+      readAt:
+        notification.readAt ||
+        new Date().toISOString(),
+    }))
+  );
+
+  try {
+    await APICallService.markAllNotificationsRead(
+      workspaceId
+    );
+  } catch (error) {
+    console.error(
+      "Failed to mark all notifications as read:",
+      error
     );
 
-    try {
-      await APICallService.markAllNotificationsRead(
-        workspaceId
-      );
-    } catch (error) {
-      console.error(
-        "Failed to mark all notifications as read:",
-        error
-      );
-
-      // Rollback
-      setNotifications(previousNotifications);
-    }
-  };
-
+    // Rollback
+    setNotifications(previousNotifications);
+  }
+};
   // --------------------------------------------------
   // OPEN NOTIFICATION
   // --------------------------------------------------
 
-  const handleOpenNotification = (notification) => {
-    if (!notification) {
+const handleOpenNotification = async (notification) => {
+  if (!notification) {
+    return;
+  }
+
+  const notificationId =
+    notification.notificationId ||
+    notification._id ||
+    notification.id;
+
+  // ==========================================
+  // MARK NOTIFICATION AS READ
+  // ==========================================
+
+  if (!notification.isRead && notificationId) {
+    try {
+      await handleMarkRead(notificationId);
+    } catch (error) {
+      console.error(
+        "Failed to mark notification as read:",
+        error
+      );
+    }
+  }
+
+  // ==========================================
+  // WORKSPACE
+  // ==========================================
+
+  const workspaceId = notification.workspace;
+
+  if (!workspaceId) {
+    console.error(
+      "Workspace ID missing from notification:",
+      notification
+    );
+    return;
+  }
+
+  // TASK
+  if (
+    notification.title === "New task assigned to you" ||
+    notification.taskId ||
+    notification.task
+  ) {
+    // Fall back to the linked activity log's targetId when no
+    // direct taskId/task is present on the notification itself.
+    const taskActivity = notification.sourceActivityIds?.find(
+      (activity) => activity?.targetType === "Task"
+    );
+
+    const taskId =
+      notification.taskId ||
+      notification.task?._id ||
+      notification.task?.id ||
+      notification.data?.taskId ||
+      taskActivity?.targetId;
+
+    if (!taskId) {
+      console.error("Task ID missing from notification:", notification);
       return;
     }
 
-    // Mark as read
-    const notificationId =
-      notification.notificationId ||
-      notification._id ||
-      notification.id;
+    navigate("/dashboard/tasks", {
+      state: {
+        taskId,
+        workspaceId,
+      },
+    });
 
-    if (!notification.isRead && notificationId) {
-      handleMarkRead(notificationId);
-    }
+    return;
+  }
 
-    // Navigate based on notification type
-    if (notification.type === "DIGEST") {
-      navigate("/dashboard/digest");
+  // ==========================================
+  // CHAT NOTIFICATION
+  // ==========================================
+
+  if (notification.type === "DIRECT") {
+    const chatData = notification.chatData;
+
+    if (!chatData) {
+      console.error(
+        "Chat data missing:",
+        notification
+      );
       return;
     }
 
-    if (notification.type === "DIRECT") {
-      navigate("/dashboard/tasks");
+    // ------------------------------------------
+    // GROUP CHAT
+    // ------------------------------------------
+
+    if (chatData.type === "GROUP") {
+      if (!chatData.groupId) {
+        console.error("Group ID missing:", chatData);
+        return;
+      }
+
+      navigate("/dashboard/chat", {
+        state: {
+          type: "GROUP",
+          groupId: chatData.groupId,
+          workspaceId: workspaceId,
+        },
+      });
+
       return;
     }
 
-    navigate("/dashboard/tasks");
-  };
+    // ------------------------------------------
+    // DIRECT MESSAGE
+    // ------------------------------------------
+
+    if (!chatData.userId) {
+      console.error("User ID missing for DM:", chatData);
+      return;
+    }
+
+    navigate("/dashboard/chat", {
+      state: {
+        type: "DM",
+        userId: chatData.userId,
+        workspaceId: workspaceId,
+      },
+    });
+
+    return;
+  }
+
+  // ==========================================
+  // DIGEST
+  // ==========================================
+
+  if (notification.type === "DIGEST") {
+    navigate("/dashboard/digest");
+    return;
+  }
+
+  console.warn(
+    "Unknown notification type:",
+    notification.type
+  );
+};
 
   // --------------------------------------------------
   // USER INITIALS

@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Typography, TextField, Stack, Box, Button } from '@mui/material';
 import AuthPageWrapper from './AuthPageWrapper';
 import { useAuth } from '../hooks/useAuth';
-import { LOCAL_STORAGE_KEYS } from '../constants/Constants';
 
 // Vibrant Purple from established theme
 const VIBRANT_PURPLE = '#7c3aed';
@@ -23,7 +22,8 @@ export default function TwoFactorAuth() {
     const [message, setMessage] = useState('');
 
     const navigate = useNavigate();
-    const { verifyLoginOtp, verifyOtp, resendLoginOtp, resendOtp } = useAuth();
+    // ✅ Only need login OTP functions now
+    const { verifyLoginOtp, resendLoginOtp } = useAuth();
 
     const formatApiError = (error) => {
         const data = error?.response?.data || {};
@@ -54,20 +54,7 @@ export default function TwoFactorAuth() {
         return rawMessage || 'OTP verification failed. Please try again.';
     };
 
-    const getMode = () => {
-        const pendingRegister = sessionStorage.getItem(LOCAL_STORAGE_KEYS.PENDING_REGISTER_EMAIL);
-        return pendingRegister ? 'register' : 'login';
-    };
-
-    const mode = getMode();
-    const pageTitle = mode === 'register' ? 'Verify Your Email' : 'Two-Factor Authentication';
-    const pageSubtitle = mode === 'register'
-        ? 'Enter the code sent to your email to complete registration.'
-        : 'Enter the 6-digit code sent to your email to sign in.';
-    const successMessage = mode === 'register'
-        ? 'Email verified successfully. Redirecting to login...'
-        : null;
-
+    // ✅ Handle login OTP verification
     const handleConfirm = async (e) => {
         e.preventDefault();
         setError('');
@@ -75,14 +62,8 @@ export default function TwoFactorAuth() {
         setLoading(true);
 
         try {
-            if (mode === 'register') {
-                await verifyOtp(otp);
-                setMessage(successMessage);
-                setTimeout(() => navigate('/login', { replace: true }), 1500);
-            } else {
-                await verifyLoginOtp(otp);
-                navigate('/workspace', { replace: true });
-            }
+            await verifyLoginOtp(otp);
+            navigate('/workspace', { replace: true });
         } catch (err) {
             setError(formatApiError(err));
         } finally {
@@ -90,13 +71,14 @@ export default function TwoFactorAuth() {
         }
     };
 
+    // ✅ Resend login OTP
     const handleResend = async () => {
         setError('');
         setMessage('');
         setLoading(true);
 
         try {
-            const result = mode === 'register' ? await resendOtp() : await resendLoginOtp();
+            const result = await resendLoginOtp();
             setMessage(result || 'A new OTP has been sent to your email.');
         } catch (err) {
             setError(formatApiError(err));
@@ -107,13 +89,13 @@ export default function TwoFactorAuth() {
 
     return (
         <AuthPageWrapper
-            title={pageTitle}
-            subtitle={pageSubtitle}
+            title="Two-Factor Authentication"
+            subtitle="Enter the 6-digit code sent to your email to complete login."
             illustration={<SecureIllustration />}
             onSubmit={handleConfirm}
             buttonText={loading ? 'Confirming...' : 'Confirm'}
         >
-            {/* OTP Field streamlined */}
+            {/* OTP Field */}
             <Stack spacing={0.8} alignItems="center" sx={{ textAlign: 'center', width: '100%' }}>
                 <Typography fontSize="0.9rem" fontWeight={600} color="#1e293b" align="center">
                     6-Digit OTP
@@ -136,6 +118,8 @@ export default function TwoFactorAuth() {
                     }}
                 />
             </Stack>
+
+            {/* Error and Success Messages */}
             {(error || message) && (
                 <Box sx={{ width: '100%', mt: 2, textAlign: 'center' }}>
                     {error && (
@@ -164,6 +148,7 @@ export default function TwoFactorAuth() {
                 </Box>
             )}
 
+            {/* Resend OTP Button */}
             <Box sx={{ width: '100%', mt: 2, textAlign: 'center' }}>
                 <Button
                     type="button"

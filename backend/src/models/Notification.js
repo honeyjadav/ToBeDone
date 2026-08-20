@@ -20,7 +20,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: { 
       type: String, 
-      enum: ["DIGEST", "DIRECT"], 
+      enum: ["DIGEST", "DIRECT", "TASK"],
       default: "DIGEST" 
     },
     title: {
@@ -30,6 +30,15 @@ const notificationSchema = new mongoose.Schema(
     summary: {
       type: String, 
       required: true 
+    },
+    taskId: {                              // NEW
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Task",
+      default: null,
+    },
+    chatData: {                            // NEW (still missing, needed separately)
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     sourceActivityIds: [
       { 
