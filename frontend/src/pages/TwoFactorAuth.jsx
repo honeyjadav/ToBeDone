@@ -15,6 +15,7 @@ const SecureIllustration = () => (
     </svg>
 );
 
+
 export default function TwoFactorAuth() {
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
