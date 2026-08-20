@@ -10,6 +10,9 @@ import {
   rotateAccessToken,
   setRefreshTokenCookie,
 } from "../utils/tokenUtils.js";
+
+// NOTE: Frontend should clear sessionStorage.PENDING_REGISTER_EMAIL 
+// before calling login to ensure correct 2FA flow detection
 import crypto from "crypto";
 const OTP_EXPIRY_MINUTES = 5;
 
@@ -30,7 +33,7 @@ const createAndSendOtp = async (user) => {
   });
 };
 
-// @desc    Register a new user — creates account as unverified, sends OTP.
+// @desc    Register a new user — verified but not logged in
 // @route   POST /api/auth/register
 // @access  Public
 export const register = async (req, res, next) => {
@@ -39,43 +42,35 @@ export const register = async (req, res, next) => {
 
     const existingUser = await User.findOne({ email });
 
-    if (existingUser) {
-      if (existingUser.isEmailVerified) {
-        res.status(400);
-        throw new Error("An account with this email already exists");
-      }
+    if (existingUser && existingUser.isEmailVerified) {
+      res.status(400);
+      throw new Error("An account with this email already exists");
+    }
 
+    let user;
+    if (existingUser) {
+      // Update existing unverified user
       existingUser.name = name;
       existingUser.password = password;
-      await createAndSendOtp(existingUser);
-
-      return res.status(200).json({
-        success: true,
-        message:
-          "This email is already registered but not verified. A new OTP has been sent.",
-        data: {
-          email: existingUser.email,
-          isEmailVerified: false,
-        },
+      existingUser.isEmailVerified = true;
+      user = await existingUser.save();
+    } else {
+      // Create new user
+      user = await User.create({
+        name,
+        email,
+        password,
+        authProvider: "local",
+        isEmailVerified: true, // ✅ Auto-verify on registration
       });
     }
 
-    const user = await User.create({
-      name,
-      email,
-      password,
-      authProvider: "local",
-      isEmailVerified: false,
-    });
-
-    createAndSendOtp(user);
-
     res.status(201).json({
       success: true,
-      message: "Account created. An OTP has been sent to your email for verification.",
+      message: "Account created successfully. Please login to continue.",
       data: {
         email: user.email,
-        isEmailVerified: user.isEmailVerified,
+        message: "You can now login with your credentials",
       },
     });
   } catch (error) {
@@ -87,65 +82,65 @@ export const register = async (req, res, next) => {
 //          stored in DB), so the user is fully logged in right after this.
 // @route   POST /api/auth/verify-otp
 // @access  Public
-export const verifyOtp = async (req, res, next) => {
-  try {
-    const { email, otp } = req.body;
+// export const verifyOtp = async (req, res, next) => {
+//   try {
+//     const { email, otp } = req.body;
 
-    const user = await User.findOne({ email }).select("+otp +otpExpires");
-    if (!user) {
-      res.status(404);
-      throw new Error("User not found");
-    }
+//     const user = await User.findOne({ email }).select("+otp +otpExpires");
+//     if (!user) {
+//       res.status(404);
+//       throw new Error("User not found");
+//     }
 
-    if (user.isEmailVerified) {
-      res.status(400);
-      throw new Error("Email is already verified");
-    }
+//     if (user.isEmailVerified) {
+//       res.status(400);
+//       throw new Error("Email is already verified");
+//     }
 
-    if (!user.otp || !user.otpExpires || user.otpExpires < Date.now()) {
-      res.status(400);
-      throw new Error("OTP has expired. Please request a new one.");
-    }
+//     if (!user.otp || !user.otpExpires || user.otpExpires < Date.now()) {
+//       res.status(400);
+//       throw new Error("OTP has expired. Please request a new one.");
+//     }
 
-    if (user.otp !== String(otp).trim()) {
-      res.status(400);
-      throw new Error("Invalid OTP");
-    }
+//     if (user.otp !== String(otp).trim()) {
+//       res.status(400);
+//       throw new Error("Invalid OTP");
+//     }
 
-    user.isEmailVerified = true;
-    user.otp = undefined;
-    user.otpExpires = undefined;
-    await user.save();
+//     user.isEmailVerified = true;
+//     user.otp = undefined;
+//     user.otpExpires = undefined;
+//     await user.save();
 
-    // const { accessToken, refreshToken } = await createSession(user._id, req);
-    // setRefreshTokenCookie(res, refreshToken);
+//     const { accessToken, refreshToken } = await createSession(user._id, req);
+//     setRefreshTokenCookie(res, refreshToken);
 
-    // await sendEmail({
-    //   to: user.email,
-    //   subject: "Successfully signed in to ToBeDone",
-    //   html: loginSuccessEmailTemplate({
-    //     name: user.name,
-    //     loginTime: new Date().toISOString(),
-    //   }),
-    // });
+//     // await sendEmail({
+//     //   to: user.email,
+//     //   subject: "Successfully signed in to ToBeDone",
+//     //   html: loginSuccessEmailTemplate({
+//     //     name: user.name,
+//     //     loginTime: new Date().toISOString(),
+//     //   }),
+//     // });
 
-    res.status(200).json({
-      success: true,
-      message: "Email verified successfully",
-      data: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        authProvider: user.authProvider,
-        accessToken,
-        workspaces: [],
-        hasWorkspace: false,
-      },
-    });
-  } catch (error) {
-    next(error);
-  }
-};
+//     res.status(200).json({
+//       success: true,
+//       message: "Email verified successfully",
+//       data: {
+//         id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         authProvider: user.authProvider,
+//         accessToken,
+//         workspaces: [],
+//         hasWorkspace: false,
+//       },
+//     });
+//   } catch (error) {
+//     next(error);
+//   }
+// };
 
 // @desc    Resend a new OTP if the previous one expired or was lost
 // @route   POST /api/auth/resend-otp
@@ -459,9 +454,6 @@ export const revokeSession = async (req, res, next) => {
   }
 };
 
-// @desc    Validate email and send reset password link
-// @route   POST /api/auth/forgot-password
-// @access  Public
 // @desc    Validate email and send reset password link
 // @route   POST /api/auth/forgot-password
 // @access  Public
