@@ -25,22 +25,38 @@ export const ACTIVITY_MESSAGES = {
 
     TASK_CREATED: (activity) => ({
         action: "created",
-        target: activity.target || "a task",
+        target: activity.target ? `task "${activity.target}"` : "a task",
     }),
 
     TASK_UPDATED: (activity) => ({
         action: "updated",
-        target: activity.target || "a task",
+        target: activity.target ? `task "${activity.target}"` : "a task",
     }),
 
-    TASK_ASSIGNED: (activity) => ({
-        action: "assigned",
-        target: activity.target || "a task",
-    }),
+    TASK_ASSIGNED: (activity) => {
+        const names = activity.assignees?.map((u) => u.name).filter(Boolean) || [];
+
+        let target = activity.target ? `"${activity.target}"` : "a task";
+
+        if (names.length === 1) {
+            target += ` to ${names[0]}`;
+        } else if (names.length === 2) {
+            target += ` to ${names[0]} and ${names[1]}`;
+        } else if (names.length > 2) {
+            target += ` to ${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+        }
+
+        return {
+            action: "assigned",
+            target,
+        };
+    },
 
     TASK_STATUS_CHANGED: (activity) => ({
         action: "changed the status of",
-        target: activity.target || "a task",
+        target: activity.target
+            ? `"${activity.target}" from ${activity.oldStatus} to ${activity.newStatus}`
+            : `a task from ${activity.oldStatus} to ${activity.newStatus}`,
     }),
 
     TASK_COMMENTED: (activity) => ({
@@ -55,23 +71,23 @@ export const ACTIVITY_MESSAGES = {
 
     GROUP_CREATED: (activity) => ({
         action: "created",
-        target: activity.target || "a group",
+        target: activity.target ? `a group "${activity.target}"` : "a group",
     }),
 
     GROUP_MEMBER_ADDED: (activity) => ({
         action: "added",
         target: activity.target
-            ? `${activity.target} to a group`
-            : "a member to a group",
+            ? `"${activity.target}" to group "${activity.groupName || "a group"}"`
+            : `a member to group "${activity.groupName || "a group"}"`,
     }),
 
     GROUP_MEMBER_REMOVED: (activity) => ({
         action: "removed",
         target: activity.target
-            ? `${activity.target} from a group`
-            : "a member from a group",
+            ? `${activity.target} from ${activity.groupName || "a group"}`
+            : `a member from ${activity.groupName || "a group"}`,
     }),
-};
+    };
 
 export const formatActivityAction = (activity) => {
     if (!activity?.action) {

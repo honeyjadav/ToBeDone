@@ -10,11 +10,6 @@ export default function ProtectedRoute({ children }) {
 
     const location = useLocation();
 
-    console.log("ProtectedRoute");
-    console.log("isAuthLoading:", isAuthLoading);
-    console.log("isAuthenticated:", isAuthenticated);
-    console.log("user:", user);
-
     // Wait until authentication state is restored
     if (isAuthLoading) {
         return null;

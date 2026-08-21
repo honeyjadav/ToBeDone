@@ -3,8 +3,10 @@ import { Box, Typography, Button, Tabs, Tab } from "@mui/material";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import AlternateEmailIcon from "@mui/icons-material/AlternateEmail";
 import TagIcon from "@mui/icons-material/Tag";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 import APICallService from "../services/APICallService";
 import { useAuth } from "../hooks/useAuth";
+import { getSocket } from "../services/Socket"; // Add this
 
 const TYPE_CONFIG = {
   DIGEST: {
@@ -17,6 +19,11 @@ const TYPE_CONFIG = {
     color: "#3b82f6",
     bg: "#eff6ff",
   },
+  TASK: {
+    icon: AssignmentIcon,
+    color: "#059669",
+    bg: "#ecfdf5",
+  },
 };
 
 const FILTERS = [
@@ -28,7 +35,6 @@ const FILTERS = [
 
 const Notifications = () => {
   const { activeWorkspace } = useAuth();
-
   const workspaceId = activeWorkspace?.workspaceId;
 
   const [notifications, setNotifications] = useState([]);
@@ -37,7 +43,7 @@ const Notifications = () => {
   const [error, setError] = useState("");
 
   // --------------------------------------------------
-  // GET NOTIFICATIONS
+  // GET NOTIFICATIONS (INITIAL LOAD)
   // --------------------------------------------------
 
   useEffect(() => {
@@ -89,84 +95,249 @@ const Notifications = () => {
   }, [workspaceId]);
 
   // --------------------------------------------------
+  // LISTEN FOR REAL-TIME NOTIFICATIONS
+  // --------------------------------------------------
+
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !workspaceId) return;
+
+    // Listen for new notifications
+    const handleNewNotification = (notification) => {
+      console.log("New notification received:", notification);
+
+      // Add new notification to the top of the list
+      setNotifications((prev) => [notification, ...prev]);
+    };
+
+    // Listen for notification updates (e.g., read status changed)
+    const handleNotificationUpdated = (updatedNotification) => {
+      console.log("Notification updated:", updatedNotification);
+
+      setNotifications((prev) =>
+        prev.map((notif) =>
+          (notif.notificationId === updatedNotification.notificationId ||
+            notif._id === updatedNotification._id)
+            ? updatedNotification
+            : notif
+        )
+      );
+    };
+
+    // Listen for deleted notifications
+    const handleNotificationDeleted = (notificationId) => {
+      console.log("Notification deleted:", notificationId);
+
+      setNotifications((prev) =>
+        prev.filter(
+          (notif) =>
+            notif.notificationId !== notificationId &&
+            notif._id !== notificationId
+        )
+      );
+    };
+
+    // Subscribe to socket events
+    socket.on("notification:new", handleNewNotification);
+    socket.on("notification:updated", handleNotificationUpdated);
+    socket.on("notification:deleted", handleNotificationDeleted);
+
+    // Emit event to subscribe to workspace notifications
+    socket.emit("subscribe:workspace", { workspaceId });
+
+    // Cleanup
+    return () => {
+      socket.off("notification:new", handleNewNotification);
+      socket.off("notification:updated", handleNotificationUpdated);
+      socket.off("notification:deleted", handleNotificationDeleted);
+      socket.emit("unsubscribe:workspace", { workspaceId });
+    };
+  }, [workspaceId]);
+
+  // --------------------------------------------------
   // MARK ONE AS READ
   // --------------------------------------------------
 
   const markRead = async (notificationId) => {
-    // Optimistic UI update
-    setNotifications((prev) =>
-      prev.map((notification) =>
-        notification.notificationId === notificationId ||
-        notification._id === notificationId
-          ? {
-              ...notification,
-              isRead: true,
-            }
-          : notification
-      )
+  if (!workspaceId || !notificationId) {
+    return;
+  }
+
+  // Optimistic update on Notifications page
+  setNotifications((prev) =>
+    prev.map((notification) =>
+      String(
+        notification.notificationId ||
+        notification._id ||
+        notification.id
+      ) === String(notificationId)
+        ? {
+            ...notification,
+            isRead: true,
+          }
+        : notification
+    )
+  );
+
+  // Tell Header / Dropdown
+  window.dispatchEvent(
+    new CustomEvent("notification:state-change", {
+      detail: {
+        type: "read",
+        notificationId,
+      },
+    })
+  );
+
+  try {
+    await APICallService.markNotificationRead(
+      workspaceId,
+      notificationId
+    );
+  } catch (err) {
+    console.error(
+      "Failed to mark notification as read:",
+      err
     );
 
+    // Reload from backend if API fails
     try {
-      await APICallService.markNotificationRead(
-        workspaceId,
-        notificationId
-      );
-    } catch (err) {
-      console.error(
-        "Failed to mark notification as read:",
-        err
-      );
+      const response =
+        await APICallService.getNotifications(
+          workspaceId
+        );
 
-      // Reload from backend if API fails
-      try {
-        const response =
-          await APICallService.getNotifications(
-            workspaceId
-          );
+      if (response?.data?.success) {
+        const data = response.data.data || [];
 
-        if (response?.data?.success) {
-          setNotifications(
-            response.data.data || []
-          );
-        }
-      } catch (reloadError) {
-        console.error(
-          "Failed to reload notifications:",
-          reloadError
+        setNotifications(data);
+
+        // Synchronize Header again
+        window.dispatchEvent(
+          new CustomEvent(
+            "notification:sync",
+            {
+              detail: {
+                notifications: data,
+              },
+            }
+          )
         );
       }
+    } catch (reloadError) {
+      console.error(
+        "Failed to reload notifications:",
+        reloadError
+      );
     }
-  };
-
+  }
+};
   // --------------------------------------------------
   // MARK ALL AS READ
   // --------------------------------------------------
 
   const markAllRead = async () => {
-    const previousNotifications = notifications;
+  if (!workspaceId) {
+    return;
+  }
 
-    // Optimistic update
-    setNotifications((prev) =>
-      prev.map((notification) => ({
-        ...notification,
-        isRead: true,
-      }))
+  const previousNotifications =
+    notifications;
+
+  // Optimistic update
+  setNotifications((prev) =>
+    prev.map((notification) => ({
+      ...notification,
+      isRead: true,
+    }))
+  );
+
+  // Tell Header / Dropdown
+  window.dispatchEvent(
+    new CustomEvent("notification:state-change", {
+      detail: {
+        type: "read-all",
+      },
+    })
+  );
+
+  try {
+    await APICallService.markAllNotificationsRead(
+      workspaceId
+    );
+  } catch (err) {
+    console.error(
+      "Failed to mark all notifications as read:",
+      err
     );
 
-    try {
-      await APICallService.markAllNotificationsRead(
-        workspaceId
-      );
-    } catch (err) {
-      console.error(
-        "Failed to mark all notifications as read:",
-        err
-      );
+    // Rollback Notifications page
+    setNotifications(previousNotifications);
 
-      // Rollback
-      setNotifications(previousNotifications);
-    }
-  };
+    // Rollback Header / Dropdown
+    window.dispatchEvent(
+      new CustomEvent("notification:sync", {
+        detail: {
+          notifications:
+            previousNotifications,
+        },
+      })
+    );
+  }
+};
+
+  // --------------------------------------------------
+  // CLEAR READ NOTIFICATIONS
+  // --------------------------------------------------
+
+  const clearRead = async () => {
+  if (!workspaceId) {
+    return;
+  }
+
+  const previousNotifications =
+    notifications;
+
+  // Optimistic update
+  setNotifications((prev) =>
+    prev.filter(
+      (notification) => !notification.isRead
+    )
+  );
+
+  // Tell Header / Dropdown
+  window.dispatchEvent(
+    new CustomEvent("notification:state-change", {
+      detail: {
+        type: "clear-read",
+      },
+    })
+  );
+
+  try {
+    await APICallService.clearReadNotifications(
+      workspaceId
+    );
+  } catch (err) {
+    console.error(
+      "Failed to clear read notifications:",
+      err
+    );
+
+    // Rollback Notifications page
+    setNotifications(previousNotifications);
+
+    // Rollback Header / Dropdown
+    window.dispatchEvent(
+      new CustomEvent("notification:sync", {
+        detail: {
+          notifications:
+            previousNotifications,
+        },
+      })
+    );
+  }
+};
 
   // --------------------------------------------------
   // FILTER
@@ -230,9 +401,11 @@ const Notifications = () => {
         !notification.isRead
     ).length;
 
-  // --------------------------------------------------
-  // NO WORKSPACE
-  // --------------------------------------------------
+  const readCount =
+    notifications.filter(
+      (notification) =>
+        notification.isRead
+    ).length;
 
   if (!workspaceId) {
     return (
@@ -257,10 +430,6 @@ const Notifications = () => {
     );
   }
 
-  // --------------------------------------------------
-  // UI
-  // --------------------------------------------------
-
   return (
     <Box
       sx={{
@@ -270,9 +439,7 @@ const Notifications = () => {
       }}
     >
       <Box sx={{ maxWidth: "760px" }}>
-
         {/* HEADER */}
-
         <Box
           sx={{
             display: "flex",
@@ -305,6 +472,20 @@ const Notifications = () => {
               Mark all as read
             </Button>
           )}
+
+          {readCount > 0 && (
+            <Button
+              onClick={clearRead}
+              sx={{
+                textTransform: "none",
+                fontSize: "13px",
+                fontWeight: 600,
+                color: "#94a3b8",
+              }}
+            >
+              Clear read
+            </Button>
+          )}
         </Box>
 
         <Typography
@@ -319,7 +500,6 @@ const Notifications = () => {
         </Typography>
 
         {/* FILTER TABS */}
-
         <Tabs
           value={tab}
           onChange={(event, value) =>
@@ -357,7 +537,6 @@ const Notifications = () => {
         </Tabs>
 
         {/* NOTIFICATIONS CONTAINER */}
-
         <Box
           sx={{
             border:
@@ -368,9 +547,6 @@ const Notifications = () => {
             overflow: "hidden",
           }}
         >
-
-          {/* LOADING */}
-
           {loading && (
             <Box
               sx={{
@@ -388,8 +564,6 @@ const Notifications = () => {
               </Typography>
             </Box>
           )}
-
-          {/* ERROR */}
 
           {!loading && error && (
             <Box
@@ -410,8 +584,6 @@ const Notifications = () => {
             </Box>
           )}
 
-          {/* EMPTY */}
-
           {!loading &&
             !error &&
             filtered.length === 0 && (
@@ -431,8 +603,6 @@ const Notifications = () => {
                 </Typography>
               </Box>
             )}
-
-          {/* NOTIFICATION LIST */}
 
           {!loading &&
             !error &&
@@ -484,9 +654,7 @@ const Notifications = () => {
                       },
                     }}
                   >
-
                     {/* ICON */}
-
                     <Box
                       sx={{
                         width: 34,
@@ -512,7 +680,6 @@ const Notifications = () => {
                     </Box>
 
                     {/* CONTENT */}
-
                     <Box
                       sx={{
                         flex: 1,
@@ -603,4 +770,3 @@ const Notifications = () => {
 };
 
 export default Notifications;
-

@@ -268,6 +268,10 @@ class APICallService {
     return api.patch(url);
   }
 
+  clearReadNotifications(workspaceId) {
+    return api.delete(APIs.NOTIFICATIONS_CLEAR_READ(workspaceId));
+  }
+
 }
 
 export default new APICallService();

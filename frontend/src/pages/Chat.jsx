@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef, useCallback, useMemo, memo } from 'react';
+import { useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef, useCallback, useMemo, memo ,useLayoutEffect } from 'react';
 import {
   Box, Typography, Avatar, IconButton, Button, Modal, Checkbox,
   List, ListItem, ListItemText, TextField, Tooltip,
@@ -56,7 +57,94 @@ export default function Chat() {
   // optimistically in real time as messages arrive / are read.
   const [unreadCounts, setUnreadCounts] = useState({});
   const selectedRef = useRef(null);
+  const location = useLocation();
+const navigate = useNavigate();
+
+const notificationChat = location.state;
   useEffect(() => { selectedRef.current = selected; }, [selected]);
+
+  useEffect(() => {
+  if (!notificationChat) return;
+
+  if (notificationChat.workspaceId &&
+      String(notificationChat.workspaceId) !== String(workspaceId)) {
+    return;
+  }
+
+  // -----------------------------
+  // GROUP FROM NOTIFICATION
+  // -----------------------------
+  if (
+    notificationChat.type === "GROUP" &&
+    notificationChat.groupId
+  ) {
+    const group = groups.find(
+      (item) =>
+        String(item._id || item.id) ===
+        String(notificationChat.groupId)
+    );
+
+    if (group) {
+
+      setSelected({
+        ...group,
+        id: group._id || group.id,
+        type: "group",
+      });
+
+      // Clear navigation state so refresh/back doesn't
+      // repeatedly reopen the same notification chat.
+     navigate("/dashboard/chat", {
+  replace: true,
+  state: null,
+});
+    } else {
+      console.warn(
+        "Group from notification was not found:",
+        notificationChat.groupId
+      );
+    }
+  }
+
+  // -----------------------------
+  // DM FROM NOTIFICATION
+  // -----------------------------
+  if (
+    notificationChat.type === "DM" &&
+    notificationChat.userId
+  ) {
+    const direct = directs.find(
+      (item) =>
+        String(item._id || item.id) ===
+        String(notificationChat.userId)
+    );
+
+    if (direct) {
+
+      setSelected({
+        ...direct,
+        id: direct._id || direct.id,
+        type: "dm",
+      });
+
+      window.history.replaceState(
+        {},
+        document.title,
+        window.location.pathname
+      );
+    } else {
+      console.warn(
+        "User from notification was not found:",
+        notificationChat.userId
+      );
+    }
+  }
+}, [
+  notificationChat,
+  groups,
+  directs,
+  workspaceId,
+]);
 
   // sidebar resize (fixed: track delta from mousedown, not raw clientX)
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
@@ -158,6 +246,22 @@ export default function Chat() {
       socket.emit('workspace:leave', { workspaceId });
     };
   }, [workspaceId]);
+
+  // ✅ ADD THIS NEW USEEFFECT
+useEffect(() => {
+    const socket = getSocket();
+    if (!socket || !selected) return;
+
+    if (selected.type === 'dm') {
+      socket.emit('chat:open', { recipientId: selected.id });
+    } else if (selected.type === 'group') {
+      socket.emit('chat:open', { groupId: selected.id });
+    }
+
+    return () => {
+      socket.emit('chat:close');
+    };
+  }, [selected]);
 
   // ---- socket listeners scoped to selected thread ----
   useEffect(() => {
@@ -268,9 +372,31 @@ export default function Chat() {
     };
   }, [workspaceId, selected]);
 
-  useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [messages.length]);
+//   useEffect(() => {
+//   if (!selected) return;
+
+//   const scrollToBottom = () => {
+//     if (scrollRef.current) {
+//       scrollRef.current.scrollTop =
+//         scrollRef.current.scrollHeight;
+//     }
+//   };
+
+//   // Wait for React to render the messages
+//   requestAnimationFrame(() => {
+//     scrollToBottom();
+//   });
+// }, [selected, messages]);
+
+useLayoutEffect(() => {
+  if (!selected || !messages.length) return;
+
+  const container = scrollRef.current;
+
+  if (!container) return;
+
+  container.scrollTop = container.scrollHeight;
+}, [selected, messages]);
 
   // ---- mark visible messages as read ----
   useEffect(() => {
@@ -1067,4 +1193,4 @@ function ConversationRow({ c, selected, onClick, isGroup, online, unreadCount })
       )}
     </Box>
   );
-}
+}   

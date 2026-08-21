@@ -154,8 +154,6 @@ export default function Users() {
         LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID,
       );
 
-    console.log("Workspace ID:", workspaceId);
-
       if (!workspaceId) {
         setSnackbar({
           open: true,
@@ -169,11 +167,7 @@ export default function Users() {
       const response =
         await APICallService.getWorkspaceMembers(workspaceId);
 
-      console.log("Workspace Members API Response:", response);
-
       const payload = response?.data;
-
-      console.log("Payload:", payload);
 
       if (!payload?.success) {
         setSnackbar({
@@ -188,8 +182,6 @@ export default function Users() {
       }
 
       const members = payload?.data || [];
-
-      console.log("Members:", members);
 
       const formattedUsers = members.map((member) => ({
         // IMPORTANT:
@@ -206,8 +198,6 @@ export default function Users() {
         // No archive functionality anymore
         isActive: true,
       }));
-
-      console.log("Formatted Users:", formattedUsers);
 
       setUsers(formattedUsers);
     } catch (error) {

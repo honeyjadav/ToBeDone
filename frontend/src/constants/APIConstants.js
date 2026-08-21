@@ -66,6 +66,15 @@ export const APIs = {
   
   // Dashboard
   DASHBOARD: (workspaceId) => `/workspaces/${workspaceId}/dashboard`,
+
+  // Notifications
+  NOTIFICATIONS: (workspaceId) => `/workspaces/${workspaceId}/notifications`,
+  NOTIFICATION_READ: (workspaceId, notificationId) =>
+    `/workspaces/${workspaceId}/notifications/${notificationId}/read`,
+  NOTIFICATIONS_READ_ALL: (workspaceId) =>
+    `/workspaces/${workspaceId}/notifications/read-all`,
+  NOTIFICATIONS_CLEAR_READ: (workspaceId) =>
+  `/workspaces/${workspaceId}/notifications/read`,
 };
 
 export const API_STATUS = {
@@ -79,3 +88,4 @@ export const API_STATUS = {
 };
 
 export const BEARERKEY = "Bearer ";
+

@@ -19,6 +19,7 @@ import {
   Stack,
 } from "@mui/material";
 import { useAuth } from "../hooks/useAuth";
+import { LOCAL_STORAGE_KEYS } from "../constants/Constants";
 
 import Visibility from "@mui/icons-material/Visibility";
 import VisibilityOff from "@mui/icons-material/VisibilityOff";
@@ -110,6 +111,9 @@ export default function Login() {
     setLoading(true);
 
     try {
+      // ✅ Clear any lingering registration state to ensure correct 2FA mode detection
+      sessionStorage.removeItem(LOCAL_STORAGE_KEYS.PENDING_REGISTER_EMAIL);
+
       await login(email, password);
       navigate("/two-factor-auth");
 
@@ -120,18 +124,17 @@ export default function Login() {
           token: "JWT_TOKEN"
         }
       */
-
-
     } catch (error) {
       console.error("Login error:", error);
 
-      const serverMessage = error?.response?.data?.message || error?.response?.data?.error;
+      const serverMessage =
+        error?.response?.data?.message || error?.response?.data?.error;
       const message =
         serverMessage ||
         error?.message ||
         "Internal Server Error. Please try again later.";
 
-      setError(typeof message === 'string' ? message : String(message));
+      setError(typeof message === "string" ? message : String(message));
     } finally {
       setLoading(false);
     }

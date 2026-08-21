@@ -9,10 +9,12 @@ import {
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
 import AlternateEmailIcon from "@mui/icons-material/AlternateEmail";
 import CloseIcon from "@mui/icons-material/Close";
+import AssignmentIcon from "@mui/icons-material/Assignment";
 
 const TYPE_CONFIG = {
     DIGEST: { icon: AutoAwesomeIcon, color: "#7c3aed", bg: "#f3f0fe" },
     DIRECT: { icon: AlternateEmailIcon, color: "#3b82f6", bg: "#eff6ff" },
+    TASK: {icon: AssignmentIcon,color: "#059669",bg: "#ecfdf5",},
 };
 
 /* =========================================================
@@ -120,12 +122,12 @@ export default function NotificationToast({ notification, onClose, onOpen }) {
         if (!notification) return;
 
         const notificationId =
-            notification.notificationId || notification._id || notification.id;
+            notification.notificationId ||
+            notification._id ||
+            notification.id;
+
         if (!notificationId) return;
 
-        // Skip sound only on the very first notification this browser
-        // session has ever seen — not per component mount, so switching
-        // workspaces or re-rendering won't silence real new arrivals.
         if (!hasPlayedOnce) {
             hasPlayedOnce = true;
             previousNotificationId.current = notificationId;
@@ -140,7 +142,9 @@ export default function NotificationToast({ notification, onClose, onOpen }) {
 
     if (!notification) return null;
 
-    const cfg = TYPE_CONFIG[notification.type] || TYPE_CONFIG.DIRECT;
+    const cfg =
+        TYPE_CONFIG[notification.type] || TYPE_CONFIG.DIRECT;
+
     const Icon = cfg.icon;
 
     const handleOpen = () => {
@@ -153,7 +157,10 @@ export default function NotificationToast({ notification, onClose, onOpen }) {
             open={Boolean(notification)}
             autoHideDuration={5000}
             onClose={onClose}
-            anchorOrigin={{ vertical: "top", horizontal: "right" }}
+            anchorOrigin={{
+                vertical: "top",
+                horizontal: "right",
+            }}
             sx={{ mt: 7 }}
         >
             <Box
@@ -168,14 +175,25 @@ export default function NotificationToast({ notification, onClose, onOpen }) {
                     borderRadius: "12px",
                     backgroundColor: "#ffffff",
                     border: "1px solid #e5e7eb",
-                    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.15)",
+                    boxShadow:
+                        "0 10px 30px rgba(15, 23, 42, 0.15)",
                     cursor: "pointer",
-                    animation: "notificationSlideIn 0.25s ease-out",
+                    animation:
+                        "notificationSlideIn 0.25s ease-out",
                     "@keyframes notificationSlideIn": {
-                        from: { opacity: 0, transform: "translateX(30px)" },
-                        to: { opacity: 1, transform: "translateX(0)" },
+                        from: {
+                            opacity: 0,
+                            transform: "translateX(30px)",
+                        },
+                        to: {
+                            opacity: 1,
+                            transform: "translateX(0)",
+                        },
                     },
-                    "&:hover": { boxShadow: "0 12px 35px rgba(15, 23, 42, 0.20)" },
+                    "&:hover": {
+                        boxShadow:
+                            "0 12px 35px rgba(15, 23, 42, 0.20)",
+                    },
                 }}
             >
                 <Box
@@ -223,7 +241,13 @@ export default function NotificationToast({ notification, onClose, onOpen }) {
                         {notification.summary}
                     </Typography>
 
-                    <Typography sx={{ fontSize: "11px", color: "#94a3b8", mt: 0.6 }}>
+                    <Typography
+                        sx={{
+                            fontSize: "11px",
+                            color: "#94a3b8",
+                            mt: 0.6,
+                        }}
+                    >
                         Just now
                     </Typography>
                 </Box>
@@ -234,9 +258,20 @@ export default function NotificationToast({ notification, onClose, onOpen }) {
                         event.stopPropagation();
                         onClose?.();
                     }}
-                    sx={{ p: 0.4, flexShrink: 0, "&:hover": { backgroundColor: "#f1f5f9" } }}
+                    sx={{
+                        p: 0.4,
+                        flexShrink: 0,
+                        "&:hover": {
+                            backgroundColor: "#f1f5f9",
+                        },
+                    }}
                 >
-                    <CloseIcon sx={{ fontSize: 16, color: "#94a3b8" }} />
+                    <CloseIcon
+                        sx={{
+                            fontSize: 16,
+                            color: "#94a3b8",
+                        }}
+                    />
                 </IconButton>
             </Box>
         </Snackbar>

@@ -17,6 +17,7 @@ import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import AuthPageWrapper from './AuthPageWrapper';
 import { useAuth } from '../hooks/useAuth';
 import PasswordValidationPopup from '../components/PasswordValidationPopup';
+import { LOCAL_STORAGE_KEYS } from '../constants/Constants';
 
 const VIBRANT_PURPLE = '#7c3aed';
 
@@ -153,7 +154,11 @@ export default function Registration() {
                 password
             );
 
-            navigate('/two-factor-auth');
+            // ✅ Clear registration state to prevent 2FA mode detection issues
+            sessionStorage.removeItem(LOCAL_STORAGE_KEYS.PENDING_REGISTER_EMAIL);
+
+            // ✅ Redirect to login instead of two-factor-auth
+            navigate('/login');
         } catch (err) {
             console.error('Registration error:', err);
 

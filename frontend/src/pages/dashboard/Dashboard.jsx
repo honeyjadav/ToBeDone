@@ -162,7 +162,12 @@ function SummaryCard({
 
 function MonthlyCompletedChart({ data = [], isDark }) {
   const chartData =
-    data.length > 0 ? data : [{ month: "No Data", value: 0 }];
+    data.length > 0
+      ? data.map((item) => ({
+          month: item.month,
+          value: Number(item.value ?? item.count ?? item.completed ?? 0) || 0,
+        }))
+      : [{ month: "No Data", value: 0 }];
 
   const maxValue = Math.max(...chartData.map((item) => item.value), 1);
 
@@ -850,138 +855,6 @@ function RecentActivity({ activities = [], isDark }) {
 }
 
 /* =========================================================
-   NOTIFICATIONS
-========================================================= */
-
-function NotificationsPanel({ isDark }) {
-  return (
-    <Box
-      sx={{
-        backgroundColor: isDark ? "#0f172a" : "#ffffff",
-        border: `1px solid ${isDark ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
-        borderRadius: "10px",
-        overflow: "hidden",
-      }}
-    >
-      <Box sx={{ p: 2, display: "flex", alignItems: "center", gap: 1 }}>
-        <NotificationsNoneOutlinedIcon
-          sx={{ fontSize: 20, color: "#7c3aed" }}
-        />
-
-        <Box>
-          <Typography
-            sx={{
-              fontSize: "15px",
-              fontWeight: 700,
-              color: isDark ? "#f8fafc" : "#1e293b",
-            }}
-          >
-            Notifications
-          </Typography>
-
-          <Typography
-            sx={{
-              fontSize: "11px",
-              color: isDark ? "#cbd5e1" : "#94a3b8",
-              mt: 0.3,
-            }}
-          >
-            Important updates
-          </Typography>
-        </Box>
-      </Box>
-
-      <Divider />
-
-      {notifications.map((notification) => {
-        const Icon = notification.icon;
-
-        const colors = {
-          High: { background: "#fee2e2", color: "#dc2626" },
-          Medium: { background: "#fef3c7", color: "#d97706" },
-          Low: { background: "#dcfce7", color: "#16a34a" },
-        };
-
-        const style = colors[notification.priority];
-
-        return (
-          <Box
-            key={notification.id}
-            sx={{
-              px: 2,
-              py: 1.5,
-              display: "flex",
-              gap: 1.2,
-              borderBottom: isDark
-                ? "1px solid rgba(148, 163, 184, 0.15)"
-                : "1px solid #f1f5f9",
-
-              "&:last-child": {
-                borderBottom: "none",
-              },
-            }}
-          >
-            <Box
-              sx={{
-                width: 32,
-                height: 32,
-                borderRadius: "8px",
-                backgroundColor: style.background,
-                color: style.color,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                flexShrink: 0,
-              }}
-            >
-              <Icon sx={{ fontSize: 17 }} />
-            </Box>
-
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: 0.8 }}>
-                <Typography
-                  sx={{
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    color: isDark ? "#e2e8f0" : "#334155",
-                    flex: 1,
-                  }}
-                >
-                  {notification.title}
-                </Typography>
-
-                <Chip
-                  label={notification.priority}
-                  size="small"
-                  sx={{
-                    height: "19px",
-                    fontSize: "9px",
-                    fontWeight: 600,
-                    backgroundColor: style.background,
-                    color: style.color,
-                  }}
-                />
-              </Box>
-
-              <Typography
-                sx={{
-                  fontSize: "10.5px",
-                  color: isDark ? "#cbd5e1" : "#94a3b8",
-                  lineHeight: 1.5,
-                  mt: 0.4,
-                }}
-              >
-                {notification.description}
-              </Typography>
-            </Box>
-          </Box>
-        );
-      })}
-    </Box>
-  );
-}
-
-/* =========================================================
    MAIN DASHBOARD
 ========================================================= */
 
@@ -1025,16 +898,12 @@ export default function Dashboard() {
 
         const workspaceId = localStorage.getItem("activeWorkspaceId");
 
-        console.log("Dashboard workspace ID:", workspaceId);
-
         if (!workspaceId) {
           setError("Workspace ID not found in localStorage.");
           return;
         }
 
         const response = await APICallService.getDashboard(workspaceId);
-
-        console.log("Dashboard API response:", response.data);
 
         if (response.data?.success) {
           setDashboardData(response.data.data);
@@ -1433,7 +1302,7 @@ export default function Dashboard() {
           <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 }}>
             <RecentActivity activities={recentActivity} isDark={isDark} />
 
-            <NotificationsPanel isDark={isDark} />
+            {/* <NotificationsPanel isDark={isDark} /> */}
           </Box>
         </Box>
       </Box>
