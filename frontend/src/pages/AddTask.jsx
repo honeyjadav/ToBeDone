@@ -14,6 +14,8 @@ import ScienceIcon from '@mui/icons-material/Science';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import Drawer from '../components/Drawer';
 
+import { getAppSettings } from '../utils/preferences';
+
 const WORK_ITEM_TYPES = ['Bug', 'Feature', 'Task', 'Test Case', 'User Story'];
 const TYPE_CONFIG = {
     Bug: { icon: BugReportIcon, color: '#cc293d' },
@@ -24,16 +26,27 @@ const TYPE_CONFIG = {
 };
 const STATES = ['To Do', 'In Progress', 'Done'];
 const PRIORITIES = ['High', 'Medium', 'Low'];
-const ASSIGNEES = ['JD', 'AK', 'RS'];
 
-// Shared label element so every field's title is styled identically
-const FieldLabel = ({ children }) => (
-    <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#334155', mb: 0.75 }}>
+const FieldLabel = ({ children, darkMode }) => (
+    <Typography sx={{ fontSize: '12px', fontWeight: 700, color: darkMode ? '#cbd5e1' : '#334155', mb: 0.75 }}>
         {children}
     </Typography>
 );
 
 export default function AddTask({ open, onClose, onAdd, onSave, task, defaultColumn, members = [] }) {
+    const initialSettings = getAppSettings();
+    const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+    useEffect(() => {
+        const handleSettingsChange = (event) => {
+            const nextSettings = event.detail ?? getAppSettings();
+            setDarkMode(Boolean(nextSettings.darkMode));
+        };
+
+        window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+        return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+    }, []);
+
     const isEditMode = Boolean(task);
     const [title, setTitle] = useState('');
     const [type, setType] = useState('Task');
@@ -91,12 +104,56 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
         onClose();
     };
 
+    const darkMenuProps = {
+        PaperProps: {
+            sx: {
+                backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+                color: darkMode ? '#f8fafc' : '#1e293b',
+                border: darkMode ? '1px solid #334155' : 'none'
+            }
+        }
+    };
+
+    // 1. Separate style for Select components
+    const selectSx = {
+        borderRadius: '10px',
+        backgroundColor: darkMode ? '#0f172a' : '#fff',
+        color: darkMode ? '#f8fafc' : 'inherit',
+        '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: darkMode ? '#334155' : '#e2e8f0',
+        },
+        '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: darkMode ? '#475569' : '#cbd5e1',
+        },
+        '& .MuiSvgIcon-root': {
+            color: darkMode ? '#94a3b8' : undefined,
+        }
+    };
+
+    // 2. Separate style for TextField components
+    const textFieldSx = {
+        '& .MuiOutlinedInput-root': {
+            borderRadius: '10px',
+            backgroundColor: darkMode ? '#0f172a' : '#fff',
+            '& fieldset': {
+                borderColor: darkMode ? '#334155' : '#e2e8f0',
+            },
+            '&:hover fieldset': {
+                borderColor: darkMode ? '#475569' : '#cbd5e1',
+            },
+        },
+        '& .MuiInputBase-input': {
+            color: darkMode ? '#f8fafc' : '#1e293b',
+        }
+    };
+
     return (
         <Drawer
             open={open}
             onClose={onClose}
             title={isEditMode ? 'Edit Work Item' : 'New Work Item'}
             width={460}
+            darkMode={darkMode}
             primaryAction={{
                 label: isEditMode ? 'Update' : 'Add',
                 onClick: handleSubmit,
@@ -109,13 +166,18 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
         >
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2.5 }}>
                 <Box>
-                    <FieldLabel>Work Item Type</FieldLabel>
+                    <FieldLabel darkMode={darkMode}>Work Item Type</FieldLabel>
                     <FormControl fullWidth size="small">
-                        <Select value={type} onChange={(e) => setType(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                        <Select
+                            value={type}
+                            onChange={(e) => setType(e.target.value)}
+                            sx={{ fontSize: '13px', ...selectSx }}
+                            MenuProps={darkMenuProps}
+                        >
                             {WORK_ITEM_TYPES.map((t) => {
                                 const Icon = TYPE_CONFIG[t].icon;
                                 return (
-                                    <MenuItem key={t} value={t}>
+                                    <MenuItem key={t} value={t} sx={{ '&:hover': { backgroundColor: darkMode ? '#334155' : undefined } }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <Icon sx={{ fontSize: 16, color: TYPE_CONFIG[t].color }} />
                                             {t}
@@ -128,7 +190,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                 </Box>
 
                 <Box>
-                    <FieldLabel>Title</FieldLabel>
+                    <FieldLabel darkMode={darkMode}>Title</FieldLabel>
                     <TextField
                         autoFocus
                         value={title}
@@ -136,28 +198,38 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
                         fullWidth
                         size="small"
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                        sx={textFieldSx}
                     />
                 </Box>
 
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     <Box sx={{ flex: 1 }}>
-                        <FieldLabel>State</FieldLabel>
+                        <FieldLabel darkMode={darkMode}>State</FieldLabel>
                         <FormControl fullWidth size="small">
-                            <Select value={column} onChange={(e) => setColumn(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                            <Select
+                                value={column}
+                                onChange={(e) => setColumn(e.target.value)}
+                                sx={{ fontSize: '13px', ...selectSx }}
+                                MenuProps={darkMenuProps}
+                            >
                                 {STATES.map((s) => (
-                                    <MenuItem key={s} value={s}>{s}</MenuItem>
+                                    <MenuItem key={s} value={s} sx={{ '&:hover': { backgroundColor: darkMode ? '#334155' : undefined } }}>{s}</MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
                     </Box>
 
                     <Box sx={{ flex: 1 }}>
-                        <FieldLabel>Priority</FieldLabel>
+                        <FieldLabel darkMode={darkMode}>Priority</FieldLabel>
                         <FormControl fullWidth size="small">
-                            <Select value={priority} onChange={(e) => setPriority(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                            <Select
+                                value={priority}
+                                onChange={(e) => setPriority(e.target.value)}
+                                sx={{ fontSize: '13px', ...selectSx }}
+                                MenuProps={darkMenuProps}
+                            >
                                 {PRIORITIES.map((p) => (
-                                    <MenuItem key={p} value={p}>{p}</MenuItem>
+                                    <MenuItem key={p} value={p} sx={{ '&:hover': { backgroundColor: darkMode ? '#334155' : undefined } }}>{p}</MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
@@ -166,34 +238,39 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
 
                 <Box sx={{ display: 'flex', gap: 2 }}>
                     <Box sx={{ flex: 1 }}>
-                        <FieldLabel>Assigned To</FieldLabel>
+                        <FieldLabel darkMode={darkMode}>Assigned To</FieldLabel>
                         <FormControl fullWidth size="small">
-                            <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                            <Select
+                                value={assigneeId}
+                                onChange={(e) => setAssigneeId(e.target.value)}
+                                sx={{ fontSize: '13px', ...selectSx }}
+                                MenuProps={darkMenuProps}
+                            >
                                 {members.length ? members.map((member) => (
-                                    <MenuItem key={member.userId || member._id} value={member.userId || member._id}>
+                                    <MenuItem key={member.userId || member._id} value={member.userId || member._id} sx={{ '&:hover': { backgroundColor: darkMode ? '#334155' : undefined } }}>
                                         {member.name}
                                     </MenuItem>
                                 )) : (
-                                    <MenuItem value="">No members available</MenuItem>
+                                    <MenuItem value="" sx={{ '&:hover': { backgroundColor: darkMode ? '#334155' : undefined } }}>No members available</MenuItem>
                                 )}
                             </Select>
                         </FormControl>
                     </Box>
 
                     <Box sx={{ flex: 1 }}>
-                        <FieldLabel>Area</FieldLabel>
+                        <FieldLabel darkMode={darkMode}>Area</FieldLabel>
                         <TextField
                             value={area}
                             onChange={(e) => setArea(e.target.value)}
                             fullWidth
                             size="small"
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                            sx={textFieldSx}
                         />
                     </Box>
                 </Box>
 
                 <Box>
-                    <FieldLabel>Description</FieldLabel>
+                    <FieldLabel darkMode={darkMode}>Description</FieldLabel>
                     <TextField
                         value={description}
                         onChange={(e) => setDescription(e.target.value)}
@@ -201,7 +278,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                         multiline
                         minRows={3}
                         size="small"
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                        sx={textFieldSx}
                     />
                 </Box>
             </Box>

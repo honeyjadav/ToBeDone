@@ -35,6 +35,9 @@ import Tooltip from '@mui/material/Tooltip';
 import { useAuth } from '../hooks/useAuth';
 import APICallService from '../services/APICallService';
 
+// 1. Import settings utility
+import { getAppSettings } from '../utils/preferences';
+
 const MIN_WINDOW_HOURS = 24;
 const MAX_WINDOW_HOURS = 24 * 7;
 const WINDOW_STEP = 24;
@@ -54,15 +57,48 @@ const formatWindowLabel = (hours) => {
   return `${hours}h`;
 };
 
-const SOURCE_CONFIG = {
-  Task: { icon: AssignmentTurnedInOutlinedIcon, color: '#7c3aed', bg: '#f3f0fe' },
-  Chat: { icon: ForumOutlinedIcon, color: '#3b82f6', bg: '#eff6ff' },
-  Webhook: { icon: LinkOutlinedIcon, color: '#0891b2', bg: '#ecfeff' },
-};
+// 2. Dynamic Source Config based on dark mode
+const getSourceConfig = (darkMode) => ({
+  Task: { icon: AssignmentTurnedInOutlinedIcon, color: darkMode ? '#a78bfa' : '#7c3aed', bg: darkMode ? '#2e1065' : '#f3f0fe' },
+  Chat: { icon: ForumOutlinedIcon, color: darkMode ? '#60a5fa' : '#3b82f6', bg: darkMode ? '#1e3a8a' : '#eff6ff' },
+  Webhook: { icon: LinkOutlinedIcon, color: darkMode ? '#22d3ee' : '#0891b2', bg: darkMode ? '#164e63' : '#ecfeff' },
+});
+
+// Dynamic color mapping
+const getColors = (darkMode) => ({
+  bg: darkMode ? '#020817' : 'transparent',
+  panelBg: darkMode ? '#0f172a' : '#ffffff',
+  border: darkMode ? '#334155' : '#e2e8f0',
+  borderLight: darkMode ? '#1e293b' : '#e5e7eb',
+  text: darkMode ? '#f8fafc' : '#1e293b',
+  textDarker: darkMode ? '#e2e8f0' : '#334155',
+  textMuted: darkMode ? '#94a3b8' : '#64748b',
+  textFaint: darkMode ? '#64748b' : '#94a3b8',
+  hoverBg: darkMode ? '#1e293b' : '#f8fafc',
+  selectedBg: darkMode ? '#2e1065' : '#f5f3ff',
+  divider: darkMode ? '#334155' : '#f1f5f9',
+});
 
 export default function Digest() {
   const { activeWorkspace } = useAuth();
   const workspaceId = activeWorkspace?.workspaceId;
+
+  // 3. Initialize dark mode state and event listener
+  const initialSettings = getAppSettings();
+  const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+  useEffect(() => {
+    const handleSettingsChange = (event) => {
+      const nextSettings = event.detail ?? getAppSettings();
+      setDarkMode(Boolean(nextSettings.darkMode));
+    };
+
+    window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+  }, []);
+
+  const C = getColors(darkMode);
+  const SOURCE_CONFIG = getSourceConfig(darkMode);
 
   const [generating, setGenerating] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(false);
@@ -238,8 +274,8 @@ export default function Digest() {
 
   if (!workspaceId) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Typography sx={{ fontSize: '14px', color: '#64748b' }}>
+      <Box sx={{ p: 3, backgroundColor: C.bg, height: '100%' }}>
+        <Typography sx={{ fontSize: '14px', color: C.textMuted }}>
           Select a workspace to view its AI digest.
         </Typography>
       </Box>
@@ -247,15 +283,15 @@ export default function Digest() {
   }
 
   return (
-    <Box sx={{ p: 3, maxWidth: '100%', height: '100%', overflowY: 'auto' }}>
+    <Box sx={{ p: 3, maxWidth: '100%', height: '100%', overflowY: 'auto', backgroundColor: C.bg }}>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', mb: 2.5, flexWrap: 'wrap', gap: 1.5 }}>
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <AutoAwesomeIcon sx={{ fontSize: 22, color: '#7c3aed' }} />
-            <Typography sx={{ fontSize: '22px', fontWeight: 700, color: '#1e293b' }}>AI Digest</Typography>
+            <Typography sx={{ fontSize: '22px', fontWeight: 700, color: C.text }}>AI Digest</Typography>
           </Box>
-          <Typography sx={{ fontSize: '13px', color: '#64748b', mt: 0.5 }}>
+          <Typography sx={{ fontSize: '13px', color: C.textMuted, mt: 0.5 }}>
             Your activity, summarized{lastUpdated ? ` · Updated ${lastUpdated}` : ''}
           </Typography>
         </Box>
@@ -272,12 +308,13 @@ export default function Digest() {
               textTransform: 'none',
               fontSize: '13px',
               fontWeight: 600,
-              color: '#334155',
-              backgroundColor: '#ffffff',
-              border: '1px solid #e2e8f0',
+              color: C.textDarker,
+              backgroundColor: C.panelBg,
+              border: `1px solid ${C.border}`,
               borderRadius: '8px',
               px: 1.5,
               height: '36px',
+              '&:hover': { backgroundColor: C.hoverBg }
             }}
           >
             Lookback: {formatWindowLabel(windowHours)}
@@ -288,9 +325,16 @@ export default function Digest() {
             onClose={() => setWindowAnchor(null)}
             anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
             transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+            PaperProps={{
+              sx: {
+                backgroundColor: C.panelBg,
+                backgroundImage: 'none',
+                border: `1px solid ${C.border}`
+              }
+            }}
           >
             <Box sx={{ px: 3, pt: 3, pb: 2, width: 260 }}>
-              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: '#334155', mb: 1 }}>
+              <Typography sx={{ fontSize: '12.5px', fontWeight: 600, color: C.textDarker, mb: 1 }}>
                 Summarize activity from the last {formatWindowLabel(pendingWindowHours)}
               </Typography>
               <Slider
@@ -301,9 +345,9 @@ export default function Digest() {
                 marks={WINDOW_MARKS}
                 onChange={(_e, value) => setPendingWindowHours(value)}
                 onChangeCommitted={handleWindowCommit}
-                sx={{ color: '#7c3aed' }}
+                sx={{ color: '#7c3aed', '& .MuiSlider-markLabel': { color: C.textMuted } }}
               />
-              <Typography sx={{ fontSize: '11px', color: '#94a3b8', mt: 1 }}>
+              <Typography sx={{ fontSize: '11px', color: C.textMuted, mt: 1 }}>
                 Minimum 1 day, maximum 7 days.
               </Typography>
             </Box>
@@ -322,7 +366,7 @@ export default function Digest() {
               borderRadius: '8px',
               height: '36px',
               '&:hover': { backgroundColor: '#6d28d9' },
-              '&.Mui-disabled': { backgroundColor: '#e2e8f0', color: '#94a3b8' },
+              '&.Mui-disabled': { backgroundColor: darkMode ? '#334155' : '#e2e8f0', color: darkMode ? '#94a3b8' : '#94a3b8' },
             }}
           >
             {generating ? 'Generating…' : 'Regenerate Summary'}
@@ -360,14 +404,14 @@ export default function Digest() {
                 textTransform: 'none',
                 fontSize: '13px',
                 fontWeight: 600,
-                color: copied ? '#16a34a' : '#334155',
-                backgroundColor: '#ffffff',
+                color: copied ? '#16a34a' : C.textDarker,
+                backgroundColor: C.panelBg,
                 border: '1px solid',
-                borderColor: copied ? '#bbf7d0' : '#e2e8f0',
+                borderColor: copied ? '#bbf7d0' : C.border,
                 borderRadius: '8px',
                 height: '36px',
                 px: 2,
-                '&:hover': { backgroundColor: copied ? '#f0fdf4' : '#f8fafc' },
+                '&:hover': { backgroundColor: copied ? (darkMode ? '#14532d' : '#f0fdf4') : C.hoverBg },
               }}
             >
               {copied ? 'Copied' : 'Copy Summary'}
@@ -377,8 +421,8 @@ export default function Digest() {
       )}
 
       {error && (
-        <Box sx={{ mb: 2.5, p: 1.5, borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca' }}>
-          <Typography sx={{ fontSize: '12.5px', color: '#dc2626' }}>{error}</Typography>
+        <Box sx={{ mb: 2.5, p: 1.5, borderRadius: '8px', backgroundColor: darkMode ? '#451a1a' : '#fef2f2', border: `1px solid ${darkMode ? '#7f1d1d' : '#fecaca'}` }}>
+          <Typography sx={{ fontSize: '12.5px', color: darkMode ? '#fca5a5' : '#dc2626' }}>{error}</Typography>
         </Box>
       )}
 
@@ -420,16 +464,18 @@ export default function Digest() {
         PaperProps={{
           sx: {
             borderRadius: '16px',
-            backgroundColor: '#ffffff',
-            boxShadow: '0 16px 40px rgba(15, 23, 42, 0.12)',
+            backgroundColor: C.panelBg,
+            backgroundImage: 'none',
+            boxShadow: '0 16px 40px rgba(0, 0, 0, 0.12)',
+            border: `1px solid ${darkMode ? '#334155' : 'transparent'}`,
           },
         }}
       >
-        <DialogTitle sx={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', backgroundColor: '#ffffff' }}>
+        <DialogTitle sx={{ fontSize: '1rem', fontWeight: 700, color: C.text, backgroundColor: 'transparent' }}>
           Send digest to a webhook
         </DialogTitle>
-        <DialogContent sx={{ pt: 1, backgroundColor: '#ffffff' }}>
-          <Typography sx={{ fontSize: '13px', color: '#475569', mb: 1.5 }}>
+        <DialogContent sx={{ pt: 1, backgroundColor: 'transparent' }}>
+          <Typography sx={{ fontSize: '13px', color: C.textMuted, mb: 1.5 }}>
             Select the webhook channel that should receive the current AI summary.
           </Typography>
           {loadingWebhooks ? (
@@ -437,8 +483,8 @@ export default function Digest() {
               <CircularProgress size={22} sx={{ color: '#7c3aed' }} />
             </Box>
           ) : availableWebhooks.length === 0 ? (
-            <Box sx={{ p: 1.5, borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-              <Typography sx={{ fontSize: '13px', color: '#64748b' }}>
+            <Box sx={{ p: 1.5, borderRadius: '8px', backgroundColor: C.hoverBg, border: `1px solid ${C.border}` }}>
+              <Typography sx={{ fontSize: '13px', color: C.textMuted }}>
                 No active webhooks are available in this workspace yet.
               </Typography>
             </Box>
@@ -450,24 +496,30 @@ export default function Digest() {
                     <ListItemButton
                       selected={selectedWebhookId === (webhook.webhookId || webhook.id)}
                       onClick={() => setSelectedWebhookId(webhook.webhookId || webhook.id)}
-                      sx={{ borderRadius: '8px', px: 1.25, py: 0.75 }}
+                      sx={{
+                        borderRadius: '8px',
+                        px: 1.25,
+                        py: 0.75,
+                        '&.Mui-selected': { backgroundColor: darkMode ? '#1e293b' : 'rgba(0, 0, 0, 0.08)' },
+                        '&:hover': { backgroundColor: darkMode ? '#334155' : 'rgba(0, 0, 0, 0.04)' }
+                      }}
                     >
                       <ListItemText
                         primary={webhook.name || 'Untitled webhook'}
                         secondary={webhook.url || 'Webhook URL'}
-                        primaryTypographyProps={{ fontSize: '15px', fontWeight: 700, color: '#1e293b' }}
-                        secondaryTypographyProps={{ fontSize: '11.5px', color: '#64748b', mt: 0.25 }}
+                        primaryTypographyProps={{ fontSize: '15px', fontWeight: 700, color: C.text }}
+                        secondaryTypographyProps={{ fontSize: '11.5px', color: C.textMuted, mt: 0.25 }}
                       />
                     </ListItemButton>
                   </ListItem>
-                  {index < availableWebhooks.length - 1 && <Divider />}
+                  {index < availableWebhooks.length - 1 && <Divider sx={{ borderColor: C.divider }} />}
                 </Box>
               ))}
             </List>
           )}
         </DialogContent>
-        <DialogActions sx={{ px: 3, pb: 2, backgroundColor: '#ffffff' }}>
-          <Button onClick={() => setSendDialogOpen(false)} sx={{ textTransform: 'none', color: '#475569' }}>Cancel</Button>
+        <DialogActions sx={{ px: 3, pb: 2, backgroundColor: 'transparent' }}>
+          <Button onClick={() => setSendDialogOpen(false)} sx={{ textTransform: 'none', color: C.textMuted }}>Cancel</Button>
           <Button
             onClick={handleSendSummary}
             variant="contained"
@@ -486,17 +538,17 @@ export default function Digest() {
         </Box>
       ) : noActivityYet && !activeDigest ? (
         <Box sx={{ py: 8, textAlign: 'center' }}>
-          <InfoOutlinedIcon sx={{ fontSize: 26, color: '#94a3b8', mb: 1 }} />
-          <Typography sx={{ fontSize: '13.5px', color: '#64748b', fontWeight: 600 }}>
+          <InfoOutlinedIcon sx={{ fontSize: 26, color: C.textFaint, mb: 1 }} />
+          <Typography sx={{ fontSize: '13.5px', color: C.textMuted, fontWeight: 600 }}>
             No activity to summarize yet
           </Typography>
-          <Typography sx={{ fontSize: '12.5px', color: '#94a3b8', mt: 0.5 }}>
+          <Typography sx={{ fontSize: '12.5px', color: C.textFaint, mt: 0.5 }}>
             Once there's some activity in this workspace, a digest will appear here automatically.
           </Typography>
         </Box>
       ) : !activeDigest ? (
         <Box sx={{ py: 8, textAlign: 'center' }}>
-          <Typography sx={{ fontSize: '13px', color: '#94a3b8' }}>
+          <Typography sx={{ fontSize: '13px', color: C.textFaint }}>
             No digest yet.
           </Typography>
         </Box>
@@ -516,15 +568,15 @@ export default function Digest() {
             }}
           >
             {(!Array.isArray(activeDigest.groups) || activeDigest.groups.length === 0) ? (
-              <Box sx={{ border: '1px solid #e5e7eb', borderRadius: '10px', p: 3, backgroundColor: '#ffffff', textAlign: 'center' }}>
-                <Typography sx={{ fontSize: '13px', color: '#94a3b8' }}>No activity in this period.</Typography>
+              <Box sx={{ border: `1px solid ${C.borderLight}`, borderRadius: '10px', p: 3, backgroundColor: C.panelBg, textAlign: 'center' }}>
+                <Typography sx={{ fontSize: '13px', color: C.textMuted }}>No activity in this period.</Typography>
               </Box>
             ) : (
               activeDigest.groups.map((group) => {
                 const cfg = SOURCE_CONFIG[group.source] || SOURCE_CONFIG.Task;
                 const Icon = cfg.icon;
                 return (
-                  <Box key={group.title} sx={{ border: '1px solid #e5e7eb', borderRadius: '10px', p: 2.5, backgroundColor: '#ffffff' }}>
+                  <Box key={group.title} sx={{ border: `1px solid ${C.borderLight}`, borderRadius: '10px', p: 2.5, backgroundColor: C.panelBg }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                       <Box
                         sx={{
@@ -540,7 +592,7 @@ export default function Digest() {
                       >
                         <Icon sx={{ fontSize: 15 }} />
                       </Box>
-                      <Typography sx={{ fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>{group.title}</Typography>
+                      <Typography sx={{ fontSize: '14px', fontWeight: 700, color: C.text }}>{group.title}</Typography>
                       <Chip
                         label={group.source}
                         size="small"
@@ -551,7 +603,7 @@ export default function Digest() {
                       {group.items.map((line, i) => (
                         <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                           <AutoAwesomeIcon sx={{ fontSize: 13, color: cfg.color, mt: '3px', flexShrink: 0 }} />
-                          <Typography sx={{ fontSize: '13.5px', color: '#334155', lineHeight: 1.5 }}>{line}</Typography>
+                          <Typography sx={{ fontSize: '13.5px', color: C.textDarker, lineHeight: 1.5 }}>{line}</Typography>
                         </Box>
                       ))}
                     </Box>
@@ -583,9 +635,9 @@ export default function Digest() {
             sx={{
               width: '260px',
               flexShrink: 0,
-              border: '1px solid #e5e7eb',
+              border: `1px solid ${C.borderLight}`,
               borderRadius: '10px',
-              backgroundColor: '#ffffff',
+              backgroundColor: C.panelBg,
               overflow: 'hidden',
               maxHeight: 'calc(100vh - 260px)',
               display: 'flex',
@@ -594,21 +646,21 @@ export default function Digest() {
           >
             <Box
               onClick={() => setHistoryOpen((v) => !v)}
-              sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.75, cursor: 'pointer', borderBottom: historyOpen ? '1px solid #e5e7eb' : 'none', flexShrink: 0 }}
+              sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2, py: 1.75, cursor: 'pointer', borderBottom: historyOpen ? `1px solid ${C.borderLight}` : 'none', flexShrink: 0 }}
             >
-              <HistoryIcon sx={{ fontSize: 17, color: '#64748b' }} />
-              <Typography sx={{ fontSize: '13.5px', fontWeight: 700, color: '#1e293b' }}>Digest History</Typography>
+              <HistoryIcon sx={{ fontSize: 17, color: C.textMuted }} />
+              <Typography sx={{ fontSize: '13.5px', fontWeight: 700, color: C.text }}>Digest History</Typography>
               <Box sx={{ flex: 1 }} />
-              {loadingHistory && <CircularProgress size={13} sx={{ color: '#94a3b8' }} />}
+              {loadingHistory && <CircularProgress size={13} sx={{ color: C.textFaint }} />}
               <ChevronRightIcon
-                sx={{ fontSize: 18, color: '#94a3b8', transform: historyOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }}
+                sx={{ fontSize: 18, color: C.textFaint, transform: historyOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s ease' }}
               />
             </Box>
             {historyOpen && (
               <Box sx={{ display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
                 {digestHistory.length === 0 ? (
                   <Box sx={{ px: 2, py: 2 }}>
-                    <Typography sx={{ fontSize: '12px', color: '#94a3b8' }}>No digests yet.</Typography>
+                    <Typography sx={{ fontSize: '12px', color: C.textFaint }}>No digests yet.</Typography>
                   </Box>
                 ) : (
                   digestHistory.map((h, i) => {
@@ -620,17 +672,17 @@ export default function Digest() {
                         sx={{
                           px: 2,
                           py: 1.25,
-                          borderBottom: i === digestHistory.length - 1 ? 'none' : '1px solid #f1f5f9',
+                          borderBottom: i === digestHistory.length - 1 ? 'none' : `1px solid ${C.divider}`,
                           cursor: 'pointer',
-                          backgroundColor: isSelected ? '#f5f3ff' : 'transparent',
+                          backgroundColor: isSelected ? C.selectedBg : 'transparent',
                           borderLeft: isSelected ? '3px solid #7c3aed' : '3px solid transparent',
-                          '&:hover': { backgroundColor: isSelected ? '#f5f3ff' : '#f8fafc' },
+                          '&:hover': { backgroundColor: isSelected ? C.selectedBg : C.hoverBg },
                         }}
                       >
-                        <Typography sx={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#7c3aed' : '#1e293b' }}>
+                        <Typography sx={{ fontSize: '13px', fontWeight: 600, color: isSelected ? '#7c3aed' : C.text }}>
                           {h.label}
                         </Typography>
-                        <Typography sx={{ fontSize: '11.5px', color: '#94a3b8', mt: '2px' }}>
+                        <Typography sx={{ fontSize: '11.5px', color: C.textFaint, mt: '2px' }}>
                           {formatWindowLabel(h.windowHours)} window · {h.activityCount ?? 0} update{(h.activityCount ?? 0) === 1 ? '' : 's'}
                         </Typography>
                       </Box>

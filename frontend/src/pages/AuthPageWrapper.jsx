@@ -82,7 +82,60 @@ const SignupIllustration = () => (
     </svg>
 );
 
-export default function Registration() {
+export default function AuthPageWrapper({
+    title,
+    subtitle,
+    illustration,
+    onSubmit,
+    buttonText,
+    children,
+}) {
+    const navigate = useNavigate();
+    const theme = useTheme();
+    const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
+    const AppLogo = () => (
+        <Box sx={{ width: 28, height: 28, borderRadius: '8px', backgroundColor: '#6d28d9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 11l3 3L22 4" />
+                <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+            </svg>
+        </Box>
+    );
+
+    return (
+        <Box component="main" sx={{ minHeight: '100vh', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 2, position: 'relative', overflow: 'hidden', '&::before': { ...backgroundPatternBase, width: '300px', height: '300px', top: '10%', left: '-100px' }, '&::after': { ...backgroundPatternBase, width: '400px', height: '400px', bottom: '-50px', right: '-100px' } }}>
+            {backgroundDots}
+            <Stack direction="row" sx={{ width: '100%', maxWidth: '1200px', justifyContent: 'space-between', alignItems: 'center', mb: 2, px: { xs: 2, sm: 4 } }} zIndex={1} position="relative">
+                <Stack direction="row" alignItems="center" gap={1.5} onClick={() => navigate('/')} sx={{ cursor: 'pointer' }}>
+                    <AppLogo />
+                    <Typography sx={{ fontSize: '2.1rem', fontWeight: 700, color: '#000000', letterSpacing: '-1.5px' }}>ToBeDone</Typography>
+                </Stack>
+            </Stack>
+            <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'center' }}>
+                <Card elevation={0} sx={{ width: '100%', maxWidth: '1000px', borderRadius: 6, backgroundColor: '#ffffff', boxShadow: '0 30px 60px rgba(0, 0, 0, 0.1)', overflow: 'visible' }}>
+                    <Grid container direction={isTablet ? 'column-reverse' : 'row'}>
+                        <Grid item xs={12} md={6} display="flex" alignItems="center" justifyContent="center" p={isTablet ? 4 : 6}>{illustration}</Grid>
+                        <Grid item xs={12} md={6} p={isTablet ? 4 : 6} backgroundColor="#ffffff" borderRadius={isTablet ? '0' : '0 24px 24px 0'} borderLeft={isTablet ? 'none' : '1px solid #e2e8f0'}>
+                            <Stack spacing={2}>
+                                <Typography variant="h5" sx={{ textAlign: 'center', fontWeight: 700, color: '#1e293b', fontSize: '1.6rem' }}>{title}</Typography>
+                                <Typography sx={{ textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>{subtitle}</Typography>
+                                <form onSubmit={onSubmit}>
+                                    <Stack spacing={1.4} alignItems="center">
+                                        {children}
+                                        <Button type="submit" variant="contained" fullWidth sx={{ backgroundColor: VIBRANT_PURPLE, color: 'white', padding: '12px', fontSize: '1.05rem', fontWeight: 600, textTransform: 'none', borderRadius: '12px', mt: 1, '&:hover': { backgroundColor: VIBRANT_PURPLE } }}>{buttonText}</Button>
+                                    </Stack>
+                                </form>
+                            </Stack>
+                        </Grid>
+                    </Grid>
+                </Card>
+            </Container>
+        </Box>
+    );
+}
+
+function LegacyRegistration() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');

@@ -31,18 +31,29 @@ const AVATAR_PALETTE = [
   { bg: '#ffe4e6', color: '#e11d48' },
 ];
 
-function colorFor(id = '') {
+const AVATAR_PALETTE_DARK = [
+  { bg: '#2e1065', color: '#a78bfa' },
+  { bg: '#1e3a8a', color: '#60a5fa' },
+  { bg: '#14532d', color: '#4ade80' },
+  { bg: '#78350f', color: '#fbbf24' },
+  { bg: '#831843', color: '#f472b6' },
+  { bg: '#312e81', color: '#818cf8' },
+  { bg: '#881337', color: '#fb7185' },
+];
+
+function colorFor(id = '', darkMode = false) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = id.charCodeAt(i) + ((hash << 5) - hash);
-  return AVATAR_PALETTE[Math.abs(hash) % AVATAR_PALETTE.length];
+  const palette = darkMode ? AVATAR_PALETTE_DARK : AVATAR_PALETTE;
+  return palette[Math.abs(hash) % palette.length];
 }
 
 function getInitials(name = '') {
   return name.split(' ').filter(Boolean).map((n) => n[0]).join('').slice(0, 2).toUpperCase();
 }
 
-function WorkspaceAvatar({ workspace, size = 26, fontSize = '11px' }) {
-  const { bg, color } = colorFor(workspace.id);
+function WorkspaceAvatar({ workspace, size = 26, fontSize = '11px', darkMode = false }) {
+  const { bg, color } = colorFor(workspace.id, darkMode);
   return (
     <Avatar
       src={workspace.logo || undefined}
@@ -55,7 +66,7 @@ function WorkspaceAvatar({ workspace, size = 26, fontSize = '11px' }) {
 }
 
 // Row shown when the user belongs to zero workspaces
-function EmptyWorkspaceRow({ collapsed, onCreateNew }) {
+function EmptyWorkspaceRow({ collapsed, onCreateNew, darkMode }) {
   return (
     <Box
       onClick={onCreateNew}
@@ -69,9 +80,9 @@ function EmptyWorkspaceRow({ collapsed, onCreateNew }) {
         minWidth: 0,
         borderRadius: '8px',
         cursor: 'pointer',
-        border: `1px dashed ${PURPLE}55`,
-        backgroundColor: '#faf5ff',
-        '&:hover': { backgroundColor: '#f3e8ff' },
+        border: `1px dashed ${darkMode ? '#4c1d95' : `${PURPLE}55`}`,
+        backgroundColor: darkMode ? '#1e1b4b' : '#faf5ff',
+        '&:hover': { backgroundColor: darkMode ? '#2e1065' : '#f3e8ff' },
       }}
     >
       <Box
@@ -82,15 +93,15 @@ function EmptyWorkspaceRow({ collapsed, onCreateNew }) {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#ede9fe',
-          color: PURPLE,
+          backgroundColor: darkMode ? '#2e1065' : '#ede9fe',
+          color: darkMode ? '#a78bfa' : PURPLE,
           flexShrink: 0,
         }}
       >
         <AddBusinessIcon sx={{ fontSize: 15 }} />
       </Box>
       {!collapsed && (
-        <Typography sx={{ fontSize: '12.5px', fontWeight: 700, color: PURPLE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+        <Typography sx={{ fontSize: '12.5px', fontWeight: 700, color: darkMode ? '#a78bfa' : PURPLE, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           Create a workspace
         </Typography>
       )}
@@ -121,6 +132,8 @@ export default function WorkspaceSwitcher({
       muted: '#94a3b8',
       hover: '#1e293b',
       input: '#0b1220',
+      menuBg: '#1e293b',
+      divider: '#334155',
     }
     : {
       surface: '#f8fafc',
@@ -131,6 +144,8 @@ export default function WorkspaceSwitcher({
       muted: '#94a3b8',
       hover: '#f1f5f9',
       input: '#f8fafc',
+      menuBg: '#ffffff',
+      divider: '#e2e8f0',
     };
 
   const active = workspaces.find((w) => w.id === activeWorkspaceId) || workspaces[0];
@@ -151,7 +166,16 @@ export default function WorkspaceSwitcher({
     <IconButton
       onClick={onToggle}
       size="small"
-      sx={{ border: `1px solid ${theme.border}`, borderRadius: '7px', width: 28, height: 28, color: theme.muted, flexShrink: 0, backgroundColor: darkMode ? '#0f172a' : '#ffffff' }}
+      sx={{
+        border: `1px solid ${theme.border}`,
+        borderRadius: '7px',
+        width: 28,
+        height: 28,
+        color: theme.muted,
+        flexShrink: 0,
+        backgroundColor: darkMode ? '#0f172a' : '#ffffff',
+        '&:hover': { backgroundColor: theme.hover }
+      }}
     >
       {isOpen ? <ChevronLeftIcon fontSize="small" /> : <ChevronRightIcon fontSize="small" />}
     </IconButton>
@@ -178,7 +202,7 @@ export default function WorkspaceSwitcher({
               '&:hover': { backgroundColor: darkMode ? '#1e293b' : '#f1f5f9' },
             }}
           >
-            <WorkspaceAvatar workspace={active} />
+            <WorkspaceAvatar workspace={active} darkMode={darkMode} />
             {!collapsed && (
               <>
                 <Typography
@@ -186,12 +210,12 @@ export default function WorkspaceSwitcher({
                 >
                   {active.name}
                 </Typography>
-                <ExpandMoreIcon sx={{ fontSize: 18, color: '#94a3b8', flexShrink: 0 }} />
+                <ExpandMoreIcon sx={{ fontSize: 18, color: theme.muted, flexShrink: 0 }} />
               </>
             )}
           </Box>
         ) : (
-          <EmptyWorkspaceRow collapsed={collapsed} onCreateNew={onCreateNew} />
+          <EmptyWorkspaceRow collapsed={collapsed} onCreateNew={onCreateNew} darkMode={darkMode} />
         )}
 
         {!collapsed && CollapseToggle}
@@ -208,7 +232,17 @@ export default function WorkspaceSwitcher({
           anchorEl={anchorEl}
           open={Boolean(anchorEl)}
           onClose={handleClose}
-          PaperProps={{ sx: { width: 260, mt: 0.5, maxHeight: 420, display: 'flex', flexDirection: 'column' } }}
+          PaperProps={{
+            sx: {
+              width: 260,
+              mt: 0.5,
+              maxHeight: 420,
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: theme.menuBg,
+              border: darkMode ? `1px solid ${theme.border}` : 'none',
+            }
+          }}
           MenuListProps={{ sx: { py: 0, display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } }}
         >
           <Typography
@@ -219,7 +253,7 @@ export default function WorkspaceSwitcher({
 
           {workspaces.length > SEARCH_THRESHOLD && (
             <Box sx={{ px: 1.5, pb: 1, flexShrink: 0 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1, py: 0.5, borderRadius: '7px', border: `1px solid ${theme.border}`, backgroundColor: darkMode ? '#0b1220' : '#f8fafc' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, px: 1, py: 0.5, borderRadius: '7px', border: `1px solid ${theme.border}`, backgroundColor: theme.input }}>
                 <SearchIcon sx={{ fontSize: 16, color: theme.muted }} />
                 <InputBase
                   autoFocus
@@ -239,7 +273,7 @@ export default function WorkspaceSwitcher({
               flex: 1,
               minHeight: 0,
               '&::-webkit-scrollbar': { width: '6px' },
-              '&::-webkit-scrollbar-thumb': { backgroundColor: '#e2e8f0', borderRadius: '3px' },
+              '&::-webkit-scrollbar-thumb': { backgroundColor: darkMode ? '#475569' : '#e2e8f0', borderRadius: '3px' },
               '&::-webkit-scrollbar-track': { backgroundColor: 'transparent' },
             }}
           >
@@ -255,29 +289,43 @@ export default function WorkspaceSwitcher({
                     key={w.id}
                     selected={isActive}
                     onClick={() => { onSwitch(w.id); handleClose(); }}
-                    sx={{ fontSize: '13px', gap: 1, py: 1 }}
+                    sx={{
+                      fontSize: '13px',
+                      gap: 1,
+                      py: 1,
+                      color: theme.text,
+                      '&.Mui-selected': { backgroundColor: darkMode ? 'rgba(255,255,255,0.05)' : undefined },
+                      '&:hover': { backgroundColor: theme.hover }
+                    }}
                   >
                     <ListItemIcon sx={{ minWidth: 'auto' }}>
-                      <WorkspaceAvatar workspace={w} size={24} fontSize="10px" />
+                      <WorkspaceAvatar workspace={w} size={24} fontSize="10px" darkMode={darkMode} />
                     </ListItemIcon>
                     <Typography sx={{ fontSize: '13px', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {w.name}
                     </Typography>
-                    {isActive && <CheckIcon sx={{ fontSize: 16, color: PURPLE, flexShrink: 0 }} />}
+                    {isActive && <CheckIcon sx={{ fontSize: 16, color: darkMode ? '#a78bfa' : PURPLE, flexShrink: 0 }} />}
                   </MenuItem>
                 );
               })
             )}
           </Box>
 
-          <Divider sx={{ my: 0.5, flexShrink: 0 }} />
+          <Divider sx={{ my: 0.5, flexShrink: 0, borderColor: theme.divider }} />
 
           <MenuItem
             onClick={() => { onCreateNew(); handleClose(); }}
-            sx={{ fontSize: '13px', gap: 1, color: PURPLE, fontWeight: 600, flexShrink: 0 }}
+            sx={{
+              fontSize: '13px',
+              gap: 1,
+              color: darkMode ? '#a78bfa' : PURPLE,
+              fontWeight: 600,
+              flexShrink: 0,
+              '&:hover': { backgroundColor: theme.hover }
+            }}
           >
             <ListItemIcon sx={{ minWidth: 'auto' }}>
-              <AddIcon sx={{ fontSize: 18, color: PURPLE }} />
+              <AddIcon sx={{ fontSize: 18, color: darkMode ? '#a78bfa' : PURPLE }} />
             </ListItemIcon>
             Create workspace
           </MenuItem>

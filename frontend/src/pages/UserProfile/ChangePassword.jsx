@@ -17,7 +17,7 @@ import VisibilityOffOutlinedIcon from "@mui/icons-material/VisibilityOffOutlined
 
 import APICallService from "../../services/APICallService";
 
-export default function ChangePassword() {
+export default function ChangePassword({ darkMode }) {
     const [showCurrentPassword, setShowCurrentPassword] =
         useState(false);
 
@@ -135,6 +135,33 @@ export default function ChangePassword() {
         !newPasswordError &&
         !isSubmitting;
 
+    // Shared input styling for TextFields
+    const textFieldSx = {
+        "& .MuiOutlinedInput-root": {
+            backgroundColor: darkMode ? "#0f172a" : "#fff",
+            "& fieldset": {
+                borderColor: darkMode ? "#334155" : "#e2e8f0",
+            },
+            "&:hover fieldset": {
+                borderColor: darkMode ? "#475569" : "#cbd5e1",
+            },
+            "&.Mui-disabled": {
+                backgroundColor: darkMode ? "#1e293b" : "rgba(0, 0, 0, 0.03)",
+                "& fieldset": { borderColor: darkMode ? "#334155" : "#e2e8f0" },
+            },
+        },
+        "& .MuiInputBase-input": {
+            color: darkMode ? "#f8fafc" : "#1e293b",
+            "&.Mui-disabled": {
+                color: darkMode ? "#94a3b8" : "rgba(0, 0, 0, 0.38)",
+                WebkitTextFillColor: darkMode ? "#94a3b8" : "rgba(0, 0, 0, 0.38)",
+            },
+        },
+        "& .MuiInputLabel-root": {
+            color: darkMode ? "#94a3b8" : undefined,
+        },
+    };
+
     return (
         <Box
             sx={{
@@ -143,8 +170,8 @@ export default function ChangePassword() {
         >
             <Box
                 sx={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e2e8f0",
+                    backgroundColor: darkMode ? "#0f172a" : "#ffffff",
+                    border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
                     borderRadius: "8px",
                 }}
             >
@@ -154,7 +181,7 @@ export default function ChangePassword() {
                         sx={{
                             fontSize: "15px",
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: darkMode ? "#f8fafc" : "#1e293b",
                         }}
                     >
                         Change Password
@@ -163,7 +190,7 @@ export default function ChangePassword() {
                     <Typography
                         sx={{
                             fontSize: "12px",
-                            color: "#94a3b8",
+                            color: darkMode ? "#94a3b8" : "#94a3b8",
                             mt: 0.5,
                         }}
                     >
@@ -172,7 +199,7 @@ export default function ChangePassword() {
                     </Typography>
                 </Box>
 
-                <Divider />
+                <Divider sx={{ borderColor: darkMode ? '#334155' : '#e2e8f0' }} />
 
                 {/* Form */}
                 <Box
@@ -201,6 +228,7 @@ export default function ChangePassword() {
                         fullWidth
                         size="small"
                         disabled={isSubmitting}
+                        sx={textFieldSx}
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -211,6 +239,7 @@ export default function ChangePassword() {
                                                 (prev) => !prev
                                             )
                                         }
+                                        sx={{ color: darkMode ? '#94a3b8' : undefined }}
                                     >
                                         {showCurrentPassword ? (
                                             <VisibilityOffOutlinedIcon
@@ -258,6 +287,7 @@ export default function ChangePassword() {
                                 ? newPasswordError
                                 : ""
                         }
+                        sx={textFieldSx}
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -268,6 +298,7 @@ export default function ChangePassword() {
                                                 (prev) => !prev
                                             )
                                         }
+                                        sx={{ color: darkMode ? '#94a3b8' : undefined }}
                                     >
                                         {showNewPassword ? (
                                             <VisibilityOffOutlinedIcon
@@ -312,10 +343,11 @@ export default function ChangePassword() {
                         }
                         helperText={
                             passwordData.confirmPassword.length > 0 &&
-                            !passwordsMatch
+                                !passwordsMatch
                                 ? "Passwords do not match"
                                 : ""
                         }
+                        sx={textFieldSx}
                         InputProps={{
                             endAdornment: (
                                 <InputAdornment position="end">
@@ -326,6 +358,7 @@ export default function ChangePassword() {
                                                 (prev) => !prev
                                             )
                                         }
+                                        sx={{ color: darkMode ? '#94a3b8' : undefined }}
                                     >
                                         {showConfirmPassword ? (
                                             <VisibilityOffOutlinedIcon
@@ -374,8 +407,8 @@ export default function ChangePassword() {
                                 },
 
                                 "&:disabled": {
-                                    backgroundColor: "#e2e8f0",
-                                    color: "#94a3b8",
+                                    backgroundColor: darkMode ? "#334155" : "#e2e8f0",
+                                    color: darkMode ? "#64748b" : "#94a3b8",
                                 },
                             }}
                         >

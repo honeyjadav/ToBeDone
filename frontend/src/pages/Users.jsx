@@ -29,13 +29,16 @@ import APICallService from "../services/APICallService";
 import { LOCAL_STORAGE_KEYS } from "../constants/Constants";
 import { useAuth } from "../hooks/useAuth";
 
+// 1. Import settings utility
+import { getAppSettings } from "../utils/preferences";
+
 const ROLES = ["Admin", "Manager", "Member"];
 
 // --------------------------------------------------
 // Role Filter Dropdown
 // --------------------------------------------------
 
-function FilterDropdown({ label, options, selected, onToggle }) {
+function FilterDropdown({ label, options, selected, onToggle, darkMode }) {
   const [anchor, setAnchor] = useState(null);
 
   return (
@@ -53,10 +56,10 @@ function FilterDropdown({ label, options, selected, onToggle }) {
           textTransform: "none",
           fontSize: "13px",
           fontWeight: 600,
-          color: selected.length ? "#7c3aed" : "#334155",
-          backgroundColor: selected.length ? "#f3f0fe" : "#ffffff",
+          color: selected.length ? (darkMode ? '#c4b5fd' : '#7c3aed') : (darkMode ? '#e2e8f0' : '#334155'),
+          backgroundColor: selected.length ? (darkMode ? '#2e1065' : '#f3f0fe') : (darkMode ? '#0f172a' : '#ffffff'),
           border: "1px solid",
-          borderColor: selected.length ? "#ddd6fe" : "#e2e8f0",
+          borderColor: selected.length ? (darkMode ? '#4c1d95' : '#ddd6fe') : (darkMode ? '#334155' : '#e2e8f0'),
           borderRadius: "8px",
           px: 1.5,
           height: "36px",
@@ -72,6 +75,13 @@ function FilterDropdown({ label, options, selected, onToggle }) {
         anchorEl={anchor}
         open={Boolean(anchor)}
         onClose={() => setAnchor(null)}
+        PaperProps={{
+          sx: {
+            backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+            color: darkMode ? '#f8fafc' : '#1e293b',
+            border: darkMode ? '1px solid #334155' : 'none'
+          }
+        }}
       >
         {options.map((option) => (
           <MenuItem
@@ -79,6 +89,7 @@ function FilterDropdown({ label, options, selected, onToggle }) {
             onClick={() => onToggle(option)}
             sx={{
               py: 0.25,
+              '&:hover': { backgroundColor: darkMode ? '#334155' : undefined }
             }}
           >
             <Checkbox
@@ -87,6 +98,8 @@ function FilterDropdown({ label, options, selected, onToggle }) {
               sx={{
                 p: 0.5,
                 mr: 0.5,
+                color: darkMode ? '#94a3b8' : undefined,
+                '&.Mui-checked': { color: '#7c3aed' }
               }}
             />
 
@@ -114,22 +127,28 @@ export default function Users() {
   const currentWorkspaceRole = activeWorkspace?.role || "";
   const canAddUser = ["Admin", "Manager"].includes(currentWorkspaceRole);
 
+  // 2. Initialize dark mode state and event listener
+  const initialSettings = getAppSettings();
+  const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+  useEffect(() => {
+    const handleSettingsChange = (event) => {
+      const nextSettings = event.detail ?? getAppSettings();
+      setDarkMode(Boolean(nextSettings.darkMode));
+    };
+
+    window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+  }, []);
+
   const [users, setUsers] = useState([]);
-
   const [search, setSearch] = useState("");
-
   const [roleFilter, setRoleFilter] = useState([]);
-
   const [selected, setSelected] = useState([]);
-
   const [addUserOpen, setAddUserOpen] = useState(false);
-
   const [editUser, setEditUser] = useState(null);
-
   const [loading, setLoading] = useState(true);
-
   const [deleteLoading, setDeleteLoading] = useState(false);
-
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const [snackbar, setSnackbar] = useState({
@@ -154,7 +173,7 @@ export default function Users() {
         LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID,
       );
 
-    console.log("Workspace ID:", workspaceId);
+      console.log("Workspace ID:", workspaceId);
 
       if (!workspaceId) {
         setSnackbar({
@@ -425,13 +444,6 @@ export default function Users() {
     try {
       setDeleteLoading(true);
 
-      /*
-       * selected contains WorkspaceMember.memberId values.
-       *
-       * Backend:
-       * DELETE /api/workspaces/:workspaceId/members/:memberId
-       */
-
       for (const memberId of selected) {
         await APICallService.removeMember(
           workspaceId,
@@ -474,67 +486,37 @@ export default function Users() {
   };
 
   const handleUpdateUser = async ({ memberId, role }) => {
-      const workspaceId = localStorage.getItem(
-        LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID
+    const workspaceId = localStorage.getItem(
+      LOCAL_STORAGE_KEYS.ACTIVE_WORKSPACE_ID
+    );
+
+    if (!workspaceId) {
+      const message = "No active workspace selected.";
+
+      setSnackbar({
+        open: true,
+        message,
+        severity: "error",
+      });
+
+      return {
+        success: false,
+        message,
+      };
+    }
+
+    try {
+      const response = await APICallService.updateMemberRole(
+        workspaceId,
+        memberId,
+        role
       );
 
-      if (!workspaceId) {
-        const message = "No active workspace selected.";
+      const payload = response?.data;
 
-        setSnackbar({
-          open: true,
-          message,
-          severity: "error",
-        });
-
-        return {
-          success: false,
-          message,
-        };
-      }
-
-      try {
-        const response = await APICallService.updateMemberRole(
-          workspaceId,
-          memberId,
-          role
-        );
-
-        const payload = response?.data;
-
-        if (!payload?.success) {
-          const message =
-            payload?.message ||
-            "Failed to update user role.";
-
-          setSnackbar({
-            open: true,
-            message,
-            severity: "error",
-          });
-
-          return {
-            success: false,
-            message,
-          };
-        }
-
-        setSnackbar({
-          open: true,
-          message: "User role updated successfully.",
-          severity: "success",
-        });
-
-        await fetchWorkspaceMembers();
-
-        return {
-          success: true,
-        };
-      } catch (error) {
+      if (!payload?.success) {
         const message =
-          error?.response?.data?.errors?.[0]?.message ||
-          error?.response?.data?.message ||
-          error?.message ||
+          payload?.message ||
           "Failed to update user role.";
 
         setSnackbar({
@@ -548,11 +530,42 @@ export default function Users() {
           message,
         };
       }
-    };
+
+      setSnackbar({
+        open: true,
+        message: "User role updated successfully.",
+        severity: "success",
+      });
+
+      await fetchWorkspaceMembers();
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      const message =
+        error?.response?.data?.errors?.[0]?.message ||
+        error?.response?.data?.message ||
+        error?.message ||
+        "Failed to update user role.";
+
+      setSnackbar({
+        open: true,
+        message,
+        severity: "error",
+      });
+
+      return {
+        success: false,
+        message,
+      };
+    }
+  };
 
   const handleUserClick = (user) => {
-      setEditUser(user);
+    setEditUser(user);
   };
+
   // --------------------------------------------------
   // Render
   // --------------------------------------------------
@@ -565,6 +578,7 @@ export default function Users() {
         flexDirection: "column",
         p: 3,
         minHeight: 0,
+        backgroundColor: darkMode ? '#020817' : '#f8fafc'
       }}
     >
       {/* ------------------------------------------------ */}
@@ -575,7 +589,7 @@ export default function Users() {
         sx={{
           fontSize: "22px",
           fontWeight: 700,
-          color: "#1e293b",
+          color: darkMode ? "#f8fafc" : "#1e293b",
           mb: 2,
           flexShrink: 0,
         }}
@@ -638,8 +652,8 @@ export default function Users() {
             display: "flex",
             alignItems: "center",
             gap: 1,
-            backgroundColor: "#ffffff",
-            border: "1px solid #e2e8f0",
+            backgroundColor: darkMode ? '#0f172a' : '#ffffff',
+            border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
             borderRadius: "8px",
             px: 1.5,
             height: "36px",
@@ -665,6 +679,7 @@ export default function Users() {
               background: "transparent",
               fontSize: "13px",
               width: "100%",
+              color: darkMode ? "#f8fafc" : "inherit"
             }}
           />
         </Box>
@@ -676,6 +691,7 @@ export default function Users() {
           options={ROLES}
           selected={roleFilter}
           onToggle={toggleRoleFilter}
+          darkMode={darkMode}
         />
 
         {/* Clear */}
@@ -694,10 +710,10 @@ export default function Users() {
               textTransform: "none",
               fontSize: "13px",
               fontWeight: 600,
-              color: "#64748b",
+              color: darkMode ? "#94a3b8" : "#64748b",
 
               "&:hover": {
-                backgroundColor: "#f1f5f9",
+                backgroundColor: darkMode ? "#1e293b" : "#f1f5f9",
               },
             }}
           >
@@ -740,18 +756,18 @@ export default function Users() {
             fontWeight: 600,
 
             color: hasSelection
-              ? "#dc2626"
-              : "#64748b",
+              ? (darkMode ? '#fca5a5' : '#dc2626')
+              : (darkMode ? '#64748b' : '#64748b'),
 
             backgroundColor: hasSelection
-              ? "#fee2e2"
+              ? (darkMode ? '#7f1d1d' : '#fee2e2')
               : "transparent",
 
             border: "1px solid",
 
             borderColor: hasSelection
-              ? "#fecaca"
-              : "#e2e8f0",
+              ? (darkMode ? '#991b1b' : '#fecaca')
+              : (darkMode ? '#334155' : '#e2e8f0'),
 
             borderRadius: "8px",
 
@@ -761,13 +777,13 @@ export default function Users() {
 
             "&:hover": {
               backgroundColor: hasSelection
-                ? "#fecaca"
-                : "#f1f5f9",
+                ? (darkMode ? '#991b1b' : '#fecaca')
+                : (darkMode ? '#1e293b' : '#f1f5f9'),
             },
 
             "&:disabled": {
-              color: "#cbd5e1",
-              borderColor: "#e2e8f0",
+              color: darkMode ? '#475569' : '#cbd5e1',
+              borderColor: darkMode ? '#1e293b' : '#e2e8f0',
             },
           }}
         >
@@ -799,7 +815,7 @@ export default function Users() {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              backgroundColor: "#f8fafc",
+              backgroundColor: darkMode ? '#020817' : '#f8fafc',
             }}
           >
             <CircularProgress
@@ -817,6 +833,7 @@ export default function Users() {
             onToggleSelect={toggleSelect}
             onToggleSelectAll={toggleSelectAll}
             onUserClick={handleUserClick}
+            darkMode={darkMode}
           />
         )}
       </Box>
@@ -852,6 +869,8 @@ export default function Users() {
             borderRadius: "14px",
             width: "400px",
             maxWidth: "calc(100% - 32px)",
+            backgroundColor: darkMode ? '#0f172a' : '#ffffff',
+            backgroundImage: 'none'
           },
         }}
       >
@@ -859,7 +878,7 @@ export default function Users() {
           sx={{
             fontSize: "18px",
             fontWeight: 700,
-            color: "#1e293b",
+            color: darkMode ? '#f8fafc' : "#1e293b",
             pb: 1,
           }}
         >
@@ -871,12 +890,12 @@ export default function Users() {
           <Typography
             sx={{
               fontSize: "14px",
-              color: "#64748b",
+              color: darkMode ? '#94a3b8' : "#64748b",
               lineHeight: 1.6,
             }}
           >
             Are you sure you want to remove{" "}
-            <strong>
+            <strong style={{ color: darkMode ? '#f8fafc' : '#1e293b' }}>
               {selected.length}{" "}
               {selected.length === 1
                 ? "member"
@@ -888,7 +907,7 @@ export default function Users() {
           <Typography
             sx={{
               fontSize: "13px",
-              color: "#94a3b8",
+              color: darkMode ? '#64748b' : "#94a3b8",
               mt: 1,
             }}
           >
@@ -912,7 +931,7 @@ export default function Users() {
               textTransform: "none",
               fontSize: "13px",
               fontWeight: 600,
-              color: "#64748b",
+              color: darkMode ? '#94a3b8' : "#64748b",
               borderRadius: "8px",
             }}
           >
