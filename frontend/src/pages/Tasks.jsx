@@ -2,28 +2,17 @@ import { useEffect, useState } from 'react';
 import {
     Box,
     Typography,
-    Chip,
     Avatar,
-    IconButton,
     Menu,
     MenuItem,
     Button,
     Checkbox,
     ListItemText,
-    Drawer,
-    TextField,
-    Select,
-    InputLabel,
-    FormControl,
-    Divider,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ClearIcon from '@mui/icons-material/Close';
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
-import CloseIcon from '@mui/icons-material/Close';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import BugReportIcon from '@mui/icons-material/BugReport';
@@ -59,18 +48,15 @@ const TYPE_CONFIG = {
     'User Story': { icon: AutoStoriesIcon, color: '#009ccc' },
 };
 
-const initialTasks = [
-    { id: 'TB-101', type: 'Task', title: 'Set up authentication flow', description: 'Implement JWT-based login/signup flow with protected routes.', column: 'Done', priority: 'High', assignee: 'JD', area: 'ToBeDone\\Auth', tags: ['auth'], archived: false },
-    { id: 'TB-102', type: 'User Story', title: 'Design dashboard wireframes', description: 'Create low-fidelity wireframes for the main dashboard.', column: 'Done', priority: 'Medium', assignee: 'AK', area: 'ToBeDone\\Design', tags: ['ui'], archived: false },
-    { id: 'TB-103', type: 'Feature', title: 'Build sticky notes feature', description: 'Add drag-and-drop sticky notes to the dashboard.', column: 'In Progress', priority: 'High', assignee: 'JD', area: 'ToBeDone\\Notes', tags: ['frontend'], archived: false },
-    { id: 'TB-104', type: 'Feature', title: 'Integrate AI digest summary', description: 'Summarize daily activity using an AI digest widget.', column: 'In Progress', priority: 'Medium', assignee: 'RS', area: 'ToBeDone\\AI', tags: ['ai'], archived: false },
-    { id: 'TB-105', type: 'Bug', title: 'Fix sidebar overlap on header', description: 'Sidebar overlaps header on collapse/expand transition.', column: 'In Review', priority: 'High', assignee: 'JD', area: 'ToBeDone\\Layout', tags: ['bug', 'css'], archived: false },
-    { id: 'TB-106', type: 'Test Case', title: 'Write unit tests for chat module', description: 'Add Jest tests covering the chat send/receive flow.', column: 'In Review', priority: 'Low', assignee: 'AK', area: 'ToBeDone\\Chat', tags: ['testing'], archived: false },
-    { id: 'TB-107', type: 'User Story', title: 'Plan Q3 roadmap', description: 'Draft the roadmap doc for Q3 deliverables.', column: 'To Do', priority: 'Low', assignee: 'RS', area: 'ToBeDone\\Planning', tags: [], archived: false },
-    { id: 'TB-108', type: 'Task', title: 'Research push notification providers', description: 'Compare FCM vs OneSignal vs Pusher for push notifications.', column: 'To Do', priority: 'Medium', assignee: 'JD', area: 'ToBeDone\\Infra', tags: ['research'], archived: false },
-];
-
-let idCounter = 109;
+// Thin scrollbar, same treatment as the chat panel
+const THIN_SCROLLBAR_SX = {
+    '&::-webkit-scrollbar': { width: '6px', height: '6px' },
+    '&::-webkit-scrollbar-track': { background: 'transparent' },
+    '&::-webkit-scrollbar-thumb': { backgroundColor: '#cbd5e1', borderRadius: '999px' },
+    '&::-webkit-scrollbar-thumb:hover': { backgroundColor: '#94a3b8' },
+    scrollbarWidth: 'thin',
+    scrollbarColor: '#cbd5e1 transparent',
+};
 
 // ---------- Filter dropdown (Azure-style checkbox pill) ----------
 function FilterDropdown({ label, options, selected, onToggle, renderOption }) {
@@ -156,7 +142,6 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
             }}
         >
             {/* Header row (fixed, does not scroll) */}
-            {/* Header row (fixed, does not scroll) */}
             <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', flexShrink: 0 }}>
                 <Box sx={{ width: '44px', display: 'flex', justifyContent: 'center' }}>
                     <Checkbox
@@ -196,7 +181,7 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
             </Box>
 
             {/* Scrollable rows */}
-            <Box sx={{ flex: 1, overflowY: 'auto' }}>
+            <Box sx={{ flex: 1, overflowY: 'auto', ...THIN_SCROLLBAR_SX }}>
                 {sortedTasks.length === 0 ? (
                     <Box sx={{ py: 5, textAlign: 'center' }}>
                         <Typography sx={{ fontSize: '13px', color: '#94a3b8' }}>No work items to show</Typography>
@@ -278,147 +263,6 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
     );
 }
 
-// ---------- Right-side drawer ----------
-function TaskDrawer({ task, onClose, onSave, onArchive, onDelete }) {
-    const [draft, setDraft] = useState(task);
-    const [tagInput, setTagInput] = useState('');
-
-    if (!task) return null;
-    if (draft?.id !== task.id) setDraft(task);
-
-    const TypeIcon = TYPE_CONFIG[draft.type]?.icon;
-    const typeColor = TYPE_CONFIG[draft.type]?.color || '#94a3b8';
-
-    const update = (field, value) => setDraft((prev) => ({ ...prev, [field]: value }));
-
-    const addTag = () => {
-        const val = tagInput.trim();
-        if (val && !draft.tags?.includes(val)) {
-            update('tags', [...(draft.tags || []), val]);
-        }
-        setTagInput('');
-    };
-
-    const removeTag = (tag) => update('tags', draft.tags.filter((t) => t !== tag));
-
-    const handleSave = () => {
-        onSave(draft);
-        onClose();
-    };
-
-    return (
-        <Drawer anchor="right" open={Boolean(task)} onClose={onClose}>
-            <Box sx={{ width: 440, height: '100%', display: 'flex', flexDirection: 'column' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, px: 2.5, py: 2, borderBottom: '1px solid #e2e8f0' }}>
-                    {TypeIcon && <TypeIcon sx={{ fontSize: 20, color: typeColor }} />}
-                    <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#94a3b8' }}>{draft.id}</Typography>
-                    <Box sx={{ flex: 1 }} />
-                    <IconButton size="small" onClick={onClose}>
-                        <CloseIcon sx={{ fontSize: 18 }} />
-                    </IconButton>
-                </Box>
-
-                <Box sx={{ flex: 1, overflowY: 'auto', px: 2.5, py: 2, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
-                    <TextField label="Title" value={draft.title} onChange={(e) => update('title', e.target.value)} fullWidth size="small" />
-
-                    <FormControl fullWidth size="small">
-                        <InputLabel>Work Item Type</InputLabel>
-                        <Select label="Work Item Type" value={draft.type} onChange={(e) => update('type', e.target.value)}>
-                            {WORK_ITEM_TYPES.map((t) => {
-                                const Icon = TYPE_CONFIG[t].icon;
-                                return (
-                                    <MenuItem key={t} value={t}>
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                            <Icon sx={{ fontSize: 16, color: TYPE_CONFIG[t].color }} />
-                                            {t}
-                                        </Box>
-                                    </MenuItem>
-                                );
-                            })}
-                        </Select>
-                    </FormControl>
-
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>State</InputLabel>
-                            <Select label="State" value={draft.column} onChange={(e) => update('column', e.target.value)}>
-                                {COLUMNS.map((s) => (
-                                    <MenuItem key={s} value={s}>{s}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Priority</InputLabel>
-                            <Select label="Priority" value={draft.priority} onChange={(e) => update('priority', e.target.value)}>
-                                {PRIORITIES.map((p) => (
-                                    <MenuItem key={p} value={p}>{p}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', gap: 2 }}>
-                        <FormControl fullWidth size="small">
-                            <InputLabel>Assigned To</InputLabel>
-                            <Select label="Assigned To" value={draft.assignee} onChange={(e) => update('assignee', e.target.value)}>
-                                {['JD', 'AK', 'RS'].map((a) => (
-                                    <MenuItem key={a} value={a}>{a}</MenuItem>
-                                ))}
-                            </Select>
-                        </FormControl>
-
-                        <TextField label="Area" value={draft.area} onChange={(e) => update('area', e.target.value)} fullWidth size="small" />
-                    </Box>
-
-                    <Box>
-                        <Typography sx={{ fontSize: '12px', fontWeight: 600, color: '#64748b', mb: 0.75 }}>Tags</Typography>
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mb: 1 }}>
-                            {(draft.tags || []).map((tag) => (
-                                <Chip key={tag} label={tag} size="small" onDelete={() => removeTag(tag)} sx={{ fontSize: '12px' }} />
-                            ))}
-                        </Box>
-                        <TextField
-                            placeholder="Add a tag and press Enter"
-                            value={tagInput}
-                            onChange={(e) => setTagInput(e.target.value)}
-                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
-                            fullWidth
-                            size="small"
-                        />
-                    </Box>
-
-                    <Divider />
-
-                    <TextField
-                        label="Description"
-                        value={draft.description || ''}
-                        onChange={(e) => update('description', e.target.value)}
-                        fullWidth
-                        multiline
-                        minRows={6}
-                        size="small"
-                    />
-                </Box>
-
-                <Box sx={{ borderTop: '1px solid #e2e8f0', px: 2.5, py: 2, display: 'flex', gap: 1 }}>
-                    <Button onClick={handleSave} variant="contained" sx={{ textTransform: 'none', backgroundColor: '#7c3aed', '&:hover': { backgroundColor: '#6d28d9' } }}>
-                        Save
-                    </Button>
-                    <Button onClick={onClose} sx={{ textTransform: 'none', color: '#64748b' }}>Discard</Button>
-                    <Box sx={{ flex: 1 }} />
-                    <IconButton onClick={() => { onArchive(draft.id); onClose(); }} size="small" title="Archive" sx={{ color: '#64748b' }}>
-                        <ArchiveOutlinedIcon sx={{ fontSize: 19 }} />
-                    </IconButton>
-                    <IconButton onClick={() => { onDelete(draft.id); onClose(); }} size="small" title="Delete" sx={{ color: '#dc2626' }}>
-                        <DeleteOutlineIcon sx={{ fontSize: 19 }} />
-                    </IconButton>
-                </Box>
-            </Box>
-        </Drawer>
-    );
-}
-
 // ---------- Main page ----------
 const mapStatusToColumn = (status) => {
     if (!status) return 'To Do';
@@ -440,10 +284,7 @@ const mapPriorityToUi = (priority) => {
 };
 
 const mapPriorityToApi = (priority) => {
-    if (!priority) return 'Medium';
-    if (priority === 'High') return 'High';
-    if (priority === 'Low') return 'Low';
-    if (priority === 'Medium') return 'Medium';
+    if (priority === 'High' || priority === 'Low' || priority === 'Medium') return priority;
     return 'Medium';
 };
 
@@ -465,6 +306,7 @@ const mapApiTaskToUi = (task, memberLookup = {}) => {
         assigneeId,
         area: task.area || 'ToBeDone',
         tags: Array.isArray(task.tags) ? task.tags : [],
+        dueDate: task.dueDate ? String(task.dueDate).slice(0, 10) : '',
         archived: Boolean(task.archived),
         raw: task,
     };
@@ -477,6 +319,9 @@ const mapUiTaskToApi = (task) => ({
     status: mapColumnToStatus(task.column),
     priority: mapPriorityToApi(task.priority),
     area: task.area || 'ToBeDone',
+    tags: Array.isArray(task.tags) ? task.tags : [],
+    dueDate: task.dueDate || undefined,
+    archived: Boolean(task.archived),
     assignedTo: task.assigneeId ? [task.assigneeId] : undefined,
 });
 
@@ -495,8 +340,6 @@ export default function Tasks() {
 
     useEffect(() => {
         if (!activeWorkspace?.workspaceId) {
-            setTasks([]);
-            setWorkspaceMembers([]);
             return;
         }
 
@@ -509,48 +352,42 @@ export default function Tasks() {
             return [];
         };
 
-        const loadMembers = async () => {
+        // Load members FIRST and build the lookup from the response directly
+        // (not from state, which wouldn't have updated yet) so assignee names
+        // are correct on the very first render instead of showing "Unassigned".
+        const loadMembersThenTasks = async () => {
+            let members = [];
             try {
-                const response = await APICallService.getWorkspaceMembers(activeWorkspace.workspaceId);
-                if (!isMounted) return;
-
-                const members = normalizeList(response?.data);
-                setWorkspaceMembers(members);
+                const membersResponse = await APICallService.getWorkspaceMembers(activeWorkspace.workspaceId);
+                members = normalizeList(membersResponse?.data);
+                if (isMounted) setWorkspaceMembers(members);
             } catch (error) {
                 console.error('Failed to load workspace members:', error);
-                if (isMounted) {
-                    setWorkspaceMembers([]);
-                }
+                if (isMounted) setWorkspaceMembers([]);
             }
-        };
 
-        const loadTasks = async () => {
+            const memberLookup = Object.fromEntries(
+                members.map((member) => [(member.userId || member._id), member.name || ''])
+            );
+
             try {
-                const response = await APICallService.getTasks(activeWorkspace.workspaceId);
+                const tasksResponse = await APICallService.getTasks(activeWorkspace.workspaceId);
                 if (!isMounted) return;
-
-                const list = normalizeList(response?.data);
-                const memberLookup = Object.fromEntries(
-                    (workspaceMembers || []).map((member) => [(member.userId || member._id || member.id), member.name || ''])
-                );
-
+                const list = normalizeList(tasksResponse?.data);
                 setTasks(list.map((task) => mapApiTaskToUi(task, memberLookup)));
             } catch (error) {
                 console.error('Failed to load tasks:', error);
-                if (isMounted) {
-                    setTasks([]);
-                }
+                if (isMounted) setTasks([]);
             }
         };
 
-        loadMembers();
-        loadTasks();
+        loadMembersThenTasks();
 
         return () => { isMounted = false; };
     }, [activeWorkspace?.workspaceId]);
 
-    const hasActiveFilters = search || typeFilter.length || priorityFilter.length || stateFilter.length;
-    const visibleTasks = tasks.filter((t) => (showArchived ? t.archived : !t.archived));
+    const hasWorkspace = Boolean(activeWorkspace?.workspaceId);
+    const visibleTasks = (hasWorkspace ? tasks : []).filter((t) => (showArchived ? t.archived : !t.archived));
 
     const filteredTasks = visibleTasks.filter((t) => {
         const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.id.toLowerCase().includes(search.toLowerCase());
@@ -561,13 +398,6 @@ export default function Tasks() {
     });
 
     const toggleFilter = (setter) => (val) => setter((prev) => (prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val]));
-
-    const clearFilters = () => {
-        setSearch('');
-        setTypeFilter([]);
-        setPriorityFilter([]);
-        setStateFilter([]);
-    };
 
     const toggleSelect = (id) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
@@ -583,7 +413,7 @@ export default function Tasks() {
             const response = await APICallService.createTask(activeWorkspace.workspaceId, mapUiTaskToApi(newFields));
             const createdTask = response?.data?.data;
             if (createdTask) {
-                setTasks((prev) => [...prev, mapApiTaskToUi(createdTask)]);
+                setTasks((prev) => [mapApiTaskToUi(createdTask), ...prev]);
             }
         } catch (error) {
             console.error('Failed to create task:', error);
@@ -604,60 +434,18 @@ export default function Tasks() {
         }
     };
 
-    const handleArchiveOne = async (id) => {
-        const task = tasks.find((item) => item.id === id);
-        if (!task || !activeWorkspace?.workspaceId) return;
-
-        try {
-            await APICallService.updateTask(activeWorkspace.workspaceId, id, {
-                ...mapUiTaskToApi(task),
-                status: 'Done',
-            });
-            setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, archived: true } : t)));
-        } catch (error) {
-            console.error('Failed to archive task:', error);
-        }
-        setSelected((prev) => prev.filter((x) => x !== id));
-    };
-
-    const handleUnarchiveOne = async (id) => {
-        const task = tasks.find((item) => item.id === id);
-        if (!task || !activeWorkspace?.workspaceId) return;
-
-        try {
-            await APICallService.updateTask(activeWorkspace.workspaceId, id, {
-                ...mapUiTaskToApi(task),
-                status: 'To Do',
-            });
-            setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, archived: false } : t)));
-        } catch (error) {
-            console.error('Failed to restore task:', error);
-        }
-        setSelected((prev) => prev.filter((x) => x !== id));
-    };
-
-    const handleDeleteOne = async (id) => {
-        if (!activeWorkspace?.workspaceId) return;
-
-        try {
-            await APICallService.deleteTask(activeWorkspace.workspaceId, id);
-            setTasks((prev) => prev.filter((t) => t.id !== id));
-        } catch (error) {
-            console.error('Failed to delete task:', error);
-        }
-        setSelected((prev) => prev.filter((x) => x !== id));
-    };
-
     const handleArchiveSelected = async () => {
         if (!activeWorkspace?.workspaceId || !selected.length) return;
 
         try {
             const nextStatus = showArchived ? 'To Do' : 'Done';
+            const nextArchived = !showArchived;
             const selectedTasks = tasks.filter((task) => selected.includes(task.id));
 
             await Promise.all(selectedTasks.map((task) => APICallService.updateTask(activeWorkspace.workspaceId, task.id, {
                 ...mapUiTaskToApi(task),
                 status: nextStatus,
+                archived: nextArchived,
             })));
 
             setTasks((prev) => prev.map((task) => (selected.includes(task.id) ? { ...task, archived: !showArchived } : task)));
@@ -671,14 +459,11 @@ export default function Tasks() {
 
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3, minHeight: 0 }}>
-            {/* Title */}
             <Typography sx={{ fontSize: '22px', fontWeight: 700, color: '#1e293b', mb: 2, flexShrink: 0 }}>
                 Tasks
             </Typography>
 
-            {/* Filter bar + action buttons, all in one row */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2, flexWrap: 'wrap', flexShrink: 0 }}>
-
                 <Button
                     onClick={() => {
                         setEditingTask(null);
@@ -781,11 +566,8 @@ export default function Tasks() {
                 >
                     {showArchived ? 'Restore' : 'Archive'}{selected.length ? ` (${selected.length})` : ''}
                 </Button>
-
-
             </Box>
 
-            {/* Table takes remaining height and scrolls internally */}
             <Box sx={{ flex: 1, minHeight: 0 }}>
                 <TaskTable
                     tasks={filteredTasks}
@@ -800,6 +582,7 @@ export default function Tasks() {
             </Box>
 
             <AddTask
+                key={`${editingTask?.id || 'new'}-${addTaskOpen}`}
                 open={addTaskOpen}
                 onClose={() => {
                     setAddTaskOpen(false);
@@ -808,7 +591,7 @@ export default function Tasks() {
                 task={editingTask}
                 onAdd={handleAddTask}
                 onSave={handleSaveTask}
-                members={workspaceMembers}
+                members={hasWorkspace ? workspaceMembers : []}
             />
         </Box>
     );

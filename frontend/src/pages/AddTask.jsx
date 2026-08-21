@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
     TextField,
     MenuItem,
@@ -24,7 +24,24 @@ const TYPE_CONFIG = {
 };
 const STATES = ['To Do', 'In Progress', 'Done'];
 const PRIORITIES = ['High', 'Medium', 'Low'];
-const ASSIGNEES = ['JD', 'AK', 'RS'];
+const FIELD_CONTROL_SX = {
+    fontSize: '13px',
+    fontWeight: 400,
+    '& .MuiInputBase-input, & .MuiSelect-select': { fontSize: '13px', fontWeight: 400 },
+    '& .MuiOutlinedInput-root': { borderRadius: '10px' },
+};
+
+const getToday = () => {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${today.getFullYear()}-${month}-${day}`;
+};
+
+// Message updated per request — was "Due date cannot be in the past."
+const getDueDateError = (value) => (
+    value && value < getToday() ? 'Choose today or a future date.' : ''
+);
 
 // Shared label element so every field's title is styled identically
 const FieldLabel = ({ children }) => (
@@ -35,39 +52,20 @@ const FieldLabel = ({ children }) => (
 
 export default function AddTask({ open, onClose, onAdd, onSave, task, defaultColumn, members = [] }) {
     const isEditMode = Boolean(task);
-    const [title, setTitle] = useState('');
-    const [type, setType] = useState('Task');
-    const [column, setColumn] = useState(defaultColumn || STATES[0]);
-    const [priority, setPriority] = useState('Medium');
-    const [assigneeId, setAssigneeId] = useState(members[0]?.userId || '');
-    const [area, setArea] = useState('ToBeDone');
-    const [description, setDescription] = useState('');
-
-    useEffect(() => {
-        if (!open) return;
-
-        if (task) {
-            setTitle(task.title || '');
-            setType(task.type || 'Task');
-            setColumn(task.column || task.status || defaultColumn || STATES[0]);
-            setPriority(task.priority || 'Medium');
-            setAssigneeId(task.assigneeId || members[0]?.userId || '');
-            setArea(task.area || 'ToBeDone');
-            setDescription(task.description || '');
-            return;
-        }
-
-        setTitle('');
-        setType('Task');
-        setColumn(defaultColumn || STATES[0]);
-        setPriority('Medium');
-        setAssigneeId(members[0]?.userId || '');
-        setArea('ToBeDone');
-        setDescription('');
-    }, [open, task, defaultColumn, members]);
+    const initialDueDate = task?.dueDate ? String(task.dueDate).slice(0, 10) : '';
+    const [title, setTitle] = useState(() => task?.title || '');
+    const [type, setType] = useState(() => task?.type || 'Task');
+    const [column, setColumn] = useState(() => task?.column || task?.status || defaultColumn || STATES[0]);
+    const [priority, setPriority] = useState(() => task?.priority || 'Medium');
+    const [assigneeId, setAssigneeId] = useState(() => task?.assigneeId || members[0]?.userId || '');
+    const [area, setArea] = useState(() => task?.area || 'ToBeDone');
+    const [description, setDescription] = useState(() => task?.description || '');
+    const [tags, setTags] = useState(() => (Array.isArray(task?.tags) ? task.tags.join(', ') : ''));
+    const [dueDate, setDueDate] = useState(() => initialDueDate);
+    const [dueDateError, setDueDateError] = useState(() => getDueDateError(initialDueDate));
 
     const handleSubmit = () => {
-        if (!title.trim()) return;
+        if (!title.trim() || dueDateError) return;
 
         const payload = {
             id: task?.id,
@@ -79,7 +77,8 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
             assignee: members.find((member) => (member.userId || member._id) === assigneeId)?.name || '',
             area,
             description,
-            tags: task?.tags || [],
+            tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+            dueDate: dueDate || undefined,
         };
 
         if (isEditMode && onSave) {
@@ -100,7 +99,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
             primaryAction={{
                 label: isEditMode ? 'Update' : 'Add',
                 onClick: handleSubmit,
-                disabled: !title.trim(),
+                disabled: !title.trim() || Boolean(dueDateError),
             }}
             secondaryAction={{
                 label: 'Cancel',
@@ -111,7 +110,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                 <Box>
                     <FieldLabel>Work Item Type</FieldLabel>
                     <FormControl fullWidth size="small">
-                        <Select value={type} onChange={(e) => setType(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                        <Select value={type} onChange={(e) => setType(e.target.value)} sx={FIELD_CONTROL_SX}>
                             {WORK_ITEM_TYPES.map((t) => {
                                 const Icon = TYPE_CONFIG[t].icon;
                                 return (
@@ -136,7 +135,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                         onKeyDown={(e) => { if (e.key === 'Enter') handleSubmit(); }}
                         fullWidth
                         size="small"
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                        sx={FIELD_CONTROL_SX}
                     />
                 </Box>
 
@@ -144,7 +143,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                     <Box sx={{ flex: 1 }}>
                         <FieldLabel>State</FieldLabel>
                         <FormControl fullWidth size="small">
-                            <Select value={column} onChange={(e) => setColumn(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                            <Select value={column} onChange={(e) => setColumn(e.target.value)} sx={FIELD_CONTROL_SX}>
                                 {STATES.map((s) => (
                                     <MenuItem key={s} value={s}>{s}</MenuItem>
                                 ))}
@@ -155,7 +154,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                     <Box sx={{ flex: 1 }}>
                         <FieldLabel>Priority</FieldLabel>
                         <FormControl fullWidth size="small">
-                            <Select value={priority} onChange={(e) => setPriority(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                            <Select value={priority} onChange={(e) => setPriority(e.target.value)} sx={FIELD_CONTROL_SX}>
                                 {PRIORITIES.map((p) => (
                                     <MenuItem key={p} value={p}>{p}</MenuItem>
                                 ))}
@@ -168,7 +167,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                     <Box sx={{ flex: 1 }}>
                         <FieldLabel>Assigned To</FieldLabel>
                         <FormControl fullWidth size="small">
-                            <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} sx={{ borderRadius: '10px', fontSize: '13px' }}>
+                            <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} sx={FIELD_CONTROL_SX}>
                                 {members.length ? members.map((member) => (
                                     <MenuItem key={member.userId || member._id} value={member.userId || member._id}>
                                         {member.name}
@@ -187,7 +186,41 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                             onChange={(e) => setArea(e.target.value)}
                             fullWidth
                             size="small"
-                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                            sx={FIELD_CONTROL_SX}
+                        />
+                    </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                        <FieldLabel>Due Date</FieldLabel>
+                        <TextField
+                            type="date"
+                            value={dueDate}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setDueDate(value);
+                                setDueDateError(getDueDateError(value));
+                            }}
+                            inputProps={{ min: getToday() }}
+                            error={Boolean(dueDateError)}
+                            helperText={dueDateError || 'Pick a deadline to keep this on track.'}
+                            fullWidth
+                            size="small"
+                            InputLabelProps={{ shrink: true }}
+                            sx={FIELD_CONTROL_SX}
+                        />
+                    </Box>
+
+                    <Box sx={{ flex: 1 }}>
+                        <FieldLabel>Tags</FieldLabel>
+                        <TextField
+                            value={tags}
+                            onChange={(e) => setTags(e.target.value)}
+                            placeholder="auth, frontend"
+                            fullWidth
+                            size="small"
+                            sx={FIELD_CONTROL_SX}
                         />
                     </Box>
                 </Box>
@@ -201,7 +234,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                         multiline
                         minRows={3}
                         size="small"
-                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: '10px' } }}
+                        sx={FIELD_CONTROL_SX}
                     />
                 </Box>
             </Box>
