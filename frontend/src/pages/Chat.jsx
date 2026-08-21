@@ -85,7 +85,6 @@ const notificationChat = location.state;
     );
 
     if (group) {
-      console.log("👥 Opening notification group:", group);
 
       setSelected({
         ...group,
@@ -121,7 +120,6 @@ const notificationChat = location.state;
     );
 
     if (direct) {
-      console.log("📱 Opening notification DM:", direct);
 
       setSelected({
         ...direct,
@@ -255,15 +253,12 @@ useEffect(() => {
     if (!socket || !selected) return;
 
     if (selected.type === 'dm') {
-      console.log('📱 Opening DM with:', selected.id);
       socket.emit('chat:open', { recipientId: selected.id });
     } else if (selected.type === 'group') {
-      console.log('👥 Opening group:', selected.id);
       socket.emit('chat:open', { groupId: selected.id });
     }
 
     return () => {
-      console.log('🚪 Closing chat');
       socket.emit('chat:close');
     };
   }, [selected]);

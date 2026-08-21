@@ -54,11 +54,6 @@ export default function Profile() {
             const meResponse =
                 await APICallService.getMe();
 
-            console.log(
-                "GET ME RESPONSE:",
-                meResponse
-            );
-
             const userData =
                 meResponse?.data?.data;
 
@@ -79,11 +74,6 @@ export default function Profile() {
                     "activeWorkspaceId"
                 );
 
-            console.log(
-                "ACTIVE WORKSPACE ID:",
-                activeWorkspaceId
-            );
-
             // -------------------------------------------------
             // 3. NO ACTIVE WORKSPACE
             // -------------------------------------------------
@@ -101,11 +91,6 @@ export default function Profile() {
                 await APICallService.getWorkspaceById(
                     activeWorkspaceId
                 );
-
-            console.log(
-                "WORKSPACE RESPONSE:",
-                workspaceResponse
-            );
 
             const workspaceData =
                 workspaceResponse?.data?.data;
@@ -148,10 +133,6 @@ export default function Profile() {
 
     useEffect(() => {
         const handleWorkspaceChange = () => {
-            console.log(
-                "Workspace changed - refreshing profile"
-            );
-
             fetchProfile();
         };
 

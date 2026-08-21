@@ -103,14 +103,14 @@ async function getMonthlyCompleted(workspaceObjectId) {
       $match: {
         workspace: workspaceObjectId,
         status: "Done",
-        completedAt: { $gte: sixMonthsAgo, $ne: null },
+        updatedAt: { $gte: sixMonthsAgo },
       },
     },
     {
       $group: {
         _id: {
-          year: { $year: "$completedAt" },
-          month: { $month: "$completedAt" },
+          year: { $year: "$updatedAt" },
+          month: { $month: "$updatedAt" },
         },
         value: { $sum: 1 },
       },
@@ -193,6 +193,10 @@ async function getRecentActivity(workspaceObjectId, limit = 6) {
       let role = null;
       let oldRole = null;
       let newRole = null;
+      let assignees = [];
+      let groupName = null;
+      let oldStatus = null;  
+      let newStatus = null;
 
      // MEMBER_INVITED
       if (log.action === "MEMBER_INVITED") {
@@ -247,17 +251,35 @@ async function getRecentActivity(workspaceObjectId, limit = 6) {
 
       // GROUP_CREATED
       else if (log.action === "GROUP_CREATED") {
-        target = log.metadata?.groupName || null;
+        target = log.metadata?.name || null;
       }
 
       // GROUP_MEMBER_ADDED
       else if (log.action === "GROUP_MEMBER_ADDED") {
-        target = log.metadata?.groupName || null;
+        groupName = log.metadata?.groupName || null;
+
+        const addedUserId = log.metadata?.addedUser;
+        if (addedUserId) {
+          const addedUser = await User.findById(addedUserId)
+            .select("name")
+            .lean();
+
+          target = addedUser?.name || null;
+        }
       }
 
       // GROUP_MEMBER_REMOVED
       else if (log.action === "GROUP_MEMBER_REMOVED") {
-        target = log.metadata?.groupName || null;
+        groupName = log.metadata?.groupName || null;
+
+        const removedUserId = log.metadata?.removedUser; // check your actual field name here
+        if (removedUserId) {
+          const removedUser = await User.findById(removedUserId)
+            .select("name")
+            .lean();
+
+          target = removedUser?.name || null;
+        }
       }
 
       // TASK_CREATED
@@ -273,11 +295,26 @@ async function getRecentActivity(workspaceObjectId, limit = 6) {
       // TASK_ASSIGNED
       else if (log.action === "TASK_ASSIGNED") {
         target = log.metadata?.title || null;
+
+        const assignedToIds = log.metadata?.assignedTo || [];
+        if (assignedToIds.length > 0) {
+          const assignedUsers = await User.find({ _id: { $in: assignedToIds } })
+            .select("name")
+            .lean();
+
+          assignees = assignedUsers.map((u) => ({
+            id: u._id,
+            name: u.name,
+            initials: toInitials(u.name),
+          }));
+        }
       }
 
       // TASK_STATUS_CHANGED
       else if (log.action === "TASK_STATUS_CHANGED") {
         target = log.metadata?.title || null;
+        oldStatus = log.metadata?.oldStatus || null;
+        newStatus = log.metadata?.newStatus || null;
       }
 
       return {
@@ -290,6 +327,10 @@ async function getRecentActivity(workspaceObjectId, limit = 6) {
         role,
         oldRole,
         newRole,
+        assignees,
+        groupName,
+        oldStatus,   
+        newStatus,
         time: log.createdAt,
       };
     }),
