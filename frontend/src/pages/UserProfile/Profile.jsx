@@ -16,8 +16,27 @@ import ChangePassword from "./ChangePassword";
 
 import APICallService from "../../services/APICallService";
 
+// 1. Import settings utility
+import { getAppSettings } from "../../utils/preferences";
+
 export default function Profile() {
     const [activeTab, setActiveTab] = useState(0);
+
+    // =====================================================
+    // DARK MODE STATE
+    // =====================================================
+    const initialSettings = getAppSettings();
+    const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+    useEffect(() => {
+        const handleSettingsChange = (event) => {
+            const nextSettings = event.detail ?? getAppSettings();
+            setDarkMode(Boolean(nextSettings.darkMode));
+        };
+
+        window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+        return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+    }, []);
 
     // =====================================================
     // USER
@@ -177,6 +196,7 @@ export default function Profile() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
+                    backgroundColor: darkMode ? '#020817' : '#f8fafc',
                 }}
             >
                 <CircularProgress
@@ -198,7 +218,9 @@ export default function Profile() {
             <Box
                 sx={{
                     p: 3,
-                    color: "#dc2626",
+                    color: darkMode ? "#fca5a5" : "#dc2626",
+                    backgroundColor: darkMode ? '#020817' : '#f8fafc',
+                    height: '100%',
                 }}
             >
                 <Typography
@@ -220,6 +242,7 @@ export default function Profile() {
                 minHeight: 0,
                 p: 3,
                 overflow: "hidden",
+                backgroundColor: darkMode ? '#020817' : '#f8fafc',
             }}
         >
             {/* =================================================
@@ -253,7 +276,7 @@ export default function Profile() {
                         sx={{
                             fontSize: "22px",
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: darkMode ? "#f8fafc" : "#1e293b",
                             mb: 1.5,
                         }}
                     >
@@ -280,9 +303,8 @@ export default function Profile() {
                                 height: 40,
                                 fontSize: "16px",
                                 fontWeight: 700,
-                                backgroundColor:
-                                    "#ede9fe",
-                                color: "#7c3aed",
+                                backgroundColor: darkMode ? "#312e81" : "#ede9fe",
+                                color: darkMode ? "#c4b5fd" : "#7c3aed",
                             }}
                         >
                             {user?.name
@@ -294,7 +316,7 @@ export default function Profile() {
                             sx={{
                                 fontSize: "14px",
                                 fontWeight: 600,
-                                color: "#334155",
+                                color: darkMode ? "#cbd5e1" : "#334155",
                             }}
                         >
                             {user?.name || "-"}
@@ -307,7 +329,7 @@ export default function Profile() {
                         sx={{
                             fontSize: "11px",
                             fontWeight: 700,
-                            color: "#94a3b8",
+                            color: darkMode ? "#64748b" : "#94a3b8",
                             textTransform: "uppercase",
                             letterSpacing: "0.5px",
                             mb: 1,
@@ -349,14 +371,14 @@ export default function Profile() {
 
                                             backgroundColor:
                                                 isActive
-                                                    ? "#f3f0fe"
+                                                    ? (darkMode ? "#2e1065" : "#f3f0fe")
                                                     : "transparent",
 
                                             "&:hover": {
                                                 backgroundColor:
                                                     isActive
-                                                        ? "#f3f0fe"
-                                                        : "#f8fafc",
+                                                        ? (darkMode ? "#2e1065" : "#f3f0fe")
+                                                        : (darkMode ? "#1e293b" : "#f8fafc"),
                                             },
                                         }}
                                     >
@@ -364,8 +386,8 @@ export default function Profile() {
                                             sx={{
                                                 fontSize: 18,
                                                 color: isActive
-                                                    ? "#7c3aed"
-                                                    : "#64748b",
+                                                    ? (darkMode ? "#a78bfa" : "#7c3aed")
+                                                    : (darkMode ? "#94a3b8" : "#64748b"),
                                             }}
                                         />
 
@@ -379,8 +401,8 @@ export default function Profile() {
                                                         ? 600
                                                         : 500,
                                                 color: isActive
-                                                    ? "#7c3aed"
-                                                    : "#475569",
+                                                    ? (darkMode ? "#c4b5fd" : "#7c3aed")
+                                                    : (darkMode ? "#cbd5e1" : "#475569"),
                                             }}
                                         >
                                             {item.label}
@@ -390,8 +412,7 @@ export default function Profile() {
                                             <ChevronRightIcon
                                                 sx={{
                                                     fontSize: 16,
-                                                    color:
-                                                        "#7c3aed",
+                                                    color: darkMode ? "#a78bfa" : "#7c3aed",
                                                 }}
                                             />
                                         )}
@@ -422,7 +443,7 @@ export default function Profile() {
                     )}
 
                     {activeTab === 1 && (
-                        <ChangePassword />
+                        <ChangePassword darkMode={darkMode} />
                     )}
                 </Box>
             </Box>

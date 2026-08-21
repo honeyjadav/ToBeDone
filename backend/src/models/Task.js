@@ -37,6 +37,15 @@ const taskSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+    area: {
+      type: String,
+      default: "ToBeDone",
+      trim: true,
+    },
+    tags: {
+      type: [String],
+      default: [],
+    },
     workspace: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Workspace",
@@ -65,6 +74,10 @@ const taskSchema = new mongoose.Schema(
     },
     dueDate: {
       type: Date,
+    },
+    archived: {
+      type: Boolean,
+      default: false,
     },
     // attachments: [
     //   {

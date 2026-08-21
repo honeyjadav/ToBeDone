@@ -16,22 +16,27 @@ import AssignmentIcon from "@mui/icons-material/Assignment";
 
 import { useNavigate } from "react-router-dom";
 
+// 1. Import settings utility
+import { getAppSettings } from "../utils/preferences";
+
 const TYPE_CONFIG = {
   DIGEST: {
     icon: AutoAwesomeIcon,
     color: "#7c3aed",
     bg: "#f3f0fe",
+    darkBg: "#2e1065",
   },
-
   DIRECT: {
     icon: AlternateEmailIcon,
     color: "#3b82f6",
     bg: "#eff6ff",
+    darkBg: "#1e3a8a",
   },
-   TASK: {
+  TASK: {
     icon: AssignmentIcon,
     color: "#059669",
     bg: "#ecfdf5",
+    darkBg: "#14532d",
   },
 };
 
@@ -41,6 +46,20 @@ export default function NotificationDropdown({
   onMarkAllRead,
   onOpenNotification,
 }) {
+  // 2. Initialize dark mode state and event listener
+  const initialSettings = getAppSettings();
+  const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+  useEffect(() => {
+    const handleSettingsChange = (event) => {
+      const nextSettings = event.detail ?? getAppSettings();
+      setDarkMode(Boolean(nextSettings.darkMode));
+    };
+
+    window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+  }, []);
+
   const [anchorEl, setAnchorEl] = useState(null);
   const [isRinging, setIsRinging] = useState(false);
 
@@ -213,10 +232,11 @@ export default function NotificationDropdown({
           setAnchorEl(event.currentTarget)
         }
         sx={{
-          border: "1px solid #e5e7eb",
+          border: `1px solid ${darkMode ? "#334155" : "#e5e7eb"}`,
           borderRadius: "8px",
           width: 36,
           height: 36,
+          backgroundColor: darkMode ? "#0f172a" : "transparent",
 
           // Bell animation
           ...(isRinging && {
@@ -272,7 +292,7 @@ export default function NotificationDropdown({
           <NotificationsIcon
             sx={{
               fontSize: 18,
-              color: "#64748b",
+              color: darkMode ? "#94a3b8" : "#64748b",
             }}
           />
         </Badge>
@@ -292,6 +312,9 @@ export default function NotificationDropdown({
               display: "flex",
               flexDirection: "column",
               overflow: "hidden !important",
+              backgroundColor: darkMode ? "#0f172a" : "#ffffff",
+              color: darkMode ? "#f8fafc" : "#1e293b",
+              border: darkMode ? "1px solid #334155" : "none",
             },
           },
 
@@ -322,7 +345,7 @@ export default function NotificationDropdown({
             sx={{
               fontSize: "14px",
               fontWeight: 700,
-              color: "#1e293b",
+              color: darkMode ? "#f8fafc" : "#1e293b",
             }}
           >
             Notifications
@@ -337,7 +360,7 @@ export default function NotificationDropdown({
                 textTransform: "none",
                 fontSize: "11.5px",
                 fontWeight: 600,
-                color: "#7c3aed",
+                color: darkMode ? "#c4b5fd" : "#7c3aed",
                 minWidth: "auto",
                 p: 0.5,
               }}
@@ -347,7 +370,7 @@ export default function NotificationDropdown({
           )}
         </Box>
 
-        <Divider />
+        <Divider sx={{ borderColor: darkMode ? "#334155" : "#e2e8f0" }} />
 
         {/* Notifications */}
 
@@ -361,7 +384,7 @@ export default function NotificationDropdown({
             <Typography
               sx={{
                 fontSize: "13px",
-                color: "#94a3b8",
+                color: darkMode ? "#64748b" : "#94a3b8",
               }}
             >
               You're all caught up
@@ -380,7 +403,7 @@ export default function NotificationDropdown({
               },
 
               "&::-webkit-scrollbar-thumb": {
-                backgroundColor: "#cbd5e1",
+                backgroundColor: darkMode ? "#475569" : "#cbd5e1",
                 borderRadius: "999px",
               },
 
@@ -389,8 +412,7 @@ export default function NotificationDropdown({
               },
 
               scrollbarWidth: "thin",
-              scrollbarColor:
-                "#cbd5e1 transparent",
+              scrollbarColor: darkMode ? "#475569 transparent" : "#cbd5e1 transparent",
             }}
           >
             {notifications.map((notification) => {
@@ -421,14 +443,13 @@ export default function NotificationDropdown({
                     backgroundColor:
                       notification.isRead
                         ? "transparent"
-                        : "#faf9ff",
+                        : (darkMode ? "#1e1b4b" : "#faf9ff"),
 
-                    borderBottom:
-                      "1px solid #f1f5f9",
+                    borderBottom: `1px solid ${darkMode ? "#1e293b" : "#f1f5f9"}`,
 
                     "&:hover": {
                       backgroundColor:
-                        "#f8fafc",
+                        darkMode ? "#1e293b" : "#f8fafc",
                     },
                   }}
                 >
@@ -442,7 +463,7 @@ export default function NotificationDropdown({
                       flexShrink: 0,
 
                       backgroundColor:
-                        config.bg,
+                        darkMode ? config.darkBg : config.bg,
 
                       color:
                         config.color,
@@ -478,7 +499,7 @@ export default function NotificationDropdown({
                         sx={{
                           fontSize: "13px",
                           fontWeight: 700,
-                          color: "#1e293b",
+                          color: darkMode ? "#f8fafc" : "#1e293b",
                         }}
                       >
                         {notification.title}
@@ -490,8 +511,7 @@ export default function NotificationDropdown({
                             width: 6,
                             height: 6,
                             borderRadius: "50%",
-                            backgroundColor:
-                              "#7c3aed",
+                            backgroundColor: "#7c3aed",
                             flexShrink: 0,
                           }}
                         />
@@ -501,7 +521,7 @@ export default function NotificationDropdown({
                     <Typography
                       sx={{
                         fontSize: "12.5px",
-                        color: "#64748b",
+                        color: darkMode ? "#94a3b8" : "#64748b",
                         mt: 0.25,
 
                         overflow: "hidden",
@@ -519,7 +539,7 @@ export default function NotificationDropdown({
                     <Typography
                       sx={{
                         fontSize: "11px",
-                        color: "#94a3b8",
+                        color: darkMode ? "#64748b" : "#94a3b8",
                         mt: 0.5,
                       }}
                     >
@@ -534,7 +554,7 @@ export default function NotificationDropdown({
           </Box>
         )}
 
-        <Divider />
+        <Divider sx={{ borderColor: darkMode ? "#334155" : "#e2e8f0" }} />
 
         {/* View All */}
 
@@ -557,7 +577,10 @@ export default function NotificationDropdown({
               textTransform: "none",
               fontSize: "12.5px",
               fontWeight: 600,
-              color: "#475569",
+              color: darkMode ? "#94a3b8" : "#475569",
+              "&:hover": {
+                backgroundColor: darkMode ? "#1e293b" : undefined,
+              }
             }}
           >
             View all notifications
@@ -567,4 +590,3 @@ export default function NotificationDropdown({
     </>
   );
 }
-

@@ -11,12 +11,29 @@ import {
 } from "@mui/material";
 
 import APICallService from "../../services/APICallService";
+import { getAppSettings } from "../../utils/preferences";
 
 export default function ProfileDetails({
     user,
     workspace,
     onUserUpdated,
 }) {
+    // =====================================================
+    // DARK MODE STATE
+    // =====================================================
+    const initialSettings = getAppSettings();
+    const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+    useEffect(() => {
+        const handleSettingsChange = (event) => {
+            const nextSettings = event.detail ?? getAppSettings();
+            setDarkMode(Boolean(nextSettings.darkMode));
+        };
+
+        window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+        return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+    }, []);
+
     const [isEditing, setIsEditing] = useState(false);
 
     const [profileData, setProfileData] = useState({
@@ -156,6 +173,38 @@ export default function ProfileDetails({
         setIsEditing(false);
     };
 
+    // =====================================================
+    // TEXTFIELD STYLES
+    // =====================================================
+    const textFieldSx = {
+        "& .MuiOutlinedInput-root": {
+            backgroundColor: darkMode ? "#0f172a" : "#fff",
+            "& fieldset": {
+                borderColor: darkMode ? "#334155" : "#e2e8f0",
+            },
+            "&:hover fieldset": {
+                borderColor: darkMode ? "#475569" : "#cbd5e1",
+            },
+            "&.Mui-disabled": {
+                backgroundColor: darkMode ? "#1e293b" : "rgba(0, 0, 0, 0.03)",
+                "& fieldset": { borderColor: darkMode ? "#334155" : "#e2e8f0" }
+            }
+        },
+        "& .MuiInputBase-input": {
+            color: darkMode ? "#f8fafc" : "#1e293b",
+            "&.Mui-disabled": {
+                color: darkMode ? "#94a3b8" : "rgba(0, 0, 0, 0.38)",
+                WebkitTextFillColor: darkMode ? "#94a3b8" : "rgba(0, 0, 0, 0.38)",
+            }
+        },
+        "& .MuiInputLabel-root": {
+            color: darkMode ? "#94a3b8" : undefined,
+        },
+        "& .MuiFormHelperText-root": {
+            color: darkMode ? "#64748b" : undefined,
+        }
+    };
+
     return (
         <Box
             sx={{
@@ -168,8 +217,8 @@ export default function ProfileDetails({
 
             <Box
                 sx={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e2e8f0",
+                    backgroundColor: darkMode ? "#0f172a" : "#ffffff",
+                    border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
                     borderRadius: "8px",
                     mb: 2,
                 }}
@@ -189,7 +238,7 @@ export default function ProfileDetails({
                             sx={{
                                 fontSize: "15px",
                                 fontWeight: 700,
-                                color: "#1e293b",
+                                color: darkMode ? "#f8fafc" : "#1e293b",
                             }}
                         >
                             Personal Information
@@ -198,7 +247,7 @@ export default function ProfileDetails({
                         <Typography
                             sx={{
                                 fontSize: "12px",
-                                color: "#94a3b8",
+                                color: darkMode ? "#94a3b8" : "#94a3b8",
                                 mt: 0.5,
                             }}
                         >
@@ -219,13 +268,13 @@ export default function ProfileDetails({
                                 textTransform: "none",
                                 fontSize: "13px",
                                 fontWeight: 600,
-                                color: "#7c3aed",
-                                borderColor: "#c4b5fd",
+                                color: darkMode ? "#c4b5fd" : "#7c3aed",
+                                borderColor: darkMode ? "#4c1d95" : "#c4b5fd",
                                 borderRadius: "8px",
 
                                 "&:hover": {
-                                    borderColor: "#7c3aed",
-                                    backgroundColor: "#f5f3ff",
+                                    borderColor: darkMode ? "#c4b5fd" : "#7c3aed",
+                                    backgroundColor: darkMode ? "#2e1065" : "#f5f3ff",
                                 },
                             }}
                         >
@@ -234,7 +283,7 @@ export default function ProfileDetails({
                     )}
                 </Box>
 
-                <Divider />
+                <Divider sx={{ borderColor: darkMode ? '#334155' : '#e2e8f0' }} />
 
                 {/* =================================================
                     ERROR
@@ -247,9 +296,9 @@ export default function ProfileDetails({
                             mt: 2,
                             p: 1.5,
                             borderRadius: "6px",
-                            backgroundColor: "#fef2f2",
-                            border: "1px solid #fecaca",
-                            color: "#dc2626",
+                            backgroundColor: darkMode ? "#451a1a" : "#fef2f2",
+                            border: `1px solid ${darkMode ? '#7f1d1d' : '#fecaca'}`,
+                            color: darkMode ? "#fca5a5" : "#dc2626",
                             fontSize: "13px",
                         }}
                     >
@@ -284,6 +333,7 @@ export default function ProfileDetails({
                             fullWidth
                             size="small"
                             disabled={isUpdating}
+                            sx={textFieldSx}
                         />
 
                         {/* EMAIL */}
@@ -295,6 +345,7 @@ export default function ProfileDetails({
                             size="small"
                             disabled
                             helperText="Email cannot be changed."
+                            sx={textFieldSx}
                         />
 
                         {/* BUTTONS */}
@@ -312,6 +363,12 @@ export default function ProfileDetails({
                                 disabled={isUpdating}
                                 sx={{
                                     textTransform: "none",
+                                    color: darkMode ? "#94a3b8" : undefined,
+                                    borderColor: darkMode ? "#334155" : undefined,
+                                    "&:hover": {
+                                        borderColor: darkMode ? "#475569" : undefined,
+                                        backgroundColor: darkMode ? "#1e293b" : undefined,
+                                    }
                                 }}
                             >
                                 Cancel
@@ -332,6 +389,10 @@ export default function ProfileDetails({
                                         backgroundColor:
                                             "#6d28d9",
                                     },
+                                    "&.Mui-disabled": {
+                                        backgroundColor: darkMode ? "#334155" : undefined,
+                                        color: darkMode ? "#64748b" : undefined,
+                                    }
                                 }}
                             >
                                 {isUpdating ? (
@@ -365,11 +426,13 @@ export default function ProfileDetails({
                             label="Name"
                             value={user?.name || "-"}
                             borderRight
+                            darkMode={darkMode}
                         />
 
                         <ProfileField
                             label="Email"
                             value={user?.email || "-"}
+                            darkMode={darkMode}
                         />
 
                         <ProfileField
@@ -378,18 +441,20 @@ export default function ProfileDetails({
                                 user?.authProvider || "-"
                             }
                             borderRight
+                            darkMode={darkMode}
                         />
 
                         <Box
                             sx={{
                                 p: 2.5,
+                                borderBottom: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
                             }}
                         >
                             <Typography
                                 sx={{
                                     fontSize: "11px",
                                     fontWeight: 600,
-                                    color: "#94a3b8",
+                                    color: darkMode ? "#64748b" : "#94a3b8",
                                     textTransform: "uppercase",
                                     mb: 0.75,
                                 }}
@@ -402,8 +467,8 @@ export default function ProfileDetails({
                                     fontSize: "13px",
                                     color:
                                         user?.isEmailVerified
-                                            ? "#16a34a"
-                                            : "#dc2626",
+                                            ? (darkMode ? "#86efac" : "#16a34a")
+                                            : (darkMode ? "#fca5a5" : "#dc2626"),
                                     fontWeight: 600,
                                 }}
                             >
@@ -422,8 +487,8 @@ export default function ProfileDetails({
 
             <Box
                 sx={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e2e8f0",
+                    backgroundColor: darkMode ? "#0f172a" : "#ffffff",
+                    border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
                     borderRadius: "8px",
                     mb: 2,
                 }}
@@ -437,7 +502,7 @@ export default function ProfileDetails({
                         sx={{
                             fontSize: "15px",
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: darkMode ? "#f8fafc" : "#1e293b",
                         }}
                     >
                         Workspace Information
@@ -446,7 +511,7 @@ export default function ProfileDetails({
                     <Typography
                         sx={{
                             fontSize: "12px",
-                            color: "#94a3b8",
+                            color: darkMode ? "#94a3b8" : "#94a3b8",
                             mt: 0.5,
                         }}
                     >
@@ -454,7 +519,7 @@ export default function ProfileDetails({
                     </Typography>
                 </Box>
 
-                <Divider />
+                <Divider sx={{ borderColor: darkMode ? '#334155' : '#e2e8f0' }} />
 
                 <Box
                     sx={{
@@ -472,7 +537,7 @@ export default function ProfileDetails({
                             p: 2.5,
                             borderRight: {
                                 xs: "none",
-                                sm: "1px solid #e2e8f0",
+                                sm: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
                             },
                         }}
                     >
@@ -480,7 +545,7 @@ export default function ProfileDetails({
                             sx={{
                                 fontSize: "11px",
                                 fontWeight: 600,
-                                color: "#94a3b8",
+                                color: darkMode ? "#64748b" : "#94a3b8",
                                 textTransform: "uppercase",
                                 mb: 0.75,
                             }}
@@ -491,7 +556,7 @@ export default function ProfileDetails({
                         <Typography
                             sx={{
                                 fontSize: "13px",
-                                color: "#334155",
+                                color: darkMode ? "#cbd5e1" : "#334155",
                                 fontWeight: 500,
                             }}
                         >
@@ -510,7 +575,7 @@ export default function ProfileDetails({
                             sx={{
                                 fontSize: "11px",
                                 fontWeight: 600,
-                                color: "#94a3b8",
+                                color: darkMode ? "#64748b" : "#94a3b8",
                                 textTransform: "uppercase",
                                 mb: 0.75,
                             }}
@@ -527,8 +592,8 @@ export default function ProfileDetails({
                                 height: "22px",
                                 fontSize: "11px",
                                 fontWeight: 600,
-                                backgroundColor: "#ede9fe",
-                                color: "#7c3aed",
+                                backgroundColor: darkMode ? "#312e81" : "#ede9fe",
+                                color: darkMode ? "#c4b5fd" : "#7c3aed",
                             }}
                         />
                     </Box>
@@ -541,8 +606,8 @@ export default function ProfileDetails({
 
             <Box
                 sx={{
-                    backgroundColor: "#ffffff",
-                    border: "1px solid #e2e8f0",
+                    backgroundColor: darkMode ? "#0f172a" : "#ffffff",
+                    border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
                     borderRadius: "8px",
                 }}
             >
@@ -555,14 +620,14 @@ export default function ProfileDetails({
                         sx={{
                             fontSize: "15px",
                             fontWeight: 700,
-                            color: "#1e293b",
+                            color: darkMode ? "#f8fafc" : "#1e293b",
                         }}
                     >
                         Account Information
                     </Typography>
                 </Box>
 
-                <Divider />
+                <Divider sx={{ borderColor: darkMode ? '#334155' : '#e2e8f0' }} />
 
                 <Box
                     sx={{
@@ -578,11 +643,13 @@ export default function ProfileDetails({
                         value={
                             user?.createdAt
                                 ? new Date(
-                                      user.createdAt
-                                  ).toLocaleDateString()
+                                    user.createdAt
+                                ).toLocaleDateString()
                                 : "-"
                         }
                         borderRight
+                        darkMode={darkMode}
+                        noBorderBottom // To avoid double lines on the last row
                     />
 
                     <Box
@@ -594,7 +661,7 @@ export default function ProfileDetails({
                             sx={{
                                 fontSize: "11px",
                                 fontWeight: 600,
-                                color: "#94a3b8",
+                                color: darkMode ? "#64748b" : "#94a3b8",
                                 textTransform: "uppercase",
                                 mb: 0.75,
                             }}
@@ -606,8 +673,8 @@ export default function ProfileDetails({
                             sx={{
                                 fontSize: "13px",
                                 color: user?.isActive
-                                    ? "#16a34a"
-                                    : "#dc2626",
+                                    ? (darkMode ? "#86efac" : "#16a34a")
+                                    : (darkMode ? "#fca5a5" : "#dc2626"),
                                 fontWeight: 600,
                             }}
                         >
@@ -630,6 +697,8 @@ function ProfileField({
     label,
     value,
     borderRight = false,
+    noBorderBottom = false,
+    darkMode = false,
 }) {
     return (
         <Box
@@ -639,18 +708,18 @@ function ProfileField({
                 borderRight: {
                     xs: "none",
                     sm: borderRight
-                        ? "1px solid #e2e8f0"
+                        ? `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`
                         : "none",
                 },
 
-                borderBottom: "1px solid #e2e8f0",
+                borderBottom: noBorderBottom ? "none" : `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
             }}
         >
             <Typography
                 sx={{
                     fontSize: "11px",
                     fontWeight: 600,
-                    color: "#94a3b8",
+                    color: darkMode ? "#64748b" : "#94a3b8",
                     textTransform: "uppercase",
                     mb: 0.75,
                 }}
@@ -661,7 +730,7 @@ function ProfileField({
             <Typography
                 sx={{
                     fontSize: "13px",
-                    color: "#334155",
+                    color: darkMode ? "#cbd5e1" : "#334155",
                     fontWeight: 500,
                     wordBreak: "break-word",
                 }}

@@ -14,16 +14,33 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 
+// 1. Import settings utility
+import { getAppSettings } from "../utils/preferences";
+
 const ROLES = ["Admin", "Manager", "Member"];
 
-// Shared label element so every field's title is styled identically (matches AddTask)
-const FieldLabel = ({ children }) => (
-    <Typography sx={{ fontSize: "12px", fontWeight: 700, color: "#334155", mb: 0.75 }}>
+// 2. Pass darkMode prop to the shared label
+const FieldLabel = ({ children, darkMode }) => (
+    <Typography sx={{ fontSize: "12px", fontWeight: 700, color: darkMode ? "#cbd5e1" : "#334155", mb: 0.75 }}>
         {children}
     </Typography>
 );
 
-export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, }) {
+export default function AddUser({ open, onClose, onAdd, onUpdate, user = null, }) {
+    // 3. Initialize dark mode state and event listener
+    const initialSettings = getAppSettings();
+    const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+    useEffect(() => {
+        const handleSettingsChange = (event) => {
+            const nextSettings = event.detail ?? getAppSettings();
+            setDarkMode(Boolean(nextSettings.darkMode));
+        };
+
+        window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+        return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+    }, []);
+
     const isEditMode = Boolean(user);
 
     const [email, setEmail] = useState("");
@@ -142,19 +159,19 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
             } else {
                 setSubmitError(
                     result?.message ||
-                        (isEditMode
-                            ? "Unable to update user."
-                            : "Unable to send invite.")
+                    (isEditMode
+                        ? "Unable to update user."
+                        : "Unable to send invite.")
                 );
             }
         } catch (error) {
             setSubmitError(
                 error?.message ||
-                    (isEditMode
-                        ? "Unable to update user."
-                        : "Unable to send invite.")
+                (isEditMode
+                    ? "Unable to update user."
+                    : "Unable to send invite.")
             );
-        }finally{
+        } finally {
             setSubmitting(false);
         }
     };
@@ -176,6 +193,63 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
         setEmailTouched(false);
     };
 
+    // Shared MenuProps for dropdowns to enforce dark mode background
+    const darkMenuProps = {
+        PaperProps: {
+            sx: {
+                backgroundColor: darkMode ? '#1e293b' : '#ffffff',
+                color: darkMode ? '#f8fafc' : '#1e293b',
+                border: darkMode ? '1px solid #334155' : 'none'
+            }
+        }
+    };
+
+    // Shared input styling for TextField
+    const textFieldSx = {
+        "& .MuiOutlinedInput-root": {
+            borderRadius: "10px",
+            fontSize: "13px",
+            backgroundColor: darkMode ? '#0f172a' : '#fff',
+            "& fieldset": {
+                borderColor: darkMode ? '#334155' : '#e2e8f0',
+            },
+            "&:hover fieldset": {
+                borderColor: darkMode ? '#475569' : '#cbd5e1',
+            },
+            "&.Mui-disabled": {
+                backgroundColor: darkMode ? '#1e293b' : '#f8fafc',
+            }
+        },
+        "& .MuiInputBase-input": {
+            color: darkMode ? '#f8fafc' : '#1e293b',
+            "&.Mui-disabled": {
+                color: darkMode ? '#94a3b8' : '#94a3b8',
+                WebkitTextFillColor: darkMode ? '#94a3b8' : '#94a3b8',
+            }
+        },
+        "& .MuiFormHelperText-root": {
+            marginLeft: 0,
+            fontSize: "12px",
+        },
+    };
+
+    // Shared input styling for Select
+    const selectSx = {
+        borderRadius: "10px",
+        fontSize: "13px",
+        backgroundColor: darkMode ? '#0f172a' : '#fff',
+        color: darkMode ? '#f8fafc' : 'inherit',
+        '& .MuiOutlinedInput-notchedOutline': {
+            borderColor: darkMode ? '#334155' : '#e2e8f0',
+        },
+        '&:hover .MuiOutlinedInput-notchedOutline': {
+            borderColor: darkMode ? '#475569' : '#cbd5e1',
+        },
+        '& .MuiSvgIcon-root': {
+            color: darkMode ? '#94a3b8' : undefined,
+        }
+    };
+
     return (
         <Drawer
             anchor="right"
@@ -190,7 +264,7 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
                         },
                         display: "flex",
                         flexDirection: "column",
-                        backgroundColor: "#ffffff",
+                        backgroundColor: darkMode ? "#0f172a" : "#ffffff",
                     },
                 },
             }}
@@ -203,12 +277,12 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    borderBottom: "1px solid #e2e8f0",
+                    borderBottom: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
                     flexShrink: 0,
                 }}
             >
                 <Box sx={{ display: "flex", alignItems: "center", gap: 1.25 }}>
-                    <IconButton size="small" sx={{ color: "#64748b", p: 0.5 }}>
+                    <IconButton size="small" sx={{ color: darkMode ? "#94a3b8" : "#64748b", p: 0.5 }}>
                         <ChevronRightIcon sx={{ fontSize: 20 }} />
                     </IconButton>
 
@@ -216,14 +290,14 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
                         sx={{
                             fontSize: "15px",
                             fontWeight: 700,
-                            color: "#1e293b"
+                            color: darkMode ? "#f8fafc" : "#1e293b"
                         }}
                     >
                         {isEditMode ? "Update User" : "Add User"}
                     </Typography>
                 </Box>
 
-                <IconButton size="small" onClick={onClose} sx={{ color: "#64748b" }}>
+                <IconButton size="small" onClick={onClose} sx={{ color: darkMode ? "#94a3b8" : "#64748b" }}>
                     <CloseIcon sx={{ fontSize: 19 }} />
                 </IconButton>
             </Box>
@@ -232,7 +306,7 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
             <Box sx={{ flex: 1, overflowY: "auto", p: 2.5 }}>
                 <Box sx={{ display: "flex", flexDirection: "column", gap: 2.5 }}>
                     <Box>
-                        <FieldLabel>Email</FieldLabel>
+                        <FieldLabel darkMode={darkMode}>Email</FieldLabel>
                         <TextField
                             autoFocus={!isEditMode}
                             type="email"
@@ -253,31 +327,30 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
                             size="small"
                             error={Boolean(emailError)}
                             helperText={emailError}
-                            sx={{
-                                "& .MuiOutlinedInput-root": {
-                                    borderRadius: "10px",
-                                    fontSize: "13px",
-                                },
-                                "& .MuiFormHelperText-root": {
-                                    marginLeft: 0,
-                                    fontSize: "12px",
-                                },
-                            }}
+                            sx={textFieldSx}
                         />
                     </Box>
 
                     <Box>
-                        <FieldLabel>Role</FieldLabel>
+                        <FieldLabel darkMode={darkMode}>Role</FieldLabel>
                         <FormControl fullWidth size="small" error={Boolean(roleError)}>
                             <Select
                                 displayEmpty
                                 value={role}
                                 onChange={handleRoleChange}
-                                sx={{ borderRadius: "10px", fontSize: "13px" }}
-                                renderValue={(selected) => selected || "Select role"}
+                                sx={selectSx}
+                                MenuProps={darkMenuProps}
+                                renderValue={(selected) => selected || <Typography sx={{ fontSize: "13px", color: darkMode ? "#64748b" : "#94a3b8" }}>Select role</Typography>}
                             >
                                 {ROLES.map((r) => (
-                                    <MenuItem key={r} value={r} sx={{ fontSize: "13px" }}>
+                                    <MenuItem
+                                        key={r}
+                                        value={r}
+                                        sx={{
+                                            fontSize: "13px",
+                                            '&:hover': { backgroundColor: darkMode ? '#334155' : undefined }
+                                        }}
+                                    >
                                         {r}
                                     </MenuItem>
                                 ))}
@@ -286,7 +359,7 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
                             {roleError && (
                                 <Typography
                                     sx={{
-                                        color: "#d32f2f",
+                                        color: darkMode ? "#f87171" : "#d32f2f",
                                         fontSize: "12px",
                                         mt: 0.5,
                                         ml: 1.75,
@@ -297,17 +370,6 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
                             )}
                         </FormControl>
                     </Box>
-
-                    {/* {submitError && (
-                        <Typography
-                            sx={{
-                                color: "#dc2626",
-                                fontSize: "0.85rem",
-                            }}
-                        >
-                            {submitError}
-                        </Typography>
-                    )} */}
                 </Box>
             </Box>
 
@@ -319,8 +381,8 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
                     display: "flex",
                     alignItems: "center",
                     gap: 1.5,
-                    borderTop: "1px solid #e2e8f0",
-                    backgroundColor: "#ffffff",
+                    borderTop: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                    backgroundColor: darkMode ? "#0f172a" : "#ffffff",
                     flexShrink: 0,
                 }}
             >
@@ -344,12 +406,12 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
                         },
 
                         "&:disabled": {
-                            backgroundColor: "#e2e8f0",
-                            color: "#94a3b8",
+                            backgroundColor: darkMode ? "#334155" : "#e2e8f0",
+                            color: darkMode ? "#64748b" : "#94a3b8",
                         },
                     }}
                 >
-                    {submitting? isEditMode? "Updating...": "Sending...": isEditMode? "Update User": "Add User"}
+                    {submitting ? (isEditMode ? "Updating..." : "Sending...") : (isEditMode ? "Update User" : "Add User")}
                 </Button>
 
                 <Button
@@ -360,11 +422,11 @@ export default function AddUser({ open, onClose, onAdd ,onUpdate,user = null, })
                         textTransform: "none",
                         fontSize: "13px",
                         fontWeight: 500,
-                        color: "#64748b",
+                        color: darkMode ? "#94a3b8" : "#64748b",
                         borderRadius: "10px",
 
                         "&:hover": {
-                            backgroundColor: "#f8fafc",
+                            backgroundColor: darkMode ? "#1e293b" : "#f8fafc",
                         },
                     }}
                 >

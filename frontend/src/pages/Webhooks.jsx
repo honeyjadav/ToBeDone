@@ -1,4 +1,3 @@
-
 import { useEffect, useMemo, useState } from 'react';
 import {
     Box,
@@ -23,6 +22,9 @@ import WebhookForm from '../components/Webhooks/WebhookForm';
 import APICallService from '../services/APICallService';
 import { useAuth } from '../hooks/useAuth';
 
+// 1. Import getAppSettings for dark mode state
+import { getAppSettings } from '../utils/preferences';
+
 const EMPTY_DRAFT = { id: '', name: '', url: '', event: '', headers: [], active: true };
 
 const normalizeWebhook = (payload) => {
@@ -41,6 +43,20 @@ const normalizeWebhook = (payload) => {
 export default function Webhooks() {
     const { activeWorkspace } = useAuth();
     const workspaceId = activeWorkspace?.workspaceId;
+
+    // 2. Initialize dark mode state and event listener
+    const initialSettings = getAppSettings();
+    const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+    useEffect(() => {
+        const handleSettingsChange = (event) => {
+            const nextSettings = event.detail ?? getAppSettings();
+            setDarkMode(Boolean(nextSettings.darkMode));
+        };
+
+        window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+        return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+    }, []);
 
     const [webhooks, setWebhooks] = useState([]);
     const [search, setSearch] = useState('');
@@ -223,8 +239,8 @@ export default function Webhooks() {
     const hasSelection = selected.length > 0;
 
     return (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3, minHeight: 0 }}>
-            <Typography sx={{ fontSize: '22px', fontWeight: 700, color: '#1e293b', mb: 2, flexShrink: 0 }}>
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3, minHeight: 0, backgroundColor: darkMode ? '#020817' : '#f8fafc' }}>
+            <Typography sx={{ fontSize: '22px', fontWeight: 700, color: darkMode ? '#f8fafc' : '#1e293b', mb: 2, flexShrink: 0 }}>
                 Webhooks
             </Typography>
 
@@ -256,13 +272,23 @@ export default function Webhooks() {
                     Add Webhook
                 </Button>
 
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '8px', px: 1.5, height: '36px', minWidth: '220px' }}>
+                <Box sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    backgroundColor: darkMode ? '#0f172a' : '#ffffff',
+                    border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
+                    borderRadius: '8px',
+                    px: 1.5,
+                    height: '36px',
+                    minWidth: '220px'
+                }}>
                     <SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} />
                     <input
                         placeholder="Filter by keyword"
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '13px', width: '100%' }}
+                        style={{ border: 'none', outline: 'none', background: 'transparent', fontSize: '13px', width: '100%', color: darkMode ? '#f8fafc' : '#1e293b' }}
                     />
                 </Box>
 
@@ -276,15 +302,15 @@ export default function Webhooks() {
                         textTransform: 'none',
                         fontSize: '13.5px',
                         fontWeight: 600,
-                        color: hasSelection ? '#dc2626' : '#64748b',
-                        backgroundColor: hasSelection ? '#fee2e2' : 'transparent',
+                        color: hasSelection ? (darkMode ? '#fca5a5' : '#dc2626') : (darkMode ? '#64748b' : '#64748b'),
+                        backgroundColor: hasSelection ? (darkMode ? '#7f1d1d' : '#fee2e2') : 'transparent',
                         border: '1px solid',
-                        borderColor: hasSelection ? '#fecaca' : '#e2e8f0',
+                        borderColor: hasSelection ? (darkMode ? '#991b1b' : '#fecaca') : (darkMode ? '#334155' : '#e2e8f0'),
                         borderRadius: '8px',
                         height: '36px',
                         flexShrink: 0,
-                        '&:hover': { backgroundColor: hasSelection ? '#fecaca' : '#f1f5f9' },
-                        '&:disabled': { color: '#cbd5e1', borderColor: '#e2e8f0' },
+                        '&:hover': { backgroundColor: hasSelection ? (darkMode ? '#991b1b' : '#fecaca') : (darkMode ? '#1e293b' : '#f1f5f9') },
+                        '&:disabled': { color: darkMode ? '#475569' : '#cbd5e1', borderColor: darkMode ? '#1e293b' : '#e2e8f0' },
                     }}
                 >
                     Delete{selected.length ? ` (${selected.length})` : ''}
@@ -299,6 +325,7 @@ export default function Webhooks() {
                 ) : (
                     <Box sx={{ flex: 1, minHeight: 0, width: '100%' }}>
                         <WebhookTable
+                            darkMode={darkMode}
                             webhooks={filteredWebhooks}
                             selected={selected}
                             onToggleSelect={toggleSelect}
@@ -312,6 +339,7 @@ export default function Webhooks() {
 
             <Drawer
                 open={drawerOpen}
+                darkMode={darkMode}
                 title={isEdit ? 'Edit Webhook' : 'Add Webhook'}
                 onClose={closeDrawer}
                 guideLink="https://example.com/docs/webhooks"
@@ -319,13 +347,13 @@ export default function Webhooks() {
                 secondaryAction={{ label: 'Discard', onClick: closeDrawer }}
                 extraFooterActions={
                     isEdit && (
-                        <IconButton onClick={() => requestDeleteWebhook(draft.id)} size="small" title="Delete" sx={{ color: '#dc2626' }} disabled={saving}>
+                        <IconButton onClick={() => requestDeleteWebhook(draft.id)} size="small" title="Delete" sx={{ color: darkMode ? '#f87171' : '#dc2626' }} disabled={saving}>
                             <DeleteOutlineIcon sx={{ fontSize: 19 }} />
                         </IconButton>
                     )
                 }
             >
-                <WebhookForm draft={draft} onChange={updateDraft} />
+                <WebhookForm draft={draft} onChange={updateDraft} darkMode={darkMode} />
             </Drawer>
 
             <Dialog
@@ -333,16 +361,16 @@ export default function Webhooks() {
                 onClose={() => setDeleteConfirmId(null)}
                 maxWidth="xs"
                 fullWidth
-                PaperProps={{ sx: { borderRadius: '12px', p: 1, width: 320 } }}
+                PaperProps={{ sx: { borderRadius: '12px', p: 1, width: 320, bgcolor: darkMode ? '#0f172a' : '#ffffff', backgroundImage: 'none' } }}
             >
-                <DialogTitle sx={{ fontWeight: 700, color: '#1e293b', fontSize: '1rem', pb: 1 }}>Delete Webhook</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 700, color: darkMode ? '#f8fafc' : '#1e293b', fontSize: '1rem', pb: 1 }}>Delete Webhook</DialogTitle>
                 <DialogContent sx={{ pb: 1.5 }}>
-                    <DialogContentText sx={{ color: '#475569', fontSize: '0.875rem', m: 0 }}>
+                    <DialogContentText sx={{ color: darkMode ? '#94a3b8' : '#475569', fontSize: '0.875rem', m: 0 }}>
                         Are you sure you want to delete this webhook? This action cannot be undone.
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions sx={{ px: 2, pb: 1.5, pt: 0 }}>
-                    <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: '#64748b', fontWeight: 600, minWidth: 'auto', px: 1.5 }}>
+                    <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: darkMode ? '#94a3b8' : '#64748b', fontWeight: 600, minWidth: 'auto', px: 1.5 }}>
                         Cancel
                     </Button>
                     <Button onClick={confirmDeleteWebhook} variant="contained" color="error" sx={{ fontWeight: 600, borderRadius: '8px', textTransform: 'none', minWidth: 'auto', px: 1.5 }}>
@@ -356,16 +384,16 @@ export default function Webhooks() {
                 onClose={() => setDeleteSelectedConfirm(false)}
                 maxWidth="xs"
                 fullWidth
-                PaperProps={{ sx: { borderRadius: '12px', p: 1, width: 320 } }}
+                PaperProps={{ sx: { borderRadius: '12px', p: 1, width: 320, bgcolor: darkMode ? '#0f172a' : '#ffffff', backgroundImage: 'none' } }}
             >
-                <DialogTitle sx={{ fontWeight: 700, color: '#1e293b', fontSize: '1rem', pb: 1 }}>Delete Selected</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 700, color: darkMode ? '#f8fafc' : '#1e293b', fontSize: '1rem', pb: 1 }}>Delete Selected</DialogTitle>
                 <DialogContent sx={{ pb: 1.5 }}>
-                    <DialogContentText sx={{ color: '#475569', fontSize: '0.875rem', m: 0 }}>
+                    <DialogContentText sx={{ color: darkMode ? '#94a3b8' : '#475569', fontSize: '0.875rem', m: 0 }}>
                         Are you sure you want to delete {selected.length} selected webhook{selected.length > 1 ? 's' : ''}? This action cannot be undone.
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions sx={{ px: 2, pb: 1.5, pt: 0 }}>
-                    <Button onClick={() => setDeleteSelectedConfirm(false)} sx={{ color: '#64748b', fontWeight: 600, minWidth: 'auto', px: 1.5 }}>
+                    <Button onClick={() => setDeleteSelectedConfirm(false)} sx={{ color: darkMode ? '#94a3b8' : '#64748b', fontWeight: 600, minWidth: 'auto', px: 1.5 }}>
                         Cancel
                     </Button>
                     <Button onClick={handleDeleteSelected} variant="contained" color="error" sx={{ fontWeight: 600, borderRadius: '8px', textTransform: 'none', minWidth: 'auto', px: 1.5 }}>

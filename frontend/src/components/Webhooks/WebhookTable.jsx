@@ -12,7 +12,7 @@ const HEADERS = [
     { key: 'active', label: 'Status', width: '110px' },
 ];
 
-export default function WebhookTable({ webhooks, selected, onToggleSelect, onToggleSelectAll, onRowClick, onToggleActive }) {
+export default function WebhookTable({ webhooks, selected, onToggleSelect, onToggleSelectAll, onRowClick, onToggleActive, darkMode }) {
     const [sortKey, setSortKey] = useState(null);
     const [sortDir, setSortDir] = useState('asc');
 
@@ -38,8 +38,8 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
     return (
         <Box
             sx={{
-                backgroundColor: '#ffffff',
-                border: '1px solid #e2e8f0',
+                backgroundColor: darkMode ? '#0f172a' : '#ffffff',
+                border: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`,
                 borderRadius: '8px',
                 display: 'flex',
                 flexDirection: 'column',
@@ -48,13 +48,15 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                 minWidth: 0,
             }}
         >
-            <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: '1px solid #e2e8f0', backgroundColor: '#f8fafc', flexShrink: 0, minWidth: 820, width: '100%' }}>
+            {/* Header */}
+            <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`, backgroundColor: darkMode ? '#1e293b' : '#f8fafc', flexShrink: 0, minWidth: 820, width: '100%' }}>
                 <Box sx={{ width: '44px', display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
                     <Checkbox
                         size="small"
                         checked={allSelected}
                         indeterminate={someSelected && !allSelected}
                         onChange={() => onToggleSelectAll(webhooks.map((w) => w.id))}
+                        sx={{ color: darkMode ? '#64748b' : undefined }}
                     />
                 </Box>
                 <Box sx={{ width: '36px' }} />
@@ -72,10 +74,10 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                             py: 1.25,
                             cursor: h.key === 'active' ? 'default' : 'pointer',
                             userSelect: 'none',
-                            '&:hover': h.key === 'active' ? {} : { backgroundColor: '#f1f5f9' },
+                            '&:hover': h.key === 'active' ? {} : { backgroundColor: darkMode ? '#334155' : '#f1f5f9' },
                         }}
                     >
-                        <Typography sx={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+                        <Typography sx={{ fontSize: '12px', fontWeight: 700, color: darkMode ? '#94a3b8' : '#475569', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                             {h.label}
                         </Typography>
                         {sortKey === h.key && (
@@ -87,10 +89,11 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                 ))}
             </Box>
 
+            {/* Body */}
             <Box sx={{ flex: 1, overflow: 'auto' }}>
                 {sortedWebhooks.length === 0 ? (
                     <Box sx={{ py: 5, textAlign: 'center' }}>
-                        <Typography sx={{ fontSize: '13px', color: '#94a3b8' }}>No webhooks to show</Typography>
+                        <Typography sx={{ fontSize: '13px', color: darkMode ? '#64748b' : '#94a3b8' }}>No webhooks to show</Typography>
                     </Box>
                 ) : (
                     sortedWebhooks.map((wh) => {
@@ -101,12 +104,12 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                                 sx={{
                                     display: 'flex',
                                     alignItems: 'center',
-                                    borderBottom: '1px solid #f1f5f9',
+                                    borderBottom: `1px solid ${darkMode ? '#1e293b' : '#f1f5f9'}`,
                                     cursor: 'pointer',
-                                    backgroundColor: isChecked ? '#f5f3ff' : 'transparent',
+                                    backgroundColor: isChecked ? (darkMode ? '#2e1065' : '#f5f3ff') : 'transparent',
                                     minWidth: 820,
                                     width: '100%',
-                                    '&:hover': { backgroundColor: isChecked ? '#f5f3ff' : '#f8fafc' },
+                                    '&:hover': { backgroundColor: isChecked ? (darkMode ? '#2e1065' : '#f5f3ff') : (darkMode ? '#1e293b' : '#f8fafc') },
                                     '&:last-of-type': { borderBottom: 'none' },
                                 }}
                             >
@@ -116,26 +119,36 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                                         checked={isChecked}
                                         onClick={(e) => e.stopPropagation()}
                                         onChange={() => onToggleSelect(wh.id)}
+                                        sx={{ color: darkMode ? '#64748b' : undefined }}
                                     />
                                 </Box>
                                 <Box sx={{ width: '36px', display: 'flex', justifyContent: 'center', flexShrink: 0 }} onClick={() => onRowClick(wh)}>
-                                    <LinkIcon sx={{ fontSize: 17, color: '#7c3aed' }} />
+                                    <LinkIcon sx={{ fontSize: 17, color: darkMode ? '#a78bfa' : '#7c3aed' }} />
                                 </Box>
                                 <Box sx={{ width: '90px', px: 1.5, py: 1.25, flexShrink: 0 }} onClick={() => onRowClick(wh)}>
-                                    <Typography sx={{ fontSize: '13px', fontWeight: 600, color: '#7c3aed' }}>{wh.id}</Typography>
+                                    <Typography sx={{ fontSize: '13px', fontWeight: 600, color: darkMode ? '#a78bfa' : '#7c3aed' }}>{wh.id}</Typography>
                                 </Box>
                                 <Box sx={{ flex: 1, px: 1.5, py: 1.25, minWidth: 0 }} onClick={() => onRowClick(wh)}>
-                                    <Typography sx={{ fontSize: '13.5px', fontWeight: 500, color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <Typography sx={{ fontSize: '13.5px', fontWeight: 500, color: darkMode ? '#f8fafc' : '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {wh.name}
                                     </Typography>
                                 </Box>
                                 <Box sx={{ width: '280px', px: 1.5, py: 1.25, flexShrink: 0 }} onClick={() => onRowClick(wh)}>
-                                    <Typography sx={{ fontSize: '13px', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    <Typography sx={{ fontSize: '13px', color: darkMode ? '#94a3b8' : '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                         {wh.url}
                                     </Typography>
                                 </Box>
                                 <Box sx={{ width: '160px', px: 1.5, py: 1.25, flexShrink: 0 }} onClick={() => onRowClick(wh)}>
-                                    <Chip label={wh.event} size="small" sx={{ height: '20px', fontSize: '11px', backgroundColor: '#f1f5f9', color: '#475569' }} />
+                                    <Chip
+                                        label={wh.event}
+                                        size="small"
+                                        sx={{
+                                            height: '20px',
+                                            fontSize: '11px',
+                                            backgroundColor: darkMode ? '#334155' : '#f1f5f9',
+                                            color: darkMode ? '#cbd5e1' : '#475569'
+                                        }}
+                                    />
                                 </Box>
                                 <Box sx={{ width: '110px', px: 1.5, py: 1.25, display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
                                     <Switch
@@ -143,8 +156,9 @@ export default function WebhookTable({ webhooks, selected, onToggleSelect, onTog
                                         checked={wh.active}
                                         onClick={(e) => e.stopPropagation()}
                                         onChange={() => onToggleActive(wh.id)}
+                                        sx={{ '& .MuiSwitch-track': { backgroundColor: wh.active && darkMode ? '#7c3aed' : undefined } }}
                                     />
-                                    <Typography sx={{ fontSize: '12px', fontWeight: 600, color: wh.active ? '#16a34a' : '#94a3b8' }}>
+                                    <Typography sx={{ fontSize: '12px', fontWeight: 600, color: wh.active ? '#16a34a' : (darkMode ? '#64748b' : '#94a3b8') }}>
                                         {wh.active ? 'Active' : 'Inactive'}
                                     </Typography>
                                 </Box>

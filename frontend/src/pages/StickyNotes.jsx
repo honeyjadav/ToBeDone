@@ -9,6 +9,9 @@ import PushPinIcon from '@mui/icons-material/PushPin';
 import EditIcon from '@mui/icons-material/Edit';
 import AddNote, { NOTE_COLORS } from './AddNote';
 
+// 1. Import settings utility
+import { getAppSettings } from '../utils/preferences';
+
 const CARD_HEIGHT = 190;
 
 // Match the base URL your other working calls (e.g. getMyWorkspaces) use.
@@ -16,6 +19,20 @@ const CARD_HEIGHT = 190;
 const API_BASE = 'http://localhost:5000/api/notes';
 
 export default function StickyNotes({ workspaceId }) {
+    // 2. Initialize dark mode state and event listener
+    const initialSettings = getAppSettings();
+    const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+    useEffect(() => {
+        const handleSettingsChange = (event) => {
+            const nextSettings = event.detail ?? getAppSettings();
+            setDarkMode(Boolean(nextSettings.darkMode));
+        };
+
+        window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+        return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+    }, []);
+
     const [notes, setNotes] = useState([]);
     const [dialogOpen, setDialogOpen] = useState(false);
     const [activeNote, setActiveNote] = useState(null);
@@ -176,11 +193,11 @@ export default function StickyNotes({ workspaceId }) {
     const sortedNotes = [...notes].sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0));
 
     return (
-        <Box sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <Box sx={{ p: 3, height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, backgroundColor: darkMode ? '#020817' : '#f8fafc' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexShrink: 0 }}>
                 <Box>
-                    <Typography sx={{ fontSize: '22px', fontWeight: 700, color: '#1e293b' }}>Sticky Notes</Typography>
-                    <Typography sx={{ fontSize: '13px', color: '#64748b', mt: 0.5 }}>
+                    <Typography sx={{ fontSize: '22px', fontWeight: 700, color: darkMode ? '#f8fafc' : '#1e293b' }}>Sticky Notes</Typography>
+                    <Typography sx={{ fontSize: '13px', color: darkMode ? '#94a3b8' : '#64748b', mt: 0.5 }}>
                         {notes.length} notes
                     </Typography>
                 </Box>
@@ -231,8 +248,9 @@ export default function StickyNotes({ workspaceId }) {
                                 display: 'flex',
                                 flexDirection: 'column',
                                 position: 'relative',
-                                boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                                boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.5)' : '0 2px 6px rgba(0,0,0,0.06)',
                                 transition: 'transform 0.15s ease',
+                                filter: darkMode ? 'brightness(0.85)' : 'none',
                                 '&:hover': { transform: 'translateY(-2px)' },
                             }}
                         >
@@ -252,13 +270,13 @@ export default function StickyNotes({ workspaceId }) {
                                 }}
                             >
                                 <IconButton size="small" onClick={() => openExistingNote(note)} sx={{ p: 0.4 }}>
-                                    <EditIcon sx={{ fontSize: 15, color: 'rgba(0,0,0,0.45)' }} />
+                                    <EditIcon sx={{ fontSize: 15, color: 'rgba(0,0,0,0.5)' }} />
                                 </IconButton>
                                 <IconButton size="small" onClick={() => togglePin(note.id, note.pinned)} sx={{ p: 0.4 }}>
                                     <PushPinIcon sx={{ fontSize: 15, color: note.pinned ? '#7c3aed' : 'rgba(0,0,0,0.4)', transform: note.pinned ? 'rotate(0deg)' : 'rotate(35deg)' }} />
                                 </IconButton>
                                 <IconButton size="small" onClick={() => requestDelete(note.id)} sx={{ p: 0.4 }}>
-                                    <CloseIcon sx={{ fontSize: 15, color: 'rgba(0,0,0,0.4)' }} />
+                                    <CloseIcon sx={{ fontSize: 15, color: 'rgba(0,0,0,0.5)' }} />
                                 </IconButton>
                             </Box>
 
@@ -271,7 +289,7 @@ export default function StickyNotes({ workspaceId }) {
                                     sx={{
                                         fontSize: '14.5px',
                                         fontWeight: 700,
-                                        color: '#1e293b',
+                                        color: 'rgba(0,0,0,0.85)',
                                         mt: '18px',
                                         mb: 0.75,
                                         flexShrink: 0,
@@ -287,7 +305,7 @@ export default function StickyNotes({ workspaceId }) {
                             <Box
                                 sx={{
                                     fontSize: '13.5px',
-                                    color: '#334155',
+                                    color: 'rgba(0,0,0,0.75)',
                                     lineHeight: 1.6,
                                     flex: 1,
                                     minHeight: 0,
@@ -306,29 +324,29 @@ export default function StickyNotes({ workspaceId }) {
                 </Box>
 
                 {notes.length === 0 && (
-                    <Box sx={{ textAlign: 'center', py: 8, color: '#94a3b8' }}>
+                    <Box sx={{ textAlign: 'center', py: 8, color: darkMode ? '#64748b' : '#94a3b8' }}>
                         <Typography sx={{ fontSize: '14px' }}>No notes yet. Click "New Note" to add one.</Typography>
                     </Box>
                 )}
             </Box>
 
-            <AddNote open={dialogOpen} onClose={closeDialog} onSave={saveNote} note={activeNote} />
+            <AddNote open={dialogOpen} onClose={closeDialog} onSave={saveNote} note={activeNote} darkMode={darkMode} />
 
             <Dialog
                 open={!!deleteConfirmId}
                 onClose={() => setDeleteConfirmId(null)}
                 maxWidth="xs"
                 fullWidth
-                PaperProps={{ sx: { borderRadius: '12px', p: 1, width: 320 } }}
+                PaperProps={{ sx: { borderRadius: '12px', p: 1, width: 320, backgroundColor: darkMode ? '#0f172a' : '#ffffff', backgroundImage: 'none' } }}
             >
-                <DialogTitle sx={{ fontWeight: 700, color: '#1e293b', fontSize: '1rem', pb: 1 }}>Delete Note</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 700, color: darkMode ? '#f8fafc' : '#1e293b', fontSize: '1rem', pb: 1 }}>Delete Note</DialogTitle>
                 <DialogContent sx={{ pb: 1.5 }}>
-                    <DialogContentText sx={{ color: '#475569', fontSize: '0.875rem', m: 0 }}>
+                    <DialogContentText sx={{ color: darkMode ? '#94a3b8' : '#475569', fontSize: '0.875rem', m: 0 }}>
                         Are you sure you want to delete this note? This action cannot be undone.
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions sx={{ px: 2, pb: 1.5, pt: 0 }}>
-                    <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: '#64748b', fontWeight: 600, minWidth: 'auto', px: 1.5 }}>
+                    <Button onClick={() => setDeleteConfirmId(null)} sx={{ color: darkMode ? '#94a3b8' : '#64748b', fontWeight: 600, minWidth: 'auto', px: 1.5 }}>
                         Cancel
                     </Button>
                     <Button onClick={confirmDelete} variant="contained" color="error" sx={{ fontWeight: 600, borderRadius: '8px', textTransform: 'none', minWidth: 'auto', px: 1.5 }}>

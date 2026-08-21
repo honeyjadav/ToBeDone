@@ -1,5 +1,5 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { useState, useEffect, useRef, useCallback, useMemo, memo ,useLayoutEffect } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, memo, useLayoutEffect } from 'react';
 import {
   Box, Typography, Avatar, IconButton, Button, Modal, Checkbox,
   List, ListItem, ListItemText, TextField, Tooltip,
@@ -19,20 +19,32 @@ import { useAuth } from '../hooks/useAuth';
 import APICallService from '../services/APICallService';
 import { connectSocket, getSocket } from '../services/Socket';
 
-const C = {
-  bg: '#ffffff',
-  panelBg: '#f7f7fc',
-  border: '#e9e9f2',
-  text: '#1e1b3a',
-  textMuted: '#8b8aa3',
-  accent: '#5b56e0',
-  accentSoft: '#efeefd',
+// 1. Import settings utility
+import { getAppSettings } from '../utils/preferences';
+
+// 2. Dynamic color mapping based on dark mode state
+const getColors = (darkMode) => ({
+  bg: darkMode ? '#020817' : '#ffffff',
+  panelBg: darkMode ? '#0f172a' : '#f7f7fc',
+  border: darkMode ? '#334155' : '#e9e9f2',
+  text: darkMode ? '#f8fafc' : '#1e1b3a',
+  textMuted: darkMode ? '#94a3b8' : '#8b8aa3',
+  accent: darkMode ? '#7c3aed' : '#5b56e0',
+  accentHover: darkMode ? '#6d28d9' : '#4a45c9',
+  accentSoft: darkMode ? '#2e1065' : '#efeefd',
+  accentSoftHover: darkMode ? '#4c1d95' : '#f0f0f8',
   online: '#22c55e',
-  bubbleMe: '#5b56e0',
-  bubbleThem: '#ffffff',
-  danger: '#ef4444',
+  bubbleMe: darkMode ? '#7c3aed' : '#5b56e0',
+  bubbleThem: darkMode ? '#1e293b' : '#ffffff',
+  danger: darkMode ? '#f87171' : '#ef4444',
+  dangerSoft: darkMode ? '#451a1a' : '#fdecec',
+  dangerSoftHover: darkMode ? '#7f1d1d' : '#fbdada',
   unread: '#22c55e',
-};
+  systemBg: darkMode ? '#1e293b' : '#eeeef7',
+  deletedBg: darkMode ? '#1e293b' : '#f1f1f7',
+  modalBg: darkMode ? '#0f172a' : '#ffffff',
+  inputBg: darkMode ? '#1e293b' : '#ffffff',
+});
 
 const MESSAGE_LIMIT = 2000;
 const SIDEBAR_MIN = 220;
@@ -43,6 +55,21 @@ export default function Chat() {
   const { activeWorkspace, user } = useAuth();
   const workspaceId = activeWorkspace?.workspaceId;
 
+  // 3. Track dark mode state from global settings & events
+  const initialSettings = getAppSettings();
+  const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+  useEffect(() => {
+    const handleSettingsChange = (event) => {
+      const nextSettings = event.detail ?? getAppSettings();
+      setDarkMode(Boolean(nextSettings.darkMode));
+    };
+    window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+  }, []);
+
+  const C = getColors(darkMode); // Apply dynamic colors
+
   const [groups, setGroups] = useState([]);
   const [directs, setDirects] = useState([]);
   const [selected, setSelected] = useState(null);
@@ -52,105 +79,43 @@ export default function Chat() {
   const [typingUser, setTypingUser] = useState(null);
   const [presence, setPresence] = useState([]);
 
-  // unread badges (WhatsApp-style): { [conversationId]: count }
-  // seeded from the server (real readBy-based counts), then updated
-  // optimistically in real time as messages arrive / are read.
+  // unread badges
   const [unreadCounts, setUnreadCounts] = useState({});
   const selectedRef = useRef(null);
   const location = useLocation();
-const navigate = useNavigate();
+  const navigate = useNavigate();
 
-const notificationChat = location.state;
+  const notificationChat = location.state;
   useEffect(() => { selectedRef.current = selected; }, [selected]);
 
   useEffect(() => {
-  if (!notificationChat) return;
+    if (!notificationChat) return;
 
-  if (notificationChat.workspaceId &&
+    if (notificationChat.workspaceId &&
       String(notificationChat.workspaceId) !== String(workspaceId)) {
-    return;
-  }
-
-  // -----------------------------
-  // GROUP FROM NOTIFICATION
-  // -----------------------------
-  if (
-    notificationChat.type === "GROUP" &&
-    notificationChat.groupId
-  ) {
-    const group = groups.find(
-      (item) =>
-        String(item._id || item.id) ===
-        String(notificationChat.groupId)
-    );
-
-    if (group) {
-
-      setSelected({
-        ...group,
-        id: group._id || group.id,
-        type: "group",
-      });
-
-      // Clear navigation state so refresh/back doesn't
-      // repeatedly reopen the same notification chat.
-     navigate("/dashboard/chat", {
-  replace: true,
-  state: null,
-});
-    } else {
-      console.warn(
-        "Group from notification was not found:",
-        notificationChat.groupId
-      );
+      return;
     }
-  }
 
-  // -----------------------------
-  // DM FROM NOTIFICATION
-  // -----------------------------
-  if (
-    notificationChat.type === "DM" &&
-    notificationChat.userId
-  ) {
-    const direct = directs.find(
-      (item) =>
-        String(item._id || item.id) ===
-        String(notificationChat.userId)
-    );
-
-    if (direct) {
-
-      setSelected({
-        ...direct,
-        id: direct._id || direct.id,
-        type: "dm",
-      });
-
-      window.history.replaceState(
-        {},
-        document.title,
-        window.location.pathname
-      );
-    } else {
-      console.warn(
-        "User from notification was not found:",
-        notificationChat.userId
-      );
+    if (notificationChat.type === "GROUP" && notificationChat.groupId) {
+      const group = groups.find((item) => String(item._id || item.id) === String(notificationChat.groupId));
+      if (group) {
+        setSelected({ ...group, id: group._id || group.id, type: "group" });
+        navigate("/dashboard/chat", { replace: true, state: null });
+      }
     }
-  }
-}, [
-  notificationChat,
-  groups,
-  directs,
-  workspaceId,
-]);
 
-  // sidebar resize (fixed: track delta from mousedown, not raw clientX)
+    if (notificationChat.type === "DM" && notificationChat.userId) {
+      const direct = directs.find((item) => String(item._id || item.id) === String(notificationChat.userId));
+      if (direct) {
+        setSelected({ ...direct, id: direct._id || direct.id, type: "dm" });
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    }
+  }, [notificationChat, groups, directs, workspaceId, navigate]);
+
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const dragStateRef = useRef({ dragging: false, startX: 0, startWidth: SIDEBAR_DEFAULT });
 
-  // create-group modal
   const [groupModalOpen, setGroupModalOpen] = useState(false);
   const [groupName, setGroupName] = useState('');
   const [groupIsPrivate, setGroupIsPrivate] = useState(true);
@@ -158,37 +123,22 @@ const notificationChat = location.state;
   const [groupError, setGroupError] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
 
-  // group members modal
   const [membersModalOpen, setMembersModalOpen] = useState(false);
   const [groupDetail, setGroupDetail] = useState(null);
 
-  // add-member-to-existing-group modal
   const [addMemberModalOpen, setAddMemberModalOpen] = useState(false);
   const [addMemberIds, setAddMemberIds] = useState([]);
 
-  // delete/unsend confirmation
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
-  // delete-group confirmation
   const [confirmDeleteGroup, setConfirmDeleteGroup] = useState(false);
 
   const scrollRef = useRef(null);
   const typingTimeoutRef = useRef(null);
   const readSentRef = useRef(new Set());
 
-  // A group the user can view but not post in:
-  // - a PRIVATE group they were hard-removed from (selected.removed), or
-  // - a PUBLIC group they simply aren't a current member of (isMember: false) —
-  //   which also covers someone who WAS a member of a public group and got
-  //   removed: they just fall back to this same read-only state, keeping
-  //   full ongoing visibility like any other workspace member.
-  const isReadOnlyGroup =
-    selected?.type === 'group' &&
-    (selected?.removed || selected?.isMember === false);
-
-  // A private group the user was fully cut off from — no further reads.
+  const isReadOnlyGroup = selected?.type === 'group' && (selected?.removed || selected?.isMember === false);
   const isHardRemoved = selected?.type === 'group' && selected?.removed;
 
-  // ---- load conversations ----
   const loadConversations = useCallback(() => {
     if (!workspaceId) return;
     APICallService.getConversations(workspaceId)
@@ -200,21 +150,16 @@ const notificationChat = location.state;
         setGroups(groupsWithType);
         setDirects(directsWithType);
         setSelected((prev) => prev || directsWithType[0] || groupsWithType[0] || null);
-        // Keep the currently-open conversation's flags (isMember, etc.)
-        // in sync after a background refresh (e.g. someone removed).
+
         setSelected((prev) => {
           if (!prev) return prev;
-          const match =
-            prev.type === 'group'
-              ? groupsWithType.find((c) => (c._id || c.id) === prev.id)
-              : directsWithType.find((c) => (c._id || c.id) === prev.id);
+          const match = prev.type === 'group'
+            ? groupsWithType.find((c) => (c._id || c.id) === prev.id)
+            : directsWithType.find((c) => (c._id || c.id) === prev.id);
           if (!match) return prev;
           return { ...prev, ...match, id: prev.id, removed: prev.removed };
         });
 
-        // Seed unread badges from the server's real (readBy-based) counts.
-        // Never stamp a badge onto whichever conversation is open right
-        // now — that one should stay visually at zero while you're in it.
         setUnreadCounts((prev) => {
           const next = { ...prev };
           [...groupsWithType, ...directsWithType].forEach((c) => {
@@ -231,7 +176,6 @@ const notificationChat = location.state;
 
   useEffect(() => { loadConversations(); }, [loadConversations]);
 
-  // ---- socket connect + workspace join + presence ----
   useEffect(() => {
     if (!workspaceId) return;
     const socket = connectSocket();
@@ -247,8 +191,7 @@ const notificationChat = location.state;
     };
   }, [workspaceId]);
 
-  // ✅ ADD THIS NEW USEEFFECT
-useEffect(() => {
+  useEffect(() => {
     const socket = getSocket();
     if (!socket || !selected) return;
 
@@ -263,7 +206,6 @@ useEffect(() => {
     };
   }, [selected]);
 
-  // ---- socket listeners scoped to selected thread ----
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -279,9 +221,6 @@ useEffect(() => {
         return;
       }
 
-      // Message belongs to a conversation that isn't open right now —
-      // bump its WhatsApp-style unread badge. Skip our own messages and
-      // system messages (joins/leaves/removals aren't "unread content").
       if (msg.isSystem) return;
       const senderId = msg.sender?._id || msg.sender;
       if (senderId === user?.id) return;
@@ -323,7 +262,6 @@ useEffect(() => {
     };
   }, [selected, user, workspaceId]);
 
-  // ---- load history + join/leave group room on selection change ----
   useEffect(() => {
     if (!workspaceId || !selected) return;
 
@@ -338,10 +276,6 @@ useEffect(() => {
     };
 
     resetState();
-
-    // Opening a conversation clears its badge immediately (optimistic —
-    // the real per-message readBy writes happen below as messages come
-    // into view, keeping the server's own count in sync for next load).
     setUnreadCounts((prev) => (prev[selected.id] ? { ...prev, [selected.id]: 0 } : prev));
 
     APICallService.getMessages(workspaceId, params)
@@ -352,10 +286,6 @@ useEffect(() => {
       })
       .catch((err) => console.error('Failed to load messages:', err));
 
-    // Join the live socket room whenever we're allowed to read this group:
-    // current members always, AND non-members of a PUBLIC group (view-only
-    // live delivery — posting is still blocked separately). Never join for
-    // a private group we were hard-removed from.
     const canJoinRoom =
       selected.type === 'group' &&
       !selected.removed &&
@@ -372,33 +302,13 @@ useEffect(() => {
     };
   }, [workspaceId, selected]);
 
-//   useEffect(() => {
-//   if (!selected) return;
+  useLayoutEffect(() => {
+    if (!selected || !messages.length) return;
+    const container = scrollRef.current;
+    if (!container) return;
+    container.scrollTop = container.scrollHeight;
+  }, [selected, messages]);
 
-//   const scrollToBottom = () => {
-//     if (scrollRef.current) {
-//       scrollRef.current.scrollTop =
-//         scrollRef.current.scrollHeight;
-//     }
-//   };
-
-//   // Wait for React to render the messages
-//   requestAnimationFrame(() => {
-//     scrollToBottom();
-//   });
-// }, [selected, messages]);
-
-useLayoutEffect(() => {
-  if (!selected || !messages.length) return;
-
-  const container = scrollRef.current;
-
-  if (!container) return;
-
-  container.scrollTop = container.scrollHeight;
-}, [selected, messages]);
-
-  // ---- mark visible messages as read ----
   useEffect(() => {
     const socket = getSocket();
     if (!socket || !user) return;
@@ -411,7 +321,6 @@ useLayoutEffect(() => {
     });
   }, [messages, user]);
 
-  // ---- sidebar resize (delta-based) ----
   const startResize = (e) => {
     dragStateRef.current = { dragging: true, startX: e.clientX, startWidth: sidebarWidth };
   };
@@ -431,11 +340,10 @@ useLayoutEffect(() => {
     };
   }, []);
 
-  // ---- send message ----
   const handleSend = useCallback(() => {
     const trimmed = input.trim();
     if (!trimmed || trimmed.length > MESSAGE_LIMIT || !selected) return;
-    if (isReadOnlyGroup) return; // guard: non-members can't post
+    if (isReadOnlyGroup) return;
     const socket = getSocket();
     const payload = {
       workspaceId,
@@ -447,7 +355,6 @@ useLayoutEffect(() => {
     setInput('');
   }, [input, selected, workspaceId, isReadOnlyGroup]);
 
-  // ---- PRIVATE group hard removal: full cutoff ----
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -461,7 +368,6 @@ useLayoutEffect(() => {
     return () => socket.off('group:removed', onRemoved);
   }, [selected, loadConversations]);
 
-  // ---- PUBLIC group demotion: keep viewing, just lose post rights ----
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -475,7 +381,6 @@ useLayoutEffect(() => {
     return () => socket.off('group:demoted', onDemoted);
   }, [selected, loadConversations]);
 
-  // ---- group deleted entirely ----
   useEffect(() => {
     const socket = getSocket();
     if (!socket) return;
@@ -505,7 +410,6 @@ useLayoutEffect(() => {
     typingTimeoutRef.current = setTimeout(() => socket?.emit('typing:stop', payload), 1500);
   };
 
-  // ---- unsend (with confirmation) ----
   const confirmUnsend = () => {
     if (!confirmDeleteId) return;
     const socket = getSocket();
@@ -521,7 +425,6 @@ useLayoutEffect(() => {
     setConfirmDeleteId(null);
   };
 
-  // ---- create group ----
   const openGroupModal = () => {
     setGroupName(''); setGroupIsPrivate(true); setSelectedMemberIds([]);
     setGroupError('');
@@ -565,7 +468,6 @@ useLayoutEffect(() => {
     }
   };
 
-  // ---- view group members ----
   const refreshGroupDetail = async () => {
     try {
       if (!selected?.id) return null;
@@ -599,7 +501,6 @@ useLayoutEffect(() => {
 
   const isCreator = groupDetail?.createdBy === user?.id;
 
-  // ---- add member to existing group (creator/admin only) ----
   const openAddMember = () => {
     setAddMemberIds([]);
     setAddMemberModalOpen(true);
@@ -629,7 +530,6 @@ useLayoutEffect(() => {
     }
   };
 
-  // ---- delete group (creator only) ----
   const handleDeleteGroup = async () => {
     try {
       if (!selected?.id) return;
@@ -648,7 +548,6 @@ useLayoutEffect(() => {
     [presence]
   );
 
-  // ---- search ----
   const filteredGroups = useMemo(
     () => groups.filter((c) => c.name?.toLowerCase().includes(search.toLowerCase()) ?? false),
     [groups, search]
@@ -661,6 +560,17 @@ useLayoutEffect(() => {
   const charsLeft = MESSAGE_LIMIT - input.length;
   const nearLimit = charsLeft <= 100;
 
+  // Shared dark-mode styling for TextFields in Modals
+  const textFieldModalSx = {
+    '& .MuiOutlinedInput-root': {
+      backgroundColor: C.inputBg,
+      '& fieldset': { borderColor: C.border },
+      '&:hover fieldset': { borderColor: C.textMuted },
+    },
+    '& .MuiInputBase-input': { color: C.text },
+    '& .MuiInputLabel-root': { color: C.textMuted },
+  };
+
   return (
     <Box sx={{ display: 'flex', height: 'calc(100vh - 60px)', backgroundColor: C.bg }}>
       {/* Sidebar */}
@@ -671,13 +581,13 @@ useLayoutEffect(() => {
             <Tooltip title="New group">
               <IconButton
                 size="small" onClick={openGroupModal}
-                sx={{ bgcolor: C.accent, color: '#fff', width: 30, height: 30, '&:hover': { bgcolor: '#4a45c9' } }}
+                sx={{ bgcolor: C.accent, color: '#fff', width: 30, height: 30, '&:hover': { bgcolor: C.accentHover } }}
               >
                 <AddIcon sx={{ fontSize: 18 }} />
               </IconButton>
             </Tooltip>
           </Box>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: '#fff', border: `1px solid ${C.border}`, borderRadius: '10px', px: 1.5, height: 36 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, backgroundColor: C.inputBg, border: `1px solid ${C.border}`, borderRadius: '10px', px: 1.5, height: 36 }}>
             <SearchIcon sx={{ fontSize: 17, color: C.textMuted }} />
             <input
               placeholder="Search conversations..."
@@ -704,6 +614,7 @@ useLayoutEffect(() => {
                     onClick={setSelected}
                     isGroup
                     unreadCount={unreadCounts[convId]}
+                    C={C}
                   />
                 );
               })}
@@ -725,6 +636,7 @@ useLayoutEffect(() => {
                     onClick={setSelected}
                     online={isOnline(convId)}
                     unreadCount={unreadCounts[convId]}
+                    C={C}
                   />
                 );
               })}
@@ -812,6 +724,7 @@ useLayoutEffect(() => {
                       isGroup={selected?.type === 'group'}
                       user={user}
                       setConfirmDeleteId={setConfirmDeleteId}
+                      C={C}
                     />
                   );
                 })
@@ -838,12 +751,12 @@ useLayoutEffect(() => {
                     onChange={handleInputChange}
                     onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                     placeholder="Type a message..."
-                    style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 20, padding: '10px 16px', fontSize: 13.5, outline: 'none' }}
+                    style={{ flex: 1, border: `1px solid ${C.border}`, borderRadius: 20, padding: '10px 16px', fontSize: 13.5, outline: 'none', backgroundColor: C.inputBg, color: C.text }}
                   />
                   <IconButton
                     onClick={handleSend}
                     disabled={!input.trim()}
-                    sx={{ bgcolor: C.accent, color: '#fff', width: 38, height: 38, '&:hover': { bgcolor: '#4a45c9' }, '&.Mui-disabled': { bgcolor: '#d8d7f5', color: '#fff' } }}
+                    sx={{ bgcolor: C.accent, color: '#fff', width: 38, height: 38, '&:hover': { bgcolor: C.accentHover }, '&.Mui-disabled': { bgcolor: darkMode ? '#334155' : '#d8d7f5', color: darkMode ? '#64748b' : '#fff' } }}
                   >
                     <SendIcon sx={{ fontSize: 17 }} />
                   </IconButton>
@@ -865,13 +778,13 @@ useLayoutEffect(() => {
 
       {/* Create Group Modal */}
       <Modal open={groupModalOpen} onClose={() => setGroupModalOpen(false)}>
-        <ModalCard>
+        <ModalCard C={C}>
           <Typography sx={{ fontWeight: 700, mb: 2, color: C.text }}>Create Group</Typography>
           <TextField fullWidth size="small" label="Group name" value={groupName}
-            onChange={(e) => setGroupName(e.target.value)} sx={{ mb: 2 }} />
+            onChange={(e) => setGroupName(e.target.value)} sx={{ mb: 2, ...textFieldModalSx }} />
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-            <Checkbox checked={groupIsPrivate} onChange={(e) => setGroupIsPrivate(e.target.checked)} />
-            <Typography sx={{ fontSize: 13 }}>Private group</Typography>
+            <Checkbox checked={groupIsPrivate} onChange={(e) => setGroupIsPrivate(e.target.checked)} sx={{ color: C.textMuted, '&.Mui-checked': { color: C.accent } }} />
+            <Typography sx={{ fontSize: 13, color: C.text }}>Private group</Typography>
           </Box>
           <Typography sx={{ fontSize: 12, fontWeight: 700, color: C.textMuted, mt: 1, mb: 0.5 }}>Add members</Typography>
           <List className="thin-scroll" sx={{ maxHeight: 220, overflowY: 'auto', border: `1px solid ${C.border}`, borderRadius: 1 }}>
@@ -879,8 +792,8 @@ useLayoutEffect(() => {
               const memberId = m._id || m.id;
               return (
                 <ListItem key={memberId} dense button onClick={() => toggleMember(memberId)}>
-                  <Checkbox edge="start" checked={selectedMemberIds.includes(memberId)} tabIndex={-1} disableRipple />
-                  <ListItemText primary={m.name || 'Unnamed'} secondary={m.email} />
+                  <Checkbox edge="start" checked={selectedMemberIds.includes(memberId)} tabIndex={-1} disableRipple sx={{ color: C.textMuted, '&.Mui-checked': { color: C.accent } }} />
+                  <ListItemText primary={m.name || 'Unnamed'} secondary={m.email} primaryTypographyProps={{ color: C.text }} secondaryTypographyProps={{ color: C.textMuted }} />
                 </ListItem>
               );
             })}
@@ -891,9 +804,9 @@ useLayoutEffect(() => {
             </Typography>
           )}
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
-            <Button onClick={() => setGroupModalOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
+            <Button onClick={() => setGroupModalOpen(false)} sx={{ textTransform: 'none', color: C.textMuted }}>Cancel</Button>
             <Button variant="contained" onClick={handleCreateGroup} disabled={!groupName.trim() || creatingGroup}
-              sx={{ textTransform: 'none', bgcolor: C.accent, '&:hover': { bgcolor: '#4a45c9' } }}>
+              sx={{ textTransform: 'none', bgcolor: C.accent, '&:hover': { bgcolor: C.accentHover }, '&.Mui-disabled': { bgcolor: darkMode ? '#334155' : undefined, color: darkMode ? '#64748b' : undefined } }}>
               {creatingGroup ? 'Creating…' : 'Create'}
             </Button>
           </Box>
@@ -902,10 +815,10 @@ useLayoutEffect(() => {
 
       {/* Group Members Modal */}
       <Modal open={membersModalOpen} onClose={() => setMembersModalOpen(false)}>
-        <ModalCard>
+        <ModalCard C={C}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
             <Typography sx={{ fontWeight: 700, color: C.text }}>{groupDetail?.name} · Members</Typography>
-            <IconButton size="small" onClick={() => setMembersModalOpen(false)}><CloseIcon sx={{ fontSize: 18 }} /></IconButton>
+            <IconButton size="small" onClick={() => setMembersModalOpen(false)}><CloseIcon sx={{ fontSize: 18, color: C.textMuted }} /></IconButton>
           </Box>
 
           {isCreator && (
@@ -913,14 +826,14 @@ useLayoutEffect(() => {
               <Button
                 fullWidth startIcon={<PersonAddIcon sx={{ fontSize: 17 }} />}
                 onClick={openAddMember}
-                sx={{ textTransform: 'none', bgcolor: C.accentSoft, color: C.accent, '&:hover': { bgcolor: '#e2e0fb' } }}
+                sx={{ textTransform: 'none', bgcolor: C.accentSoft, color: C.accent, '&:hover': { bgcolor: C.accentSoftHover } }}
               >
                 Add Member
               </Button>
               <Button
                 fullWidth startIcon={<DeleteOutlineIcon sx={{ fontSize: 17 }} />}
                 onClick={() => setConfirmDeleteGroup(true)}
-                sx={{ textTransform: 'none', bgcolor: '#fdecec', color: C.danger, '&:hover': { bgcolor: '#fbdada' } }}
+                sx={{ textTransform: 'none', bgcolor: C.dangerSoft, color: C.danger, '&:hover': { bgcolor: C.dangerSoftHover } }}
               >
                 Delete Group
               </Button>
@@ -936,7 +849,7 @@ useLayoutEffect(() => {
                   secondaryAction={
                     isCreator && !isSelf ? (
                       <IconButton size="small" onClick={() => handleRemoveMember(m._id)}>
-                        <CloseIcon sx={{ fontSize: 16, color: '#94a3b8' }} />
+                        <CloseIcon sx={{ fontSize: 16, color: C.textMuted }} />
                       </IconButton>
                     ) : null
                   }
@@ -945,6 +858,8 @@ useLayoutEffect(() => {
                     {m.name?.[0]}
                   </Avatar>
                   <ListItemText
+                    primaryTypographyProps={{ color: C.text }}
+                    secondaryTypographyProps={{ color: C.textMuted }}
                     primary={isSelf ? 'You' : m.name}
                     secondary={
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -962,7 +877,7 @@ useLayoutEffect(() => {
 
       {/* Add Member Modal (creator only) */}
       <Modal open={addMemberModalOpen} onClose={() => setAddMemberModalOpen(false)}>
-        <ModalCard>
+        <ModalCard C={C}>
           <Typography sx={{ fontWeight: 700, mb: 1.5, color: C.text }}>Add Members</Typography>
           <List className="thin-scroll" sx={{ maxHeight: 260, overflowY: 'auto', border: `1px solid ${C.border}`, borderRadius: 1 }}>
             {eligibleDirects.length === 0 && (
@@ -974,16 +889,16 @@ useLayoutEffect(() => {
               const memberId = m._id || m.id;
               return (
                 <ListItem key={memberId} dense button onClick={() => toggleAddMember(memberId)}>
-                  <Checkbox edge="start" checked={addMemberIds.includes(memberId)} tabIndex={-1} disableRipple />
-                  <ListItemText primary={m.name || 'Unnamed'} secondary={m.email} />
+                  <Checkbox edge="start" checked={addMemberIds.includes(memberId)} tabIndex={-1} disableRipple sx={{ color: C.textMuted, '&.Mui-checked': { color: C.accent } }} />
+                  <ListItemText primary={m.name || 'Unnamed'} secondary={m.email} primaryTypographyProps={{ color: C.text }} secondaryTypographyProps={{ color: C.textMuted }} />
                 </ListItem>
               );
             })}
           </List>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1, mt: 2 }}>
-            <Button onClick={() => setAddMemberModalOpen(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
+            <Button onClick={() => setAddMemberModalOpen(false)} sx={{ textTransform: 'none', color: C.textMuted }}>Cancel</Button>
             <Button variant="contained" onClick={handleAddMembers} disabled={addMemberIds.length === 0}
-              sx={{ textTransform: 'none', bgcolor: C.accent, '&:hover': { bgcolor: '#4a45c9' } }}>
+              sx={{ textTransform: 'none', bgcolor: C.accent, '&:hover': { bgcolor: C.accentHover }, '&.Mui-disabled': { bgcolor: darkMode ? '#334155' : undefined, color: darkMode ? '#64748b' : undefined } }}>
               Add
             </Button>
           </Box>
@@ -992,16 +907,16 @@ useLayoutEffect(() => {
 
       {/* Unsend Confirmation Modal */}
       <Modal open={!!confirmDeleteId} onClose={() => setConfirmDeleteId(null)}>
-        <ModalCard width={340}>
+        <ModalCard width={340} C={C}>
           <Typography sx={{ fontWeight: 700, color: C.text, mb: 1 }}>Unsend message?</Typography>
           <Typography sx={{ fontSize: 13, color: C.textMuted, mb: 2.5 }}>
             This will remove the message for everyone in the conversation. This can't be undone.
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-            <Button onClick={() => setConfirmDeleteId(null)} sx={{ textTransform: 'none' }}>Cancel</Button>
+            <Button onClick={() => setConfirmDeleteId(null)} sx={{ textTransform: 'none', color: C.textMuted }}>Cancel</Button>
             <Button
               variant="contained" onClick={confirmUnsend}
-              sx={{ textTransform: 'none', bgcolor: C.danger, '&:hover': { bgcolor: '#dc2626' } }}
+              sx={{ textTransform: 'none', bgcolor: C.danger, '&:hover': { bgcolor: C.dangerSoftHover } }}
             >
               Unsend
             </Button>
@@ -1011,16 +926,16 @@ useLayoutEffect(() => {
 
       {/* Delete Group Confirmation Modal */}
       <Modal open={confirmDeleteGroup} onClose={() => setConfirmDeleteGroup(false)}>
-        <ModalCard width={360}>
+        <ModalCard width={360} C={C}>
           <Typography sx={{ fontWeight: 700, color: C.text, mb: 1 }}>Delete this group?</Typography>
           <Typography sx={{ fontSize: 13, color: C.textMuted, mb: 2.5 }}>
             This permanently deletes "{groupDetail?.name}" and all its messages for every member. This can't be undone.
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-            <Button onClick={() => setConfirmDeleteGroup(false)} sx={{ textTransform: 'none' }}>Cancel</Button>
+            <Button onClick={() => setConfirmDeleteGroup(false)} sx={{ textTransform: 'none', color: C.textMuted }}>Cancel</Button>
             <Button
               variant="contained" onClick={handleDeleteGroup}
-              sx={{ textTransform: 'none', bgcolor: C.danger, '&:hover': { bgcolor: '#dc2626' } }}
+              sx={{ textTransform: 'none', bgcolor: C.danger, '&:hover': { bgcolor: C.dangerSoftHover } }}
             >
               Delete
             </Button>
@@ -1035,11 +950,11 @@ useLayoutEffect(() => {
   );
 }
 
-function ModalCard({ children, width = 400 }) {
+function ModalCard({ children, width = 400, C }) {
   return (
     <Box sx={{
       position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
-      width, bgcolor: '#fff', borderRadius: 3, boxShadow: '0 10px 40px rgba(0,0,0,0.12)', p: 3,
+      width, bgcolor: C.modalBg, borderRadius: 3, boxShadow: '0 10px 40px rgba(0,0,0,0.12)', p: 3,
     }}>
       {children}
     </Box>
@@ -1054,9 +969,6 @@ function formatMessageTime(createdAt) {
   }
 }
 
-// Builds a per-viewer label for a system message using its structured,
-// populated systemMeta (falls back to stored content for older messages
-// created before systemMeta existed, or if population failed).
 function getSystemLabel(m, userId) {
   const meta = m.systemMeta;
   if (!meta || !meta.type) return m.content || 'System message';
@@ -1085,14 +997,14 @@ function getSystemLabel(m, userId) {
   return m.content;
 }
 
-const MessageRow = memo(function MessageRow({ m, isMe, isGroup, user, setConfirmDeleteId }) {
+const MessageRow = memo(function MessageRow({ m, isMe, isGroup, user, setConfirmDeleteId, C }) {
   const readByOthers = (m.readBy || []).filter((id) => id !== user?.id);
   const messageTime = useMemo(() => formatMessageTime(m.createdAt), [m.createdAt]);
 
   if (m.isSystem) {
     return (
       <Box sx={{ alignSelf: 'center', my: 0.5 }}>
-        <Typography sx={{ fontSize: 11.5, color: C.textMuted, bgcolor: '#eeeef7', px: 1.5, py: 0.4, borderRadius: 10 }}>
+        <Typography sx={{ fontSize: 11.5, color: C.textMuted, bgcolor: C.systemBg, px: 1.5, py: 0.4, borderRadius: 10 }}>
           {getSystemLabel(m, user?.id)}
         </Typography>
       </Box>
@@ -1111,11 +1023,11 @@ const MessageRow = memo(function MessageRow({ m, isMe, isGroup, user, setConfirm
             className="msg-delete-btn"
             sx={{ opacity: 0, transition: 'opacity .15s', p: 0.4 }}
           >
-            <DeleteOutlineIcon sx={{ fontSize: 15, color: '#94a3b8' }} />
+            <DeleteOutlineIcon sx={{ fontSize: 15, color: C.textMuted }} />
           </IconButton>
         )}
         <Box sx={{
-          backgroundColor: m.deleted ? '#f1f1f7' : (isMe ? C.bubbleMe : C.bubbleThem),
+          backgroundColor: m.deleted ? C.deletedBg : (isMe ? C.bubbleMe : C.bubbleThem),
           color: m.deleted ? C.textMuted : (isMe ? '#fff' : C.text),
           border: (isMe && !m.deleted) ? 'none' : `1px solid ${C.border}`,
           borderRadius: isMe ? '12px 12px 2px 12px' : '12px 12px 12px 2px',
@@ -1139,7 +1051,7 @@ const MessageRow = memo(function MessageRow({ m, isMe, isGroup, user, setConfirm
   );
 });
 
-function ConversationRow({ c, selected, onClick, isGroup, online, unreadCount }) {
+function ConversationRow({ c, selected, onClick, isGroup, online, unreadCount, C }) {
   const convId = c._id || c.id;
   const isActive = selected?.id === convId && selected?.type === c.type;
   const isReadOnly = isGroup && c.isMember === false;
@@ -1159,25 +1071,25 @@ function ConversationRow({ c, selected, onClick, isGroup, online, unreadCount })
       onClick={handleClick}
       sx={{
         display: 'flex', alignItems: 'center', gap: 1.5, px: 2, py: 1.1, cursor: 'pointer',
-        backgroundColor: isActive ? '#efeefd' : 'transparent',
-        borderLeft: isActive ? '3px solid #5b56e0' : '3px solid transparent',
-        '&:hover': { backgroundColor: isActive ? '#efeefd' : '#f0f0f8' },
+        backgroundColor: isActive ? C.accentSoft : 'transparent',
+        borderLeft: isActive ? `3px solid ${C.accent}` : '3px solid transparent',
+        '&:hover': { backgroundColor: isActive ? C.accentSoft : C.accentSoftHover },
       }}
     >
       <Box sx={{ position: 'relative' }}>
-        <Avatar sx={{ width: 34, height: 34, fontSize: 12.5, fontWeight: 700, bgcolor: '#efeefd', color: '#5b56e0' }}>
+        <Avatar sx={{ width: 34, height: 34, fontSize: 12.5, fontWeight: 700, bgcolor: C.accentSoft, color: C.accent }}>
           {isGroup ? <GroupIcon sx={{ fontSize: 15 }} /> : (c.name?.[0] || '?')}
         </Avatar>
         {!isGroup && online && (
-          <Box sx={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', bgcolor: '#22c55e', border: '2px solid #f7f7fc' }} />
+          <Box sx={{ position: 'absolute', bottom: -1, right: -1, width: 9, height: 9, borderRadius: '50%', bgcolor: C.online, border: `2px solid ${C.panelBg}` }} />
         )}
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Typography sx={{ fontSize: 13.5, fontWeight: hasUnread ? 700 : 600, color: '#1e1b3a' }} noWrap>
+        <Typography sx={{ fontSize: 13.5, fontWeight: hasUnread ? 700 : 600, color: C.text }} noWrap>
           {c.name || 'Unnamed'}
         </Typography>
         {isReadOnly && (
-          <Typography sx={{ fontSize: 10.5, color: '#8b8aa3' }} noWrap>
+          <Typography sx={{ fontSize: 10.5, color: C.textMuted }} noWrap>
             View only
           </Typography>
         )}
@@ -1193,4 +1105,4 @@ function ConversationRow({ c, selected, onClick, isGroup, online, unreadCount })
       )}
     </Box>
   );
-}   
+}

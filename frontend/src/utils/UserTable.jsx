@@ -6,20 +6,21 @@ import {
     Checkbox,
 } from "@mui/material";
 
-const ROLE_CONFIG = {
+// Provide dynamic role styles based on dark mode
+const getRoleConfig = (darkMode) => ({
     Admin: {
-        backgroundColor: "#fee2e2",
-        color: "#dc2626",
+        backgroundColor: darkMode ? "#7f1d1d" : "#fee2e2",
+        color: darkMode ? "#fca5a5" : "#dc2626",
     },
     Manager: {
-        backgroundColor: "#fef3c7",
-        color: "#d97706",
+        backgroundColor: darkMode ? "#78350f" : "#fef3c7",
+        color: darkMode ? "#fcd34d" : "#d97706",
     },
     Member: {
-        backgroundColor: "#dcfce7",
-        color: "#16a34a",
+        backgroundColor: darkMode ? "#14532d" : "#dcfce7",
+        color: darkMode ? "#86efac" : "#16a34a",
     },
-};
+});
 
 export default function UserTable({
     users,
@@ -27,6 +28,7 @@ export default function UserTable({
     onToggleSelect,
     onToggleSelectAll,
     onUserClick,
+    darkMode,
 }) {
     const allSelected =
         users.length > 0 &&
@@ -36,11 +38,13 @@ export default function UserTable({
         selected.includes(user.id)
     );
 
+    const ROLE_CONFIG = getRoleConfig(darkMode);
+
     return (
         <Box
             sx={{
-                backgroundColor: "#ffffff",
-                border: "1px solid #e2e8f0",
+                backgroundColor: darkMode ? "#0f172a" : "#ffffff",
+                border: `1px solid ${darkMode ? "#334155" : "#e2e8f0"}`,
                 borderRadius: "8px",
                 display: "flex",
                 flexDirection: "column",
@@ -53,8 +57,8 @@ export default function UserTable({
                 sx={{
                     display: "flex",
                     alignItems: "center",
-                    borderBottom: "1px solid #e2e8f0",
-                    backgroundColor: "#f8fafc",
+                    borderBottom: `1px solid ${darkMode ? "#334155" : "#e2e8f0"}`,
+                    backgroundColor: darkMode ? "#1e293b" : "#f8fafc",
                     flexShrink: 0,
                 }}
             >
@@ -74,6 +78,7 @@ export default function UserTable({
                                 users.map((user) => user.id)
                             )
                         }
+                        sx={{ color: darkMode ? '#64748b' : undefined }}
                     />
                 </Box>
 
@@ -82,7 +87,7 @@ export default function UserTable({
                         sx={{
                             fontSize: "12px",
                             fontWeight: 700,
-                            color: "#475569",
+                            color: darkMode ? "#94a3b8" : "#475569",
                             textTransform: "uppercase",
                             letterSpacing: "0.3px",
                         }}
@@ -96,7 +101,7 @@ export default function UserTable({
                         sx={{
                             fontSize: "12px",
                             fontWeight: 700,
-                            color: "#475569",
+                            color: darkMode ? "#94a3b8" : "#475569",
                             textTransform: "uppercase",
                             letterSpacing: "0.3px",
                         }}
@@ -110,7 +115,7 @@ export default function UserTable({
                         sx={{
                             fontSize: "12px",
                             fontWeight: 700,
-                            color: "#475569",
+                            color: darkMode ? "#94a3b8" : "#475569",
                             textTransform: "uppercase",
                             letterSpacing: "0.3px",
                         }}
@@ -124,7 +129,7 @@ export default function UserTable({
                         sx={{
                             fontSize: "12px",
                             fontWeight: 700,
-                            color: "#475569",
+                            color: darkMode ? "#94a3b8" : "#475569",
                             textTransform: "uppercase",
                             letterSpacing: "0.3px",
                         }}
@@ -138,7 +143,7 @@ export default function UserTable({
                         sx={{
                             fontSize: "12px",
                             fontWeight: 700,
-                            color: "#475569",
+                            color: darkMode ? "#94a3b8" : "#475569",
                             textTransform: "uppercase",
                             letterSpacing: "0.3px",
                         }}
@@ -165,7 +170,7 @@ export default function UserTable({
                         <Typography
                             sx={{
                                 fontSize: "13px",
-                                color: "#94a3b8",
+                                color: darkMode ? "#64748b" : "#94a3b8",
                             }}
                         >
                             No users to show
@@ -187,18 +192,17 @@ export default function UserTable({
                                 sx={{
                                     display: "flex",
                                     alignItems: "center",
-                                    borderBottom:
-                                        "1px solid #f1f5f9",
+                                    borderBottom: `1px solid ${darkMode ? "#1e293b" : "#f1f5f9"}`,
                                     backgroundColor: isChecked
-                                        ? "#f5f3ff"
+                                        ? (darkMode ? "#2e1065" : "#f5f3ff")
                                         : "transparent",
 
                                     cursor: "pointer",
 
                                     "&:hover": {
                                         backgroundColor: isChecked
-                                            ? "#f5f3ff"
-                                            : "#f8fafc",
+                                            ? (darkMode ? "#2e1065" : "#f5f3ff")
+                                            : (darkMode ? "#1e293b" : "#f8fafc"),
                                     },
 
                                     "&:last-of-type": {
@@ -207,7 +211,6 @@ export default function UserTable({
                                 }}
                             >
                                 {/* Checkbox */}
-
                                 <Box
                                     onClick={(e) =>
                                         e.stopPropagation()
@@ -224,11 +227,11 @@ export default function UserTable({
                                         onChange={() =>
                                             onToggleSelect(user.id)
                                         }
+                                        sx={{ color: darkMode ? '#64748b' : undefined }}
                                     />
                                 </Box>
 
                                 {/* ID */}
-
                                 <Box
                                     sx={{
                                         width: "120px",
@@ -240,7 +243,7 @@ export default function UserTable({
                                         sx={{
                                             fontSize: "13px",
                                             fontWeight: 600,
-                                            color: "#7c3aed",
+                                            color: darkMode ? "#a78bfa" : "#7c3aed",
                                         }}
                                     >
                                         {user.id}
@@ -248,7 +251,6 @@ export default function UserTable({
                                 </Box>
 
                                 {/* Name */}
-
                                 <Box
                                     sx={{
                                         width: "180px",
@@ -260,7 +262,7 @@ export default function UserTable({
                                         sx={{
                                             fontSize: "13px",
                                             fontWeight: 600,
-                                            color: "#334155",
+                                            color: darkMode ? "#f8fafc" : "#334155",
                                             whiteSpace: "nowrap",
                                             overflow: "hidden",
                                             textOverflow: "ellipsis",
@@ -271,7 +273,6 @@ export default function UserTable({
                                 </Box>
 
                                 {/* Email */}
-
                                 <Box
                                     sx={{
                                         flex: 1,
@@ -289,8 +290,8 @@ export default function UserTable({
                                             height: 24,
                                             fontSize: "10px",
                                             fontWeight: 700,
-                                            backgroundColor: "#ede9fe",
-                                            color: "#7c3aed",
+                                            backgroundColor: darkMode ? "#312e81" : "#ede9fe",
+                                            color: darkMode ? "#c4b5fd" : "#7c3aed",
                                         }}
                                     >
                                         {user.email
@@ -301,7 +302,7 @@ export default function UserTable({
                                     <Typography
                                         sx={{
                                             fontSize: "13px",
-                                            color: "#334155",
+                                            color: darkMode ? "#cbd5e1" : "#334155",
                                             whiteSpace: "nowrap",
                                             overflow: "hidden",
                                             textOverflow: "ellipsis",
@@ -312,7 +313,6 @@ export default function UserTable({
                                 </Box>
 
                                 {/* Is Active */}
-
                                 <Box
                                     sx={{
                                         width: "140px",
@@ -333,18 +333,17 @@ export default function UserTable({
                                             fontWeight: 600,
                                             backgroundColor:
                                                 user.isActive
-                                                    ? "#dcfce7"
-                                                    : "#f1f5f9",
+                                                    ? (darkMode ? "#14532d" : "#dcfce7")
+                                                    : (darkMode ? "#334155" : "#f1f5f9"),
                                             color:
                                                 user.isActive
-                                                    ? "#16a34a"
-                                                    : "#64748b",
+                                                    ? (darkMode ? "#86efac" : "#16a34a")
+                                                    : (darkMode ? "#94a3b8" : "#64748b"),
                                         }}
                                     />
                                 </Box>
 
                                 {/* Role */}
-
                                 <Box
                                     sx={{
                                         width: "180px",

@@ -140,6 +140,26 @@ export default function Login() {
     }
   };
 
+  const AppLogo = () => (
+    <Box
+      sx={{
+        width: 28,
+        height: 28,
+        borderRadius: '8px',
+        backgroundColor: '#6d28d9',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 11l3 3L22 4" />
+        <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11" />
+      </svg>
+    </Box>
+  );
+
   return (
     <Box
       component="main"
@@ -225,29 +245,7 @@ export default function Login() {
             cursor: "pointer",
           }}
         >
-          <Box
-            display="grid"
-            gridTemplateColumns="repeat(2, 1fr)"
-            gap="6px"
-            width={28}
-          >
-            {[
-              VIBRANT_PURPLE,
-              "#000000",
-              "#000000",
-              VIBRANT_PURPLE,
-            ].map((color, i) => (
-              <Box
-                key={i}
-                sx={{
-                  width: 10,
-                  height: 10,
-                  borderRadius: "50%",
-                  backgroundColor: color,
-                }}
-              />
-            ))}
-          </Box>
+          <AppLogo />
 
           <Typography
             sx={{

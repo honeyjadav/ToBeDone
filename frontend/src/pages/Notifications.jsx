@@ -6,23 +6,29 @@ import TagIcon from "@mui/icons-material/Tag";
 import AssignmentIcon from "@mui/icons-material/Assignment";
 import APICallService from "../services/APICallService";
 import { useAuth } from "../hooks/useAuth";
-import { getSocket } from "../services/Socket"; // Add this
+import { getSocket } from "../services/Socket";
+
+// 1. Import settings utility
+import { getAppSettings } from "../utils/preferences";
 
 const TYPE_CONFIG = {
   DIGEST: {
     icon: AutoAwesomeIcon,
     color: "#7c3aed",
     bg: "#f3f0fe",
+    darkBg: "#2e1065",
   },
   DIRECT: {
     icon: AlternateEmailIcon,
     color: "#3b82f6",
     bg: "#eff6ff",
+    darkBg: "#1e3a8a",
   },
   TASK: {
     icon: AssignmentIcon,
     color: "#059669",
     bg: "#ecfdf5",
+    darkBg: "#14532d",
   },
 };
 
@@ -36,6 +42,20 @@ const FILTERS = [
 const Notifications = () => {
   const { activeWorkspace } = useAuth();
   const workspaceId = activeWorkspace?.workspaceId;
+
+  // 2. Initialize dark mode state and event listener
+  const initialSettings = getAppSettings();
+  const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
+
+  useEffect(() => {
+    const handleSettingsChange = (event) => {
+      const nextSettings = event.detail ?? getAppSettings();
+      setDarkMode(Boolean(nextSettings.darkMode));
+    };
+
+    window.addEventListener('tobedone-settings-changed', handleSettingsChange);
+    return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
+  }, []);
 
   const [notifications, setNotifications] = useState([]);
   const [tab, setTab] = useState(0);
@@ -73,7 +93,7 @@ const Notifications = () => {
           setNotifications([]);
           setError(
             payload?.message ||
-              "Unable to load notifications."
+            "Unable to load notifications."
           );
         }
       } catch (err) {
@@ -84,7 +104,7 @@ const Notifications = () => {
 
         setError(
           err?.response?.data?.message ||
-            "Failed to load notifications."
+          "Failed to load notifications."
         );
       } finally {
         setLoading(false);
@@ -159,185 +179,185 @@ const Notifications = () => {
   // --------------------------------------------------
 
   const markRead = async (notificationId) => {
-  if (!workspaceId || !notificationId) {
-    return;
-  }
+    if (!workspaceId || !notificationId) {
+      return;
+    }
 
-  // Optimistic update on Notifications page
-  setNotifications((prev) =>
-    prev.map((notification) =>
-      String(
-        notification.notificationId ||
-        notification._id ||
-        notification.id
-      ) === String(notificationId)
-        ? {
+    // Optimistic update on Notifications page
+    setNotifications((prev) =>
+      prev.map((notification) =>
+        String(
+          notification.notificationId ||
+          notification._id ||
+          notification.id
+        ) === String(notificationId)
+          ? {
             ...notification,
             isRead: true,
           }
-        : notification
-    )
-  );
-
-  // Tell Header / Dropdown
-  window.dispatchEvent(
-    new CustomEvent("notification:state-change", {
-      detail: {
-        type: "read",
-        notificationId,
-      },
-    })
-  );
-
-  try {
-    await APICallService.markNotificationRead(
-      workspaceId,
-      notificationId
-    );
-  } catch (err) {
-    console.error(
-      "Failed to mark notification as read:",
-      err
+          : notification
+      )
     );
 
-    // Reload from backend if API fails
+    // Tell Header / Dropdown
+    window.dispatchEvent(
+      new CustomEvent("notification:state-change", {
+        detail: {
+          type: "read",
+          notificationId,
+        },
+      })
+    );
+
     try {
-      const response =
-        await APICallService.getNotifications(
-          workspaceId
-        );
+      await APICallService.markNotificationRead(
+        workspaceId,
+        notificationId
+      );
+    } catch (err) {
+      console.error(
+        "Failed to mark notification as read:",
+        err
+      );
 
-      if (response?.data?.success) {
-        const data = response.data.data || [];
+      // Reload from backend if API fails
+      try {
+        const response =
+          await APICallService.getNotifications(
+            workspaceId
+          );
 
-        setNotifications(data);
+        if (response?.data?.success) {
+          const data = response.data.data || [];
 
-        // Synchronize Header again
-        window.dispatchEvent(
-          new CustomEvent(
-            "notification:sync",
-            {
-              detail: {
-                notifications: data,
-              },
-            }
-          )
+          setNotifications(data);
+
+          // Synchronize Header again
+          window.dispatchEvent(
+            new CustomEvent(
+              "notification:sync",
+              {
+                detail: {
+                  notifications: data,
+                },
+              }
+            )
+          );
+        }
+      } catch (reloadError) {
+        console.error(
+          "Failed to reload notifications:",
+          reloadError
         );
       }
-    } catch (reloadError) {
-      console.error(
-        "Failed to reload notifications:",
-        reloadError
-      );
     }
-  }
-};
+  };
   // --------------------------------------------------
   // MARK ALL AS READ
   // --------------------------------------------------
 
   const markAllRead = async () => {
-  if (!workspaceId) {
-    return;
-  }
+    if (!workspaceId) {
+      return;
+    }
 
-  const previousNotifications =
-    notifications;
+    const previousNotifications =
+      notifications;
 
-  // Optimistic update
-  setNotifications((prev) =>
-    prev.map((notification) => ({
-      ...notification,
-      isRead: true,
-    }))
-  );
-
-  // Tell Header / Dropdown
-  window.dispatchEvent(
-    new CustomEvent("notification:state-change", {
-      detail: {
-        type: "read-all",
-      },
-    })
-  );
-
-  try {
-    await APICallService.markAllNotificationsRead(
-      workspaceId
-    );
-  } catch (err) {
-    console.error(
-      "Failed to mark all notifications as read:",
-      err
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.map((notification) => ({
+        ...notification,
+        isRead: true,
+      }))
     );
 
-    // Rollback Notifications page
-    setNotifications(previousNotifications);
-
-    // Rollback Header / Dropdown
+    // Tell Header / Dropdown
     window.dispatchEvent(
-      new CustomEvent("notification:sync", {
+      new CustomEvent("notification:state-change", {
         detail: {
-          notifications:
-            previousNotifications,
+          type: "read-all",
         },
       })
     );
-  }
-};
+
+    try {
+      await APICallService.markAllNotificationsRead(
+        workspaceId
+      );
+    } catch (err) {
+      console.error(
+        "Failed to mark all notifications as read:",
+        err
+      );
+
+      // Rollback Notifications page
+      setNotifications(previousNotifications);
+
+      // Rollback Header / Dropdown
+      window.dispatchEvent(
+        new CustomEvent("notification:sync", {
+          detail: {
+            notifications:
+              previousNotifications,
+          },
+        })
+      );
+    }
+  };
 
   // --------------------------------------------------
   // CLEAR READ NOTIFICATIONS
   // --------------------------------------------------
 
   const clearRead = async () => {
-  if (!workspaceId) {
-    return;
-  }
+    if (!workspaceId) {
+      return;
+    }
 
-  const previousNotifications =
-    notifications;
+    const previousNotifications =
+      notifications;
 
-  // Optimistic update
-  setNotifications((prev) =>
-    prev.filter(
-      (notification) => !notification.isRead
-    )
-  );
-
-  // Tell Header / Dropdown
-  window.dispatchEvent(
-    new CustomEvent("notification:state-change", {
-      detail: {
-        type: "clear-read",
-      },
-    })
-  );
-
-  try {
-    await APICallService.clearReadNotifications(
-      workspaceId
-    );
-  } catch (err) {
-    console.error(
-      "Failed to clear read notifications:",
-      err
+    // Optimistic update
+    setNotifications((prev) =>
+      prev.filter(
+        (notification) => !notification.isRead
+      )
     );
 
-    // Rollback Notifications page
-    setNotifications(previousNotifications);
-
-    // Rollback Header / Dropdown
+    // Tell Header / Dropdown
     window.dispatchEvent(
-      new CustomEvent("notification:sync", {
+      new CustomEvent("notification:state-change", {
         detail: {
-          notifications:
-            previousNotifications,
+          type: "clear-read",
         },
       })
     );
-  }
-};
+
+    try {
+      await APICallService.clearReadNotifications(
+        workspaceId
+      );
+    } catch (err) {
+      console.error(
+        "Failed to clear read notifications:",
+        err
+      );
+
+      // Rollback Notifications page
+      setNotifications(previousNotifications);
+
+      // Rollback Header / Dropdown
+      window.dispatchEvent(
+        new CustomEvent("notification:sync", {
+          detail: {
+            notifications:
+              previousNotifications,
+          },
+        })
+      );
+    }
+  };
 
   // --------------------------------------------------
   // FILTER
@@ -416,12 +436,13 @@ const Notifications = () => {
           alignItems: "center",
           justifyContent: "center",
           p: 3,
+          backgroundColor: darkMode ? "#020817" : "transparent",
         }}
       >
         <Typography
           sx={{
             fontSize: "14px",
-            color: "#64748b",
+            color: darkMode ? "#94a3b8" : "#64748b",
           }}
         >
           No active workspace selected.
@@ -436,6 +457,7 @@ const Notifications = () => {
         height: "100%",
         overflowY: "auto",
         p: 3,
+        backgroundColor: darkMode ? "#020817" : "transparent",
       }}
     >
       <Box sx={{ maxWidth: "760px" }}>
@@ -451,7 +473,7 @@ const Notifications = () => {
             sx={{
               fontSize: "22px",
               fontWeight: 700,
-              color: "#1e293b",
+              color: darkMode ? "#f8fafc" : "#1e293b",
             }}
           >
             Notifications
@@ -466,7 +488,7 @@ const Notifications = () => {
                 textTransform: "none",
                 fontSize: "13px",
                 fontWeight: 600,
-                color: "#7c3aed",
+                color: darkMode ? "#c4b5fd" : "#7c3aed",
               }}
             >
               Mark all as read
@@ -480,7 +502,7 @@ const Notifications = () => {
                 textTransform: "none",
                 fontSize: "13px",
                 fontWeight: 600,
-                color: "#94a3b8",
+                color: darkMode ? "#94a3b8" : "#94a3b8",
               }}
             >
               Clear read
@@ -491,7 +513,7 @@ const Notifications = () => {
         <Typography
           sx={{
             fontSize: "13px",
-            color: "#64748b",
+            color: darkMode ? "#94a3b8" : "#64748b",
             mb: 2,
           }}
         >
@@ -514,17 +536,15 @@ const Notifications = () => {
               fontSize: "13px",
               fontWeight: 600,
               minHeight: "36px",
-              color: "#64748b",
+              color: darkMode ? "#94a3b8" : "#64748b",
             },
 
             "& .Mui-selected": {
-              color:
-                "#7c3aed !important",
+              color: darkMode ? "#c4b5fd !important" : "#7c3aed !important",
             },
 
             "& .MuiTabs-indicator": {
-              backgroundColor:
-                "#7c3aed",
+              backgroundColor: darkMode ? "#a78bfa" : "#7c3aed",
             },
           }}
         >
@@ -539,11 +559,9 @@ const Notifications = () => {
         {/* NOTIFICATIONS CONTAINER */}
         <Box
           sx={{
-            border:
-              "1px solid #e5e7eb",
+            border: `1px solid ${darkMode ? "#334155" : "#e5e7eb"}`,
             borderRadius: "10px",
-            backgroundColor:
-              "#ffffff",
+            backgroundColor: darkMode ? "#0f172a" : "#ffffff",
             overflow: "hidden",
           }}
         >
@@ -557,7 +575,7 @@ const Notifications = () => {
               <Typography
                 sx={{
                   fontSize: "13px",
-                  color: "#94a3b8",
+                  color: darkMode ? "#94a3b8" : "#94a3b8",
                 }}
               >
                 Loading notifications...
@@ -576,7 +594,7 @@ const Notifications = () => {
               <Typography
                 sx={{
                   fontSize: "13px",
-                  color: "#ef4444",
+                  color: darkMode ? "#f87171" : "#ef4444",
                 }}
               >
                 {error}
@@ -596,7 +614,7 @@ const Notifications = () => {
                 <Typography
                   sx={{
                     fontSize: "13px",
-                    color: "#94a3b8",
+                    color: darkMode ? "#94a3b8" : "#94a3b8",
                   }}
                 >
                   Nothing here
@@ -611,7 +629,7 @@ const Notifications = () => {
               (notification, index) => {
                 const config =
                   TYPE_CONFIG[
-                    notification.type
+                  notification.type
                   ] ||
                   TYPE_CONFIG.DIRECT;
 
@@ -640,17 +658,17 @@ const Notifications = () => {
                       backgroundColor:
                         notification.isRead
                           ? "transparent"
-                          : "#faf9ff",
+                          : (darkMode ? "#1e1b4b" : "#faf9ff"),
 
                       borderBottom:
                         index ===
-                        filtered.length - 1
+                          filtered.length - 1
                           ? "none"
-                          : "1px solid #f1f5f9",
+                          : `1px solid ${darkMode ? "#1e293b" : "#f1f5f9"}`,
 
                       "&:hover": {
                         backgroundColor:
-                          "#f8fafc",
+                          darkMode ? "#1e293b" : "#f8fafc",
                       },
                     }}
                   >
@@ -662,7 +680,7 @@ const Notifications = () => {
                         borderRadius: "8px",
                         flexShrink: 0,
                         backgroundColor:
-                          config.bg,
+                          darkMode ? config.darkBg : config.bg,
                         color:
                           config.color,
                         display: "flex",
@@ -700,7 +718,7 @@ const Notifications = () => {
                               "13.5px",
                             fontWeight: 700,
                             color:
-                              "#1e293b",
+                              darkMode ? "#f8fafc" : "#1e293b",
                           }}
                         >
                           {
@@ -736,8 +754,16 @@ const Notifications = () => {
                       <Typography
                         sx={{
                           fontSize: "13px",
-                          color: "#64748b",
+                          color: darkMode ? "#94a3b8" : "#64748b",
                           mt: 0.35,
+
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          display:
+                            "-webkit-box",
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient:
+                            "vertical",
                         }}
                       >
                         {
@@ -750,7 +776,7 @@ const Notifications = () => {
                           fontSize:
                             "11.5px",
                           color:
-                            "#94a3b8",
+                            darkMode ? "#64748b" : "#94a3b8",
                           mt: 0.5,
                         }}
                       >
