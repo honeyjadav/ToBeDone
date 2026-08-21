@@ -2,28 +2,17 @@ import { useEffect, useState } from 'react';
 import {
     Box,
     Typography,
-    Chip,
     Avatar,
-    IconButton,
     Menu,
     MenuItem,
     Button,
     Checkbox,
     ListItemText,
-    Drawer,
-    TextField,
-    Select,
-    InputLabel,
-    FormControl,
-    Divider,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import ClearIcon from '@mui/icons-material/Close';
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
-import CloseIcon from '@mui/icons-material/Close';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 import BugReportIcon from '@mui/icons-material/BugReport';
@@ -34,8 +23,6 @@ import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import AddTask from '../pages/AddTask';
 import APICallService from '../services/APICallService';
 import { useAuth } from '../hooks/useAuth';
-
-// 1. Import getAppSettings to read the current theme
 import { getAppSettings } from '../utils/preferences';
 
 const COLUMNS = ['To Do', 'In Progress', 'Done'];
@@ -62,8 +49,17 @@ const TYPE_CONFIG = {
     'User Story': { icon: AutoStoriesIcon, color: '#009ccc' },
 };
 
+// Thin scrollbar, same treatment as the chat panel
+const THIN_SCROLLBAR_SX = (darkMode) => ({
+    '&::-webkit-scrollbar': { width: '6px', height: '6px' },
+    '&::-webkit-scrollbar-track': { background: 'transparent' },
+    '&::-webkit-scrollbar-thumb': { backgroundColor: darkMode ? '#334155' : '#cbd5e1', borderRadius: '999px' },
+    '&::-webkit-scrollbar-thumb:hover': { backgroundColor: darkMode ? '#475569' : '#94a3b8' },
+    scrollbarWidth: 'thin',
+    scrollbarColor: darkMode ? '#334155 transparent' : '#cbd5e1 transparent',
+});
+
 // ---------- Filter dropdown (Azure-style checkbox pill) ----------
-// Added darkMode prop
 function FilterDropdown({ label, options, selected, onToggle, renderOption, darkMode }) {
     const [anchor, setAnchor] = useState(null);
     return (
@@ -96,8 +92,8 @@ function FilterDropdown({ label, options, selected, onToggle, renderOption, dark
                     sx: {
                         backgroundColor: darkMode ? '#1e293b' : '#ffffff',
                         color: darkMode ? '#f8fafc' : '#1e293b',
-                        border: darkMode ? '1px solid #334155' : 'none'
-                    }
+                        border: darkMode ? '1px solid #334155' : 'none',
+                    },
                 }}
             >
                 {options.map((opt) => (
@@ -126,7 +122,6 @@ const HEADERS = [
     { key: 'assignee', label: 'Assigned To', width: '150px' },
 ];
 
-// Added darkMode prop
 function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowClick, darkMode }) {
     const [sortKey, setSortKey] = useState(null);
     const [sortDir, setSortDir] = useState('asc');
@@ -162,7 +157,7 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
                 overflow: 'hidden',
             }}
         >
-            {/* Header row */}
+            {/* Header row (fixed, does not scroll) */}
             <Box sx={{ display: 'flex', alignItems: 'center', borderBottom: `1px solid ${darkMode ? '#334155' : '#e2e8f0'}`, backgroundColor: darkMode ? '#1e293b' : '#f8fafc', flexShrink: 0 }}>
                 <Box sx={{ width: '44px', display: 'flex', justifyContent: 'center' }}>
                     <Checkbox
@@ -203,7 +198,7 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
             </Box>
 
             {/* Scrollable rows */}
-            <Box sx={{ flex: 1, overflowY: 'auto' }}>
+            <Box sx={{ flex: 1, overflowY: 'auto', ...THIN_SCROLLBAR_SX(darkMode) }}>
                 {sortedTasks.length === 0 ? (
                     <Box sx={{ py: 5, textAlign: 'center' }}>
                         <Typography sx={{ fontSize: '13px', color: darkMode ? '#64748b' : '#94a3b8' }}>No work items to show</Typography>
@@ -211,7 +206,7 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
                 ) : (
                     sortedTasks.map((task) => {
                         const TypeIcon = TYPE_CONFIG[task.type]?.icon;
-                        const typeColor = TYPE_CONFIG[task.type]?.color || (darkMode ? '#94a3b8' : '#94a3b8');
+                        const typeColor = TYPE_CONFIG[task.type]?.color || '#94a3b8';
                         const isChecked = selected.includes(task.id);
                         return (
                             <Box
@@ -286,22 +281,72 @@ function TaskTable({ tasks, selected, onToggleSelect, onToggleSelectAll, onRowCl
     );
 }
 
-// ... [TaskDrawer omitted for brevity if unchanged, but apply darkMode conditionals there as well if used!]
-
-// ... [Data mapping functions mapping functions left exactly the same]
-const mapStatusToColumn = (status) => { /* logic */ return status || 'To Do'; };
-const mapColumnToStatus = (column) => { /* logic */ return column || 'To Do'; };
-const mapPriorityToUi = (priority) => { /* logic */ return priority || 'Medium'; };
-const mapPriorityToApi = (priority) => { /* logic */ return priority || 'Medium'; };
-const mapApiTaskToUi = (task, memberLookup = {}) => { /* logic */ return { ...task, title: task.title || '' }; };
-const mapUiTaskToApi = (task) => ({ /* logic */ title: task.title });
-
-
 // ---------- Main page ----------
+const mapStatusToColumn = (status) => {
+    if (!status) return 'To Do';
+    const normalized = String(status).trim();
+    if (normalized === 'Backlog' || normalized === 'In Review') return 'To Do';
+    return normalized;
+};
+
+const mapColumnToStatus = (column) => {
+    const normalized = String(column || 'To Do').trim();
+    if (normalized === 'Backlog' || normalized === 'In Review') return 'To Do';
+    return normalized;
+};
+
+const mapPriorityToUi = (priority) => {
+    if (!priority) return 'Medium';
+    if (priority === 'Urgent') return 'High';
+    return priority;
+};
+
+const mapPriorityToApi = (priority) => {
+    if (priority === 'High' || priority === 'Low' || priority === 'Medium') return priority;
+    return 'Medium';
+};
+
+const mapApiTaskToUi = (task, memberLookup = {}) => {
+    const assignedUsers = Array.isArray(task.assignedTo) ? task.assignedTo : task.assignedTo ? [task.assignedTo] : [];
+    const firstAssigned = assignedUsers[0];
+    const assigneeId = firstAssigned && typeof firstAssigned === 'object'
+        ? firstAssigned._id || firstAssigned.userId || firstAssigned.id || ''
+        : firstAssigned || '';
+
+    return {
+        id: task.taskId || task.id || '',
+        type: task.type || 'Task',
+        title: task.title || '',
+        description: task.description || '',
+        column: mapStatusToColumn(task.status),
+        priority: mapPriorityToUi(task.priority),
+        assignee: memberLookup[assigneeId] || (firstAssigned && typeof firstAssigned === 'object' ? firstAssigned.name || 'Unassigned' : 'Unassigned'),
+        assigneeId,
+        area: task.area || 'ToBeDone',
+        tags: Array.isArray(task.tags) ? task.tags : [],
+        dueDate: task.dueDate ? String(task.dueDate).slice(0, 10) : '',
+        archived: Boolean(task.archived),
+        raw: task,
+    };
+};
+
+const mapUiTaskToApi = (task) => ({
+    title: task.title,
+    type: task.type || 'Task',
+    description: task.description || '',
+    status: mapColumnToStatus(task.column),
+    priority: mapPriorityToApi(task.priority),
+    area: task.area || 'ToBeDone',
+    tags: Array.isArray(task.tags) ? task.tags : [],
+    dueDate: task.dueDate || undefined,
+    archived: Boolean(task.archived),
+    assignedTo: task.assigneeId ? [task.assigneeId] : undefined,
+});
+
 export default function Tasks() {
     const { activeWorkspace } = useAuth();
 
-    // 2. Initialize Dark Mode State based on global settings
+    // Dark mode, initialized from global settings and kept in sync via events
     const initialSettings = getAppSettings();
     const [darkMode, setDarkMode] = useState(initialSettings.darkMode);
 
@@ -316,7 +361,6 @@ export default function Tasks() {
     const [addTaskOpen, setAddTaskOpen] = useState(false);
     const [editingTask, setEditingTask] = useState(null);
 
-    // Listen for custom settings events to toggle modes automatically
     useEffect(() => {
         const handleSettingsChange = (event) => {
             const nextSettings = event.detail ?? getAppSettings();
@@ -327,9 +371,57 @@ export default function Tasks() {
         return () => window.removeEventListener('tobedone-settings-changed', handleSettingsChange);
     }, []);
 
-    // ... [existing data loading useEffect logic]
+    useEffect(() => {
+        if (!activeWorkspace?.workspaceId) {
+            return;
+        }
 
-    const visibleTasks = tasks.filter((t) => (showArchived ? t.archived : !t.archived));
+        let isMounted = true;
+
+        const normalizeList = (payload) => {
+            if (Array.isArray(payload)) return payload;
+            if (Array.isArray(payload?.data)) return payload.data;
+            if (Array.isArray(payload?.data?.data)) return payload.data.data;
+            return [];
+        };
+
+        // Load members FIRST and build the lookup from the response directly
+        // (not from state, which wouldn't have updated yet) so assignee names
+        // are correct on the very first render instead of showing "Unassigned".
+        const loadMembersThenTasks = async () => {
+            let members = [];
+            try {
+                const membersResponse = await APICallService.getWorkspaceMembers(activeWorkspace.workspaceId);
+                members = normalizeList(membersResponse?.data);
+                if (isMounted) setWorkspaceMembers(members);
+            } catch (error) {
+                console.error('Failed to load workspace members:', error);
+                if (isMounted) setWorkspaceMembers([]);
+            }
+
+            const memberLookup = Object.fromEntries(
+                members.map((member) => [(member.userId || member._id), member.name || ''])
+            );
+
+            try {
+                const tasksResponse = await APICallService.getTasks(activeWorkspace.workspaceId);
+                if (!isMounted) return;
+                const list = normalizeList(tasksResponse?.data);
+                setTasks(list.map((task) => mapApiTaskToUi(task, memberLookup)));
+            } catch (error) {
+                console.error('Failed to load tasks:', error);
+                if (isMounted) setTasks([]);
+            }
+        };
+
+        loadMembersThenTasks();
+
+        return () => { isMounted = false; };
+    }, [activeWorkspace?.workspaceId]);
+
+    const hasWorkspace = Boolean(activeWorkspace?.workspaceId);
+    const visibleTasks = (hasWorkspace ? tasks : []).filter((t) => (showArchived ? t.archived : !t.archived));
+
     const filteredTasks = visibleTasks.filter((t) => {
         const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.id.toLowerCase().includes(search.toLowerCase());
         const matchesType = typeFilter.length === 0 || typeFilter.includes(t.type);
@@ -339,27 +431,77 @@ export default function Tasks() {
     });
 
     const toggleFilter = (setter) => (val) => setter((prev) => (prev.includes(val) ? prev.filter((x) => x !== val) : [...prev, val]));
+
     const toggleSelect = (id) => setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+
     const toggleSelectAll = (ids) => {
         const allSelected = ids.every((id) => selected.includes(id));
         setSelected(allSelected ? selected.filter((id) => !ids.includes(id)) : [...new Set([...selected, ...ids])]);
     };
 
-    // ... [existing CRUD handler functions]
+    const handleAddTask = async (newFields) => {
+        if (!activeWorkspace?.workspaceId) return;
+
+        try {
+            const response = await APICallService.createTask(activeWorkspace.workspaceId, mapUiTaskToApi(newFields));
+            const createdTask = response?.data?.data;
+            if (createdTask) {
+                setTasks((prev) => [mapApiTaskToUi(createdTask), ...prev]);
+            }
+        } catch (error) {
+            console.error('Failed to create task:', error);
+        }
+    };
+
+    const handleSaveTask = async (updated) => {
+        if (!activeWorkspace?.workspaceId || !updated?.id) return;
+
+        try {
+            const response = await APICallService.updateTask(activeWorkspace.workspaceId, updated.id, mapUiTaskToApi(updated));
+            const updatedTask = response?.data?.data;
+            if (updatedTask) {
+                setTasks((prev) => prev.map((t) => (t.id === updated.id ? mapApiTaskToUi(updatedTask) : t)));
+            }
+        } catch (error) {
+            console.error('Failed to update task:', error);
+        }
+    };
+
+    const handleArchiveSelected = async () => {
+        if (!activeWorkspace?.workspaceId || !selected.length) return;
+
+        try {
+            const nextStatus = showArchived ? 'To Do' : 'Done';
+            const nextArchived = !showArchived;
+            const selectedTasks = tasks.filter((task) => selected.includes(task.id));
+
+            await Promise.all(selectedTasks.map((task) => APICallService.updateTask(activeWorkspace.workspaceId, task.id, {
+                ...mapUiTaskToApi(task),
+                status: nextStatus,
+                archived: nextArchived,
+            })));
+
+            setTasks((prev) => prev.map((task) => (selected.includes(task.id) ? { ...task, archived: !showArchived } : task)));
+            setSelected([]);
+        } catch (error) {
+            console.error('Failed to archive selected tasks:', error);
+        }
+    };
 
     const hasSelection = selected.length > 0;
 
     return (
         <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', p: 3, minHeight: 0, backgroundColor: darkMode ? '#020817' : '#f8fafc' }}>
-            {/* Title */}
             <Typography sx={{ fontSize: '22px', fontWeight: 700, color: darkMode ? '#f8fafc' : '#1e293b', mb: 2, flexShrink: 0 }}>
                 Tasks
             </Typography>
 
-            {/* Filter bar + action buttons, all in one row */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 2, flexWrap: 'wrap', flexShrink: 0 }}>
                 <Button
-                    onClick={() => { setEditingTask(null); setAddTaskOpen(true); }}
+                    onClick={() => {
+                        setEditingTask(null);
+                        setAddTaskOpen(true);
+                    }}
                     startIcon={<AddIcon sx={{ fontSize: 18 }} />}
                     variant="contained"
                     sx={{
@@ -376,7 +518,6 @@ export default function Tasks() {
                     Add Task
                 </Button>
 
-                {/* Updated search bar for dark mode */}
                 <Box sx={{
                     display: 'flex',
                     alignItems: 'center',
@@ -386,7 +527,7 @@ export default function Tasks() {
                     borderRadius: '8px',
                     px: 1.5,
                     height: '36px',
-                    minWidth: '220px'
+                    minWidth: '220px',
                 }}>
                     <SearchIcon sx={{ fontSize: 18, color: '#94a3b8' }} />
                     <input
@@ -399,12 +540,11 @@ export default function Tasks() {
                             background: 'transparent',
                             fontSize: '13px',
                             width: '100%',
-                            color: darkMode ? '#f8fafc' : 'inherit'
+                            color: darkMode ? '#f8fafc' : 'inherit',
                         }}
                     />
                 </Box>
 
-                {/* Passed darkMode prop down to custom components */}
                 <FilterDropdown
                     darkMode={darkMode}
                     label="Type"
@@ -421,9 +561,7 @@ export default function Tasks() {
                         );
                     }}
                 />
-
                 <FilterDropdown darkMode={darkMode} label="State" options={COLUMNS} selected={stateFilter} onToggle={toggleFilter(setStateFilter)} />
-
                 <FilterDropdown
                     darkMode={darkMode}
                     label="Priority"
@@ -460,6 +598,7 @@ export default function Tasks() {
                 </Button>
 
                 <Button
+                    onClick={handleArchiveSelected}
                     disabled={!hasSelection}
                     startIcon={<ArchiveOutlinedIcon sx={{ fontSize: 17 }} />}
                     sx={{
@@ -481,7 +620,6 @@ export default function Tasks() {
                 </Button>
             </Box>
 
-            {/* Passed darkMode prop to the table */}
             <Box sx={{ flex: 1, minHeight: 0 }}>
                 <TaskTable
                     darkMode={darkMode}
@@ -489,15 +627,24 @@ export default function Tasks() {
                     selected={selected}
                     onToggleSelect={toggleSelect}
                     onToggleSelectAll={toggleSelectAll}
-                    onRowClick={(task) => { setEditingTask(task); setAddTaskOpen(true); }}
+                    onRowClick={(task) => {
+                        setEditingTask(task);
+                        setAddTaskOpen(true);
+                    }}
                 />
             </Box>
 
             <AddTask
+                key={`${editingTask?.id || 'new'}-${addTaskOpen}`}
                 open={addTaskOpen}
-                onClose={() => { setAddTaskOpen(false); setEditingTask(null); }}
+                onClose={() => {
+                    setAddTaskOpen(false);
+                    setEditingTask(null);
+                }}
                 task={editingTask}
-                members={workspaceMembers}
+                onAdd={handleAddTask}
+                onSave={handleSaveTask}
+                members={hasWorkspace ? workspaceMembers : []}
             />
         </Box>
     );

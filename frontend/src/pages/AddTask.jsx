@@ -27,6 +27,19 @@ const TYPE_CONFIG = {
 const STATES = ['To Do', 'In Progress', 'Done'];
 const PRIORITIES = ['High', 'Medium', 'Low'];
 
+const getToday = () => {
+    const today = new Date();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${today.getFullYear()}-${month}-${day}`;
+};
+
+// Message updated per request — was "Due date cannot be in the past."
+const getDueDateError = (value) => (
+    value && value < getToday() ? 'Choose today or a future date.' : ''
+);
+
+// Shared label element so every field's title is styled identically
 const FieldLabel = ({ children, darkMode }) => (
     <Typography sx={{ fontSize: '12px', fontWeight: 700, color: darkMode ? '#cbd5e1' : '#334155', mb: 0.75 }}>
         {children}
@@ -48,39 +61,20 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
     }, []);
 
     const isEditMode = Boolean(task);
-    const [title, setTitle] = useState('');
-    const [type, setType] = useState('Task');
-    const [column, setColumn] = useState(defaultColumn || STATES[0]);
-    const [priority, setPriority] = useState('Medium');
-    const [assigneeId, setAssigneeId] = useState(members[0]?.userId || '');
-    const [area, setArea] = useState('ToBeDone');
-    const [description, setDescription] = useState('');
-
-    useEffect(() => {
-        if (!open) return;
-
-        if (task) {
-            setTitle(task.title || '');
-            setType(task.type || 'Task');
-            setColumn(task.column || task.status || defaultColumn || STATES[0]);
-            setPriority(task.priority || 'Medium');
-            setAssigneeId(task.assigneeId || members[0]?.userId || '');
-            setArea(task.area || 'ToBeDone');
-            setDescription(task.description || '');
-            return;
-        }
-
-        setTitle('');
-        setType('Task');
-        setColumn(defaultColumn || STATES[0]);
-        setPriority('Medium');
-        setAssigneeId(members[0]?.userId || '');
-        setArea('ToBeDone');
-        setDescription('');
-    }, [open, task, defaultColumn, members]);
+    const initialDueDate = task?.dueDate ? String(task.dueDate).slice(0, 10) : '';
+    const [title, setTitle] = useState(() => task?.title || '');
+    const [type, setType] = useState(() => task?.type || 'Task');
+    const [column, setColumn] = useState(() => task?.column || task?.status || defaultColumn || STATES[0]);
+    const [priority, setPriority] = useState(() => task?.priority || 'Medium');
+    const [assigneeId, setAssigneeId] = useState(() => task?.assigneeId || members[0]?.userId || '');
+    const [area, setArea] = useState(() => task?.area || 'ToBeDone');
+    const [description, setDescription] = useState(() => task?.description || '');
+    const [tags, setTags] = useState(() => (Array.isArray(task?.tags) ? task.tags.join(', ') : ''));
+    const [dueDate, setDueDate] = useState(() => initialDueDate);
+    const [dueDateError, setDueDateError] = useState(() => getDueDateError(initialDueDate));
 
     const handleSubmit = () => {
-        if (!title.trim()) return;
+        if (!title.trim() || dueDateError) return;
 
         const payload = {
             id: task?.id,
@@ -92,7 +86,8 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
             assignee: members.find((member) => (member.userId || member._id) === assigneeId)?.name || '',
             area,
             description,
-            tags: task?.tags || [],
+            tags: tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+            dueDate: dueDate || undefined,
         };
 
         if (isEditMode && onSave) {
@@ -109,12 +104,12 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
             sx: {
                 backgroundColor: darkMode ? '#1e293b' : '#ffffff',
                 color: darkMode ? '#f8fafc' : '#1e293b',
-                border: darkMode ? '1px solid #334155' : 'none'
-            }
-        }
+                border: darkMode ? '1px solid #334155' : 'none',
+            },
+        },
     };
 
-    // 1. Separate style for Select components
+    // Separate style for Select components
     const selectSx = {
         borderRadius: '10px',
         backgroundColor: darkMode ? '#0f172a' : '#fff',
@@ -127,11 +122,14 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
         },
         '& .MuiSvgIcon-root': {
             color: darkMode ? '#94a3b8' : undefined,
-        }
+        },
     };
 
-    // 2. Separate style for TextField components
+    // Separate style for TextField components
     const textFieldSx = {
+        fontSize: '13px',
+        fontWeight: 400,
+        '& .MuiInputBase-input, & .MuiSelect-select': { fontSize: '13px', fontWeight: 400 },
         '& .MuiOutlinedInput-root': {
             borderRadius: '10px',
             backgroundColor: darkMode ? '#0f172a' : '#fff',
@@ -144,7 +142,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
         },
         '& .MuiInputBase-input': {
             color: darkMode ? '#f8fafc' : '#1e293b',
-        }
+        },
     };
 
     return (
@@ -157,7 +155,7 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
             primaryAction={{
                 label: isEditMode ? 'Update' : 'Add',
                 onClick: handleSubmit,
-                disabled: !title.trim(),
+                disabled: !title.trim() || Boolean(dueDateError),
             }}
             secondaryAction={{
                 label: 'Cancel',
@@ -262,6 +260,40 @@ export default function AddTask({ open, onClose, onAdd, onSave, task, defaultCol
                         <TextField
                             value={area}
                             onChange={(e) => setArea(e.target.value)}
+                            fullWidth
+                            size="small"
+                            sx={textFieldSx}
+                        />
+                    </Box>
+                </Box>
+
+                <Box sx={{ display: 'flex', gap: 2 }}>
+                    <Box sx={{ flex: 1 }}>
+                        <FieldLabel darkMode={darkMode}>Due Date</FieldLabel>
+                        <TextField
+                            type="date"
+                            value={dueDate}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                setDueDate(value);
+                                setDueDateError(getDueDateError(value));
+                            }}
+                            inputProps={{ min: getToday() }}
+                            error={Boolean(dueDateError)}
+                            helperText={dueDateError || 'Pick a deadline to keep this on track.'}
+                            fullWidth
+                            size="small"
+                            InputLabelProps={{ shrink: true }}
+                            sx={textFieldSx}
+                        />
+                    </Box>
+
+                    <Box sx={{ flex: 1 }}>
+                        <FieldLabel darkMode={darkMode}>Tags</FieldLabel>
+                        <TextField
+                            value={tags}
+                            onChange={(e) => setTags(e.target.value)}
+                            placeholder="auth, frontend"
                             fullWidth
                             size="small"
                             sx={textFieldSx}
