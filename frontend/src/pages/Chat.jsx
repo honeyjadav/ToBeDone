@@ -51,6 +51,12 @@ const SIDEBAR_MIN = 220;
 const SIDEBAR_MAX = 420;
 const SIDEBAR_DEFAULT = 280;
 
+function sortMessagesChronologically(messageList) {
+  return [...messageList].sort(
+    (first, second) => new Date(first.createdAt) - new Date(second.createdAt)
+  );
+}
+
 export default function Chat() {
   const { activeWorkspace, user } = useAuth();
   const workspaceId = activeWorkspace?.workspaceId;
@@ -217,7 +223,7 @@ export default function Chat() {
           (msg.sender._id === selected.id || msg.recipient === selected.id));
 
       if (belongs) {
-        setMessages((prev) => [...prev, msg]);
+        setMessages((prev) => sortMessagesChronologically([...prev, msg]));
         return;
       }
 
@@ -281,7 +287,7 @@ export default function Chat() {
     APICallService.getMessages(workspaceId, params)
       .then((res) => {
         if (Array.isArray(res.data)) {
-          setMessages(res.data);
+          setMessages(sortMessagesChronologically(res.data));
         }
       })
       .catch((err) => console.error('Failed to load messages:', err));

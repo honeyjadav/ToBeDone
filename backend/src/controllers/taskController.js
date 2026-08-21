@@ -1,4 +1,5 @@
 import Task from "../models/Task.js";
+import User from "../models/User.js";
 import { logActivity } from "./activityLogController.js";
 import { notifyUsers } from "../utils/notify.js";
 
@@ -93,13 +94,19 @@ export const createTask = async (req, res, next) => {
 
     const task = await Task.create(taskData);
 
+    // Look up assignee names once so activity logs / AI digest never see raw ObjectIds
+    const assignedUsers = task.assignedTo?.length
+      ? await User.find({ _id: { $in: task.assignedTo } }).select("name").lean()
+      : [];
+    const assignedToNames = assignedUsers.map((u) => u.name);
+
     const activity = await logActivity({
       workspace: workspaceId,
       user: userId,
       action: "TASK_CREATED",
       targetType: "Task",
       targetId: task._id,
-      metadata: { title: task.title },
+      metadata: { title: task.title, assignedTo: task.assignedTo, assignedToNames },
     });
 
     // Notify anyone assigned who isn't the creator themselves
@@ -184,13 +191,20 @@ export const updateTask = async (req, res, next) => {
         .filter((uid) => !oldAssignedTo.includes(uid));
 
       if (newAssignees.length > 0) {
+        // Look up names for ALL current assignees so activity logs / AI digest
+        // never see raw ObjectIds
+        const assignedUsers = await User.find({ _id: { $in: task.assignedTo } })
+          .select("name")
+          .lean();
+        const assignedToNames = assignedUsers.map((u) => u.name);
+
         const assignActivity = await logActivity({
           workspace: task.workspace,
           user: req.user.id,
           action: "TASK_ASSIGNED",
           targetType: "Task",
           targetId: task._id,
-          metadata: { title: task.title, assignedTo: task.assignedTo },
+          metadata: { title: task.title, assignedTo: task.assignedTo, assignedToNames },
         });
 
         await notifyUsers({
@@ -238,13 +252,19 @@ export const assignTask = async (req, res, next) => {
     task.assignedTo = Array.isArray(assignedTo) ? assignedTo : [assignedTo];
     await task.save();
 
+    // Look up assignee names so activity logs / AI digest never see raw ObjectIds
+    const assignedUsers = await User.find({ _id: { $in: task.assignedTo } })
+      .select("name")
+      .lean();
+    const assignedToNames = assignedUsers.map((u) => u.name);
+
     logActivity({
       workspace: workspaceId,
       user: req.user.id,
       action: "TASK_ASSIGNED",
       targetType: "Task",
       targetId: task._id,
-      metadata: { title: task.title, assignedTo: task.assignedTo },
+      metadata: { title: task.title, assignedTo: task.assignedTo, assignedToNames },
     });
 
     res.status(200).json({

@@ -10,6 +10,13 @@ const SOURCE_MAP = {
   Board: "Task",
 };
 
+// Strip fields we never want the model to see (raw ObjectIds), keep only
+// human-readable substitutes (e.g. assignedToNames instead of assignedTo).
+const sanitizeMetadata = (metadata = {}) => {
+  const { assignedTo, ...rest } = metadata;
+  return rest;
+};
+
 export const summarizeActivity = async (logs) => {
   if (!logs.length) {
     return { groups: [], focus: "No new activity in this period." };
@@ -19,7 +26,7 @@ export const summarizeActivity = async (logs) => {
     action: l.action,
     source: SOURCE_MAP[l.targetType] || "Task",
     user: l.user?.name || "Someone",
-    metadata: l.metadata,
+    metadata: sanitizeMetadata(l.metadata),
     at: l.createdAt,
   }));
 
@@ -33,6 +40,8 @@ Return ONLY valid JSON, no markdown, no preamble, in this exact shape:
 }
 Group related items together, write items as short human-readable sentences,
 and "focus" should be one actionable suggestion based on the most important item.
+Never include raw database IDs in the output — always refer to people by the
+names provided in metadata (e.g. assignedToNames), never by any id field.
 
 Activity logs:
 ${JSON.stringify(compact)}`;
