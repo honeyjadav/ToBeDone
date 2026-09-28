@@ -7,7 +7,10 @@ import {
   removeGroupMember,
   deleteGroup,
 } from "../controllers/groupController.js";
-import { requireWorkspaceMember } from "../middleware/workspaceAuth.js";
+import {
+  requireWorkspaceMember,
+  requireWorkspaceRole,
+} from "../middleware/workspaceAuth.js";
 
 const router = express.Router({ mergeParams: true }); // mounted under /:workspaceId/groups
 
@@ -16,6 +19,6 @@ router.post("/", requireWorkspaceMember, createGroup);
 router.get("/:groupId", requireWorkspaceMember, getGroupById);
 router.post("/:groupId/members", requireWorkspaceMember, addGroupMember);
 router.delete("/:groupId/members/:userId", requireWorkspaceMember, removeGroupMember);
-router.delete("/:groupId", requireWorkspaceMember, deleteGroup);
+router.delete("/:groupId", requireWorkspaceRole("Admin", "Manager"), deleteGroup);
 
 export default router;

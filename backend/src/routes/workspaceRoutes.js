@@ -35,8 +35,8 @@ router.get("/", getMyWorkspaces);
 // Get a single workspace — any member can view
 router.get("/:workspaceId", requireWorkspaceMember, getWorkspaceById);
 
-// Admin only
-router.patch("/:workspaceId", requireWorkspaceRole("Admin"), updateWorkspace);
+// Admin + Manager can update workspace settings; only Admin can delete workspace
+router.patch("/:workspaceId", requireWorkspaceRole("Admin", "Manager"), updateWorkspace);
 router.delete("/:workspaceId", requireWorkspaceRole("Admin"), deleteWorkspace);
 
 // Member management
